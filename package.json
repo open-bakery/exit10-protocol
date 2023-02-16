@@ -1,0 +1,14 @@
+{
+  "name": "EXIT10",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:0xnavigator/exit10-protocol.git",
+  "author": "0xnavigator <0xnavigator.proton.me>",
+  "license": "MIT",
+  "devDependencies": {
+    "prettier": "^2.8.4",
+    "prettier-plugin-solidity": "^1.1.2",
+    "solhint": "^3.3.8",
+    "solhint-plugin-prettier": "^0.0.5"
+  }
+}

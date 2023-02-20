@@ -1,0 +1,74 @@
+// SPDX-License-Identifier: GPL-3.0
+pragma solidity ^0.8.0;
+
+interface IExit10 {
+  struct DeployParams {
+    address NFT;
+    address NPM;
+    address STO;
+    address pool;
+    int24 tickLower;
+    int24 tickUpper;
+    uint256 bootstrapPeriod; // Min duration of first chicken-in
+    uint256 targetAverageAgeSeconds; // Average outstanding bond age above which the controller will adjust `accrualParameter` in order to speed up accrual
+    uint256 initialAccrualParameter; // Initial value for `accrualParameter`
+    uint256 minimumAccrualParameter; // Stop adjusting `accrualParameter` when this value is reached
+    uint256 accrualAdjustmentRate; // `accrualParameter` is multiplied `1 - accrualAdjustmentRate` every time there's an adjustment
+    uint256 accrualAdjustmentPeriodSeconds; // The duration of an adjustment period in seconds
+    uint256 lpPerUSD; // Amount of LP per USD that is minted on the 500 - 10000 Range Pool
+  }
+
+  struct AddLiquidity {
+    uint256 amount0Desired;
+    uint256 amount1Desired;
+    uint256 amount0Min;
+    uint256 amount1Min;
+    uint256 deadline;
+  }
+
+  struct DecreaseLiquidity {
+    uint128 liquidity;
+    uint256 amount0Min;
+    uint256 amount1Min;
+    uint256 deadline;
+  }
+
+  struct BondData {
+    uint256 bondAmount;
+    uint256 claimedBoostAmount;
+    uint64 startTime;
+    uint64 endTime; // Timestamp of chicken in/out event
+    BondStatus status;
+  }
+
+  // Valid values for `status` returned by `getBondData()`
+  enum BondStatus {
+    nonExistent,
+    active,
+    chickenedOut,
+    chickenedIn
+  }
+
+  function getBondData(uint256 _bondID)
+    external
+    view
+    returns (
+      uint256 bondAmount,
+      uint256 claimedBoostAmount,
+      uint64 startTime,
+      uint64 endTime,
+      uint8 status
+    );
+
+  function getTreasury()
+    external
+    view
+    returns (
+      uint256 pending,
+      uint256 reserve,
+      uint256 exit,
+      uint256 bootstrap
+    );
+
+  function inExitMode() external view returns (bool);
+}

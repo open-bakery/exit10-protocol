@@ -8,6 +8,9 @@ deploy-mainnet-fork:
 anvil-mainnet-fork:	
 	anvil --fork-url $(MAINNET_RPC)
 
+gas-report:
+	forge test --gas-report --fork-url $(MAINNET_RPC) --fork-block-number 16642663
+
 trace:
 	forge test -vv
 

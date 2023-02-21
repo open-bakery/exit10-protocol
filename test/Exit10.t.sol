@@ -15,11 +15,7 @@ contract Exit10Test is Test {
   address _pool = vm.envAddress('POOL');
   int24 _lowerTick = int24(vm.envInt('LOWER_TICK'));
   int24 _upperTick = int24(vm.envInt('UPPER_TICK'));
-  uint256 _targetAverageAgeSeconds = 1 days;
-  uint256 _initialAccrualParameter = 4217 seconds;
-  uint256 _minimumAccrualParameter = 1 seconds;
-  uint256 _accrualAdjustmentRate = 0.01 ether; // equeals to 1%
-  uint256 _accrualAdjustmentPeriodSeconds = 1 days;
+  uint256 _accrualParameter = 4217 seconds;
   uint256 _bootstrapPeriod = 1 hours;
   uint256 _lpPerUSD = 10000000; // made up number
 
@@ -34,11 +30,7 @@ contract Exit10Test is Test {
         tickLower: _lowerTick,
         tickUpper: _upperTick,
         bootstrapPeriod: _bootstrapPeriod, // Min duration of first chicken-in
-        targetAverageAgeSeconds: _targetAverageAgeSeconds, // Average outstanding bond age above which the controller will adjust `accrualParameter` in order to speed up accrual
-        initialAccrualParameter: _initialAccrualParameter, // Initial value for `accrualParameter`
-        minimumAccrualParameter: _minimumAccrualParameter, // Stop adjusting `accrualParameter` when this value is reached
-        accrualAdjustmentRate: _accrualAdjustmentRate, // `accrualParameter` is multiplied `1 - accrualAdjustmentRate` every time there's an adjustment
-        accrualAdjustmentPeriodSeconds: _accrualAdjustmentPeriodSeconds, // The duration of an adjustment period in seconds
+        accrualParameter: _accrualParameter,
         lpPerUSD: _lpPerUSD
       })
     );

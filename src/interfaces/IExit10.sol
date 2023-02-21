@@ -10,11 +10,7 @@ interface IExit10 {
     int24 tickLower;
     int24 tickUpper;
     uint256 bootstrapPeriod; // Min duration of first chicken-in
-    uint256 targetAverageAgeSeconds; // Average outstanding bond age above which the controller will adjust `accrualParameter` in order to speed up accrual
-    uint256 initialAccrualParameter; // Initial value for `accrualParameter`
-    uint256 minimumAccrualParameter; // Stop adjusting `accrualParameter` when this value is reached
-    uint256 accrualAdjustmentRate; // `accrualParameter` is multiplied `1 - accrualAdjustmentRate` every time there's an adjustment
-    uint256 accrualAdjustmentPeriodSeconds; // The duration of an adjustment period in seconds
+    uint256 accrualParameter; // Initial value for `accrualParameter`
     uint256 lpPerUSD; // Amount of LP per USD that is minted on the 500 - 10000 Range Pool
   }
 

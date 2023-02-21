@@ -21,9 +21,12 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
 
   uint256 public positionId0; // All liquidity in the pending bucket
   uint256 public positionId1; // All the liquidity excluding the pending bucket
-  uint256 public totalWeightedStartTimes;
   uint256 public countChickenIn;
   uint256 public countChickenOut;
+
+  // MasterChef
+  address mc0; // BOOT - STO Stakers
+  address mc1; // BLP Stakers
 
   // EXIT
   uint256 public exitTotalSupply;
@@ -37,44 +40,32 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
   // STO
   uint256 public exitTeamPlusBackers;
 
+  bool public inExitMode;
+
   mapping(uint256 => BondData) private idToBondData;
   mapping(address => uint256) public bootstrapDeposit;
-
-  bool public inExitMode;
 
   // --- Constants ---
   // On Ethereum Mainnet:
   // Token0 is USDC
   // Token1 is WETH
   IUniswapV3Pool public immutable POOL;
-  BaseToken public immutable BOOST;
+  BaseToken public immutable BLP;
+  BaseToken public immutable BOOT;
 
   address public immutable STO; // STO token distribution
-  address public immutable NPM; // Uniswap nonfungible position manager
+  address public immutable NPM; // Uniswap Nonfungible Position Manager
   INFT public immutable NFT;
-
-  uint256 constant MAX_UINT256 = type(uint256).max;
 
   int24 public immutable TICK_LOWER;
   int24 public immutable TICK_UPPER;
 
+  uint256 constant MAX_UINT256 = type(uint256).max;
   uint256 public immutable MAX_SUPPLY = 10_000_000 ether;
+  uint256 public immutable DEPLOYMENT_TIMESTAMP;
   uint256 public immutable BOOTSTRAP_PERIOD;
+  uint256 public immutable ACCRUAL_PARAMETER; // The number of seconds it takes to accrue 50% of the cap, represented as an 18 digit fixed-point number.
   uint256 public immutable LP_PER_USD;
-
-  // --- Accrual control variables ---
-  uint256 public immutable deploymentTimestamp;
-  uint256 public immutable targetAverageAgeSeconds; // Average outstanding bond age above which the controller will adjust `accrualParameter` in order to speed up accrual.
-  uint256 public immutable minimumAccrualParameter; // Stop adjusting `accrualParameter` when this value is reached.
-  uint256 public immutable accrualAdjustmentMultiplier; // Number between 0 and 1. `accrualParameter` is multiplied by this every time there's an adjustment.
-  uint256 public immutable accrualAdjustmentPeriodSeconds; // The duration of an adjustment period in seconds. The controller performs at most one adjustment per every period.
-  uint256 public accrualParameter; // The number of seconds it takes to accrue 50% of the cap, represented as an 18 digit fixed-point number.
-
-  // Counts the number of adjustment periods since deployment.
-  // Updated by operations that change the average outstanding bond age (createBond, chickenIn, chickenOut).
-  // Used by `_calcUpdatedAccrualParameter` to tell whether it's time to perform adjustments, and if so, how many times
-  // (in case the time elapsed since the last adjustment is more than one adjustment period).
-  uint256 public accrualAdjustmentPeriodCount;
 
   // --- Events ---
   event BondCreated(address indexed bonder, uint256 bondId, uint256 amount);
@@ -88,29 +79,23 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
   event ExitMinted(address indexed recipient, uint256 amount);
   event BondCancelled(address indexed bonder, uint256 bondId, uint256 amountReturned0, uint256 amountReturned1);
   event TokensRedeemed(address indexed redeemer, uint256 amount0, uint256 amount1);
-  event AccrualParameterUpdated(uint256 accrualParameter);
 
   constructor(DeployParams memory params) ERC20('Exit Liquidity', 'EXIT') {
+    DEPLOYMENT_TIMESTAMP = block.timestamp;
+
     NPM = params.NPM;
     STO = params.STO;
     NFT = INFT(params.NFT);
 
     POOL = IUniswapV3Pool(params.pool);
-    BOOST = new BaseToken('Boost Liquidity', 'BOOST');
+    BLP = new BaseToken('Boost Liquidity', 'BLP');
+    BOOT = new BaseToken('Exit10 Bootstrap', 'BOOT');
 
     TICK_LOWER = params.tickLower;
     TICK_UPPER = params.tickUpper;
 
-    deploymentTimestamp = block.timestamp;
-    targetAverageAgeSeconds = params.targetAverageAgeSeconds;
-    accrualParameter = params.initialAccrualParameter * DECIMAL_PRECISION;
-    minimumAccrualParameter = params.minimumAccrualParameter * DECIMAL_PRECISION;
-    require(minimumAccrualParameter != 0, 'EXIT10: Min accrual parameter cannot be zero');
-
-    accrualAdjustmentMultiplier = 1e18 - params.accrualAdjustmentRate;
-    accrualAdjustmentPeriodSeconds = params.accrualAdjustmentPeriodSeconds;
-
     BOOTSTRAP_PERIOD = params.bootstrapPeriod;
+    ACCRUAL_PARAMETER = params.accrualParameter * DECIMAL_PRECISION;
     LP_PER_USD = params.lpPerUSD;
   }
 
@@ -152,9 +137,7 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
       return 0;
     }
 
-    (uint256 updatedAccrualParameter, ) = _calcUpdatedAccrualParameter(accrualParameter, accrualAdjustmentPeriodCount);
-
-    return _calcAccruedAmount(bond.startTime, bond.bondAmount, updatedAccrualParameter);
+    return _calcAccruedAmount(bond.startTime, bond.bondAmount, ACCRUAL_PARAMETER);
   }
 
   function getOpenBondCount() external view returns (uint256) {
@@ -162,7 +145,7 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
   }
 
   function bootstrapLock(address depositor, AddLiquidity memory params) external {
-    require(block.timestamp < deploymentTimestamp + BOOTSTRAP_PERIOD, 'EXIT10: Bootstrap ended');
+    require(block.timestamp < DEPLOYMENT_TIMESTAMP + BOOTSTRAP_PERIOD, 'EXIT10: Bootstrap ended');
 
     (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) = _addLiquidity(
       positionId1,
@@ -172,16 +155,14 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
     if (tokenId != positionId1) positionId1 = tokenId;
 
     bootstrapAmount += liquidityAdded;
-    bootstrapDeposit[depositor] += liquidityAdded;
+    BOOT.mint(depositor, liquidityAdded);
 
     _refundTokens(depositor, params.amount0Desired, amountAdded0, params.amount1Desired, amountAdded1);
   }
 
   function createBond(address depositor, AddLiquidity memory params) public {
     _requireNoExitMode();
-    require(block.timestamp >= deploymentTimestamp + BOOTSTRAP_PERIOD, 'EXIT10: Bootstrap ongoing');
-
-    _updateAccrualParameter();
+    require(block.timestamp >= DEPLOYMENT_TIMESTAMP + BOOTSTRAP_PERIOD, 'EXIT10: Bootstrap ongoing');
 
     (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) = _addLiquidity(
       positionId0,
@@ -198,8 +179,6 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
     bondData.status = BondStatus.active;
     idToBondData[bondID] = bondData;
 
-    totalWeightedStartTimes += liquidityAdded * block.timestamp;
-
     _refundTokens(depositor, params.amount0Desired, amountAdded0, params.amount1Desired, amountAdded1);
 
     emit BondCreated(msg.sender, bondID, liquidityAdded);
@@ -212,13 +191,10 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
     _requireActiveStatus(bond.status);
     _requireEqualLiquidity(bond.bondAmount, params.liquidity);
 
-    _updateAccrualParameter();
-
     idToBondData[bondID].status = BondStatus.chickenedOut;
     idToBondData[bondID].endTime = uint64(block.timestamp);
 
     countChickenOut += 1;
-    totalWeightedStartTimes -= bond.bondAmount * bond.startTime;
 
     (uint256 amountRemoved0, uint256 amountRemoved1) = _decreaseLiquidity(positionId0, params);
     _collect(positionId0, msg.sender, uint128(amountRemoved0), uint128(amountRemoved1));
@@ -234,7 +210,7 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
     _requireCallerOwnsBond(bondID);
     _requireActiveStatus(bond.status);
 
-    uint256 accruedBoostToken = _calcAccruedAmount(bond.startTime, bond.bondAmount, _updateAccrualParameter());
+    uint256 accruedBoostToken = _calcAccruedAmount(bond.startTime, bond.bondAmount, ACCRUAL_PARAMETER);
     idToBondData[bondID].status = BondStatus.chickenedIn;
     idToBondData[bondID].endTime = uint64(block.timestamp);
 
@@ -258,25 +234,23 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
 
     idToBondData[bondID].claimedBoostAmount = accruedBoostToken;
     reserveAmount += accruedBoostToken; // Increase the amount of the reserve
-    totalWeightedStartTimes -= bond.bondAmount * bond.startTime;
 
-    BOOST.mint(msg.sender, accruedBoostToken);
+    BLP.mint(msg.sender, accruedBoostToken);
 
     // assert(bond.bondAmount > accruedbondToken); // Uncomment for tests.
-    uint256 exitLiquidityIncrease = bond.bondAmount - accruedBoostToken;
+    uint256 exitLiquidityAcquired = bond.bondAmount - accruedBoostToken;
 
-    _mintExitCapped(msg.sender, (exitLiquidityIncrease * DECIMAL_PRECISION) / LP_PER_USD);
+    _mintExitCapped(msg.sender, (exitLiquidityAcquired * DECIMAL_PRECISION) / LP_PER_USD);
 
-    emit BondClaimed(msg.sender, bondID, bond.bondAmount, accruedBoostToken, exitLiquidityIncrease);
+    emit BondClaimed(msg.sender, bondID, bond.bondAmount, accruedBoostToken, exitLiquidityAcquired);
   }
 
   function redeem(uint256 amount, DecreaseLiquidity memory params) external {
-    require(amount != 0, 'EXIT10: Amount must be > 0');
-    require(BOOST.balanceOf(msg.sender) >= amount, 'EXIT10: You do not own enough bond tokens');
+    require(amount != 0, 'EXIT10: Amount must be != 0');
     _requireEqualLiquidity(amount, params.liquidity);
 
     reserveAmount -= amount;
-    BOOST.burn(msg.sender, amount);
+    BLP.burn(msg.sender, amount);
 
     (uint256 amountRemoved0, uint256 amountRemoved1) = _decreaseLiquidity(positionId1, params);
     _collect(positionId1, msg.sender, uint128(amountRemoved0), uint128(amountRemoved1));
@@ -284,39 +258,34 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
     emit TokensRedeemed(msg.sender, amountRemoved0, amountRemoved1);
   }
 
-  function bootstrapClaim() external {
-    _requireExitMode();
+  function claimAndDistributeFees() external {
+    (
+      uint256 pid0_amountCollected0,
+      uint256 pid0_amountCollected1,
+      uint256 pid1_amountCollected0,
+      uint256 pid1_amountCollected1
+    ) = _collectAll(address(this));
 
-    uint256 amount = bootstrapDeposit[msg.sender];
-    bootstrapDeposit[msg.sender] = 0;
+    uint256 mc0Token0 = (pid0_amountCollected0 / 10) * 4;
+    uint256 mc0Token1 = (pid0_amountCollected1 / 10) * 4;
+    uint256 mc1Token0 = pid1_amountCollected0 + (pid0_amountCollected0 - mc0Token0);
+    uint256 mc1Token1 = pid1_amountCollected1 + (pid0_amountCollected1 - mc0Token1);
 
-    uint256 claim = (amount * exitBootstrap) / bootstrapAmount;
-    exitBootstrapClaimed += claim;
-    exitBootstrapClaimed = (exitBootstrapClaimed > exitBootstrap) ? exitBootstrap : exitBootstrapClaimed;
-    // Make sure to not transfer more than the maximum reserved for Bootstrap
-    ERC20(POOL.token0()).safeTransfer(msg.sender, Math.min(claim, exitBootstrap - exitBootstrapClaimed));
-  }
-
-  function exitClaim(uint256 amount) external {
-    _requireExitMode();
-
-    _burn(msg.sender, amount);
-    uint256 claim = (amount * exitLiquidity) / exitTotalSupply;
-    exitLiquidityClaimed += claim;
-    exitLiquidityClaimed = (exitLiquidityClaimed > exitLiquidity) ? exitLiquidity : exitLiquidityClaimed;
-    // Make sure to not transfer more than the maximum reserved for ExitLiquidity
-    ERC20(POOL.token0()).safeTransfer(msg.sender, Math.min(claim, exitLiquidity - exitLiquidityClaimed));
+    ERC20(POOL.token0()).safeTransfer(mc0, mc0Token0);
+    ERC20(POOL.token1()).safeTransfer(mc0, mc0Token1);
+    ERC20(POOL.token0()).safeTransfer(mc1, mc1Token0);
+    ERC20(POOL.token0()).safeTransfer(mc1, mc1Token1);
   }
 
   function exit10() external {
     require(_currentTick() <= TICK_LOWER, 'EXIT10: Current Tick not below TICK_LOWER');
+    inExitMode = true;
 
     // TODO This might be an issue since Exit is continuously minted for EXIT/USDC providers.
     // Either users will NOT receive Exit if they are late claimers or we must modify Masterchef
     // The modification would required to send all tokens to be distributed at once
     // (spread over total distribution time) but hard stop at exit10 blocktime.
     // This would allow users to claim up to that blocktime.
-
     exitTotalSupply = totalSupply();
 
     uint128 exitBucketLiquidity = uint128(_liquidityAmount(positionId1) - reserveAmount);
@@ -339,6 +308,30 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
     exitLiquidity -= share * 3;
 
     ERC20(POOL.token0()).safeTransfer(STO, exitTeamPlusBackers);
+  }
+
+  function bootstrapClaim() external {
+    _requireExitMode();
+
+    uint256 amount = BOOT.balanceOf(msg.sender);
+    BOOT.burn(msg.sender, amount);
+
+    uint256 claim = (amount * exitBootstrap) / bootstrapAmount;
+    exitBootstrapClaimed += claim;
+    exitBootstrapClaimed = (exitBootstrapClaimed > exitBootstrap) ? exitBootstrap : exitBootstrapClaimed;
+    // Make sure to not transfer more than the maximum reserved for Bootstrap
+    ERC20(POOL.token0()).safeTransfer(msg.sender, Math.min(claim, exitBootstrap - exitBootstrapClaimed));
+  }
+
+  function exitClaim(uint256 amount) external {
+    _requireExitMode();
+
+    _burn(msg.sender, amount);
+    uint256 claim = (amount * exitLiquidity) / exitTotalSupply;
+    exitLiquidityClaimed += claim;
+    exitLiquidityClaimed = (exitLiquidityClaimed > exitLiquidity) ? exitLiquidity : exitLiquidityClaimed;
+    // Make sure to not transfer more than the maximum reserved for ExitLiquidity
+    ERC20(POOL.token0()).safeTransfer(msg.sender, Math.min(claim, exitLiquidity - exitLiquidityClaimed));
   }
 
   function _addLiquidity(uint256 _positionId, AddLiquidity memory _params)
@@ -515,67 +508,5 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
     uint256 accruedAmount = (_capAmount * bondDuration) / (bondDuration + _accrualParameter);
     //assert(accruedAmount < _capAmount); // we leave it as a comment so we can uncomment it for automated testing tools
     return accruedAmount;
-  }
-
-  function _updateAccrualParameter() internal returns (uint256) {
-    uint256 storedAccrualParameter = accrualParameter;
-    uint256 storedAccrualAdjustmentPeriodCount = accrualAdjustmentPeriodCount;
-
-    (uint256 updatedAccrualParameter, uint256 updatedAccrualAdjustmentPeriodCount) = _calcUpdatedAccrualParameter(
-      storedAccrualParameter,
-      storedAccrualAdjustmentPeriodCount
-    );
-
-    if (updatedAccrualAdjustmentPeriodCount != storedAccrualAdjustmentPeriodCount) {
-      accrualAdjustmentPeriodCount = updatedAccrualAdjustmentPeriodCount;
-
-      if (updatedAccrualParameter != storedAccrualParameter) {
-        accrualParameter = updatedAccrualParameter;
-        emit AccrualParameterUpdated(updatedAccrualParameter);
-      }
-    }
-
-    return updatedAccrualParameter;
-  }
-
-  function _calcUpdatedAccrualParameter(uint256 _storedAccrualParameter, uint256 _storedAccrualAdjustmentCount)
-    internal
-    view
-    returns (uint256 updatedAccrualParameter, uint256 updatedAccrualAdjustmentPeriodCount)
-  {
-    updatedAccrualAdjustmentPeriodCount = (block.timestamp - deploymentTimestamp) / accrualAdjustmentPeriodSeconds;
-
-    if (
-      // There hasn't been enough time since the last update to warrant another update
-      updatedAccrualAdjustmentPeriodCount == _storedAccrualAdjustmentCount ||
-      // or `accrualParameter` is already bottomed-out
-      _storedAccrualParameter == minimumAccrualParameter ||
-      // or there are no outstanding bonds (avoid division by zero)
-      pendingAmount == 0
-    ) {
-      return (_storedAccrualParameter, updatedAccrualAdjustmentPeriodCount);
-    }
-
-    uint256 averageStartTime = totalWeightedStartTimes / pendingAmount;
-
-    // Detailed explanation - https://github.com/liquity/ChickenBond/blob/af398985900cde68a9099a5149eca773a365e93a/LUSDChickenBonds/src/ChickenBondManager.sol#L834
-
-    uint256 adjustmentPeriodCountWhenTargetIsExceeded = Math.ceilDiv(
-      averageStartTime + targetAverageAgeSeconds - deploymentTimestamp,
-      accrualAdjustmentPeriodSeconds
-    );
-
-    if (updatedAccrualAdjustmentPeriodCount < adjustmentPeriodCountWhenTargetIsExceeded) {
-      // No adjustment needed; target average age hasn't been exceeded yet
-      return (_storedAccrualParameter, updatedAccrualAdjustmentPeriodCount);
-    }
-
-    uint256 numberOfAdjustments = updatedAccrualAdjustmentPeriodCount -
-      Math.max(_storedAccrualAdjustmentCount, adjustmentPeriodCountWhenTargetIsExceeded - 1);
-
-    updatedAccrualParameter = Math.max(
-      (_storedAccrualParameter * decPow(accrualAdjustmentMultiplier, numberOfAdjustments)) / 1e18,
-      minimumAccrualParameter
-    );
   }
 }

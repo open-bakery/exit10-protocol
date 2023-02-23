@@ -25,8 +25,8 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
   uint256 public countChickenOut;
 
   // MasterChef
-  address mc0; // BOOT - STO Stakers
-  address mc1; // BLP Stakers
+  address masterChef0; // BOOT - STO Stakers
+  address masterChef1; // BLP Stakers
 
   // EXIT
   uint256 public exitTotalSupply;
@@ -46,6 +46,8 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
   mapping(address => uint256) public bootstrapDeposit;
 
   // --- Constants ---
+  uint256 public constant BOOT_MULTIPLIER = 1e8;
+
   // On Ethereum Mainnet:
   // Token0 is USDC
   // Token1 is WETH
@@ -68,17 +70,17 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
   uint256 public immutable LP_PER_USD;
 
   // --- Events ---
-  event BondCreated(address indexed bonder, uint256 bondId, uint256 amount);
-  event BondClaimed(
+  event CreateBond(address indexed bonder, uint256 bondId, uint256 amount);
+  event ChickenOut(address indexed bonder, uint256 bondId, uint256 amountReturned0, uint256 amountReturned1);
+  event ChickenIn(
     address indexed bonder,
     uint256 bondId,
     uint256 bondAmount,
     uint256 boostTokenClaimed,
     uint256 exitLiquidityAmount
   );
-  event ExitMinted(address indexed recipient, uint256 amount);
-  event BondCancelled(address indexed bonder, uint256 bondId, uint256 amountReturned0, uint256 amountReturned1);
-  event TokensRedeemed(address indexed redeemer, uint256 amount0, uint256 amount1);
+  event Redeem(address indexed redeemer, uint256 amount0, uint256 amount1);
+  event MintExit(address indexed recipient, uint256 amount);
 
   constructor(DeployParams memory params) ERC20('Exit Liquidity', 'EXIT') {
     DEPLOYMENT_TIMESTAMP = block.timestamp;
@@ -97,6 +99,9 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
     BOOTSTRAP_PERIOD = params.bootstrapPeriod;
     ACCRUAL_PARAMETER = params.accrualParameter * DECIMAL_PRECISION;
     LP_PER_USD = params.lpPerUSD;
+
+    ERC20(IUniswapV3Pool(params.pool).token0()).approve(NPM, type(uint256).max);
+    ERC20(IUniswapV3Pool(params.pool).token1()).approve(NPM, type(uint256).max);
   }
 
   function getBondData(uint256 bondID)
@@ -130,39 +135,44 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
     exit = _exitAmount();
   }
 
-  function calcAccruedAmount(uint256 bondID) external view returns (uint256) {
+  function getAccruedAmount(uint256 bondID) external view returns (uint256) {
     BondData memory bond = idToBondData[bondID];
 
     if (bond.status != BondStatus.active) {
       return 0;
     }
 
-    return _calcAccruedAmount(bond.startTime, bond.bondAmount, ACCRUAL_PARAMETER);
+    return _getAccruedAmount(bond);
   }
 
   function getOpenBondCount() external view returns (uint256) {
     return NFT.totalSupply() - (countChickenIn + countChickenOut);
   }
 
-  function bootstrapLock(address depositor, AddLiquidity memory params) external {
-    require(block.timestamp < DEPLOYMENT_TIMESTAMP + BOOTSTRAP_PERIOD, 'EXIT10: Bootstrap ended');
+  function bootstrapLock(address depositor, AddLiquidity memory params)
+    external
+    returns (
+      uint256 tokenId,
+      uint128 liquidityAdded,
+      uint256 amountAdded0,
+      uint256 amountAdded1
+    )
+  {
+    require(_isBootstrapOngoing(), 'EXIT10: Bootstrap ended');
 
-    (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) = _addLiquidity(
-      positionId1,
-      params
-    );
+    (tokenId, liquidityAdded, amountAdded0, amountAdded1) = _addLiquidity(positionId1, params);
 
     if (tokenId != positionId1) positionId1 = tokenId;
 
     bootstrapAmount += liquidityAdded;
-    BOOT.mint(depositor, liquidityAdded);
+    BOOT.mint(depositor, liquidityAdded * BOOT_MULTIPLIER);
 
     _refundTokens(depositor, params.amount0Desired, amountAdded0, params.amount1Desired, amountAdded1);
   }
 
   function createBond(address depositor, AddLiquidity memory params) public {
     _requireNoExitMode();
-    require(block.timestamp >= DEPLOYMENT_TIMESTAMP + BOOTSTRAP_PERIOD, 'EXIT10: Bootstrap ongoing');
+    require(!_isBootstrapOngoing(), 'EXIT10: Bootstrap ongoing');
 
     (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) = _addLiquidity(
       positionId0,
@@ -181,12 +191,11 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
 
     _refundTokens(depositor, params.amount0Desired, amountAdded0, params.amount1Desired, amountAdded1);
 
-    emit BondCreated(msg.sender, bondID, liquidityAdded);
+    emit CreateBond(msg.sender, bondID, liquidityAdded);
   }
 
   function chickenOut(uint256 bondID, DecreaseLiquidity memory params) external {
     BondData memory bond = idToBondData[bondID];
-
     _requireCallerOwnsBond(bondID);
     _requireActiveStatus(bond.status);
     _requireEqualLiquidity(bond.bondAmount, params.liquidity);
@@ -199,18 +208,17 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
     (uint256 amountRemoved0, uint256 amountRemoved1) = _decreaseLiquidity(positionId0, params);
     _collect(positionId0, msg.sender, uint128(amountRemoved0), uint128(amountRemoved1));
 
-    emit BondCancelled(msg.sender, bondID, amountRemoved0, amountRemoved1);
+    emit ChickenOut(msg.sender, bondID, amountRemoved0, amountRemoved1);
   }
 
   function chickenIn(uint256 bondID, DecreaseLiquidity memory params) external {
     _requireNoExitMode();
 
     BondData memory bond = idToBondData[bondID];
-    _requireEqualLiquidity(bond.bondAmount, params.liquidity);
     _requireCallerOwnsBond(bondID);
     _requireActiveStatus(bond.status);
+    _requireEqualLiquidity(bond.bondAmount, params.liquidity);
 
-    uint256 accruedBoostToken = _calcAccruedAmount(bond.startTime, bond.bondAmount, ACCRUAL_PARAMETER);
     idToBondData[bondID].status = BondStatus.chickenedIn;
     idToBondData[bondID].endTime = uint64(block.timestamp);
 
@@ -229,8 +237,9 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
         deadline: block.timestamp
       })
     );
+
     //Guarantees we don't allocate more liquidity than there is due to potential slippage.
-    accruedBoostToken = Math.min(accruedBoostToken, addedLiquidity);
+    uint256 accruedBoostToken = Math.min(_getAccruedAmount(bond), addedLiquidity);
 
     idToBondData[bondID].claimedBoostAmount = accruedBoostToken;
     reserveAmount += accruedBoostToken; // Increase the amount of the reserve
@@ -242,12 +251,12 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
 
     _mintExitCapped(msg.sender, (exitLiquidityAcquired * DECIMAL_PRECISION) / LP_PER_USD);
 
-    emit BondClaimed(msg.sender, bondID, bond.bondAmount, accruedBoostToken, exitLiquidityAcquired);
+    emit ChickenIn(msg.sender, bondID, bond.bondAmount, accruedBoostToken, exitLiquidityAcquired);
   }
 
-  function redeem(uint256 amount, DecreaseLiquidity memory params) external {
+  function redeem(DecreaseLiquidity memory params) external {
+    uint256 amount = params.liquidity;
     require(amount != 0, 'EXIT10: Amount must be != 0');
-    _requireEqualLiquidity(amount, params.liquidity);
 
     reserveAmount -= amount;
     BLP.burn(msg.sender, amount);
@@ -255,7 +264,7 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
     (uint256 amountRemoved0, uint256 amountRemoved1) = _decreaseLiquidity(positionId1, params);
     _collect(positionId1, msg.sender, uint128(amountRemoved0), uint128(amountRemoved1));
 
-    emit TokensRedeemed(msg.sender, amountRemoved0, amountRemoved1);
+    emit Redeem(msg.sender, amountRemoved0, amountRemoved1);
   }
 
   function claimAndDistributeFees() external {
@@ -271,10 +280,10 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
     uint256 mc1Token0 = pid1_amountCollected0 + (pid0_amountCollected0 - mc0Token0);
     uint256 mc1Token1 = pid1_amountCollected1 + (pid0_amountCollected1 - mc0Token1);
 
-    ERC20(POOL.token0()).safeTransfer(mc0, mc0Token0);
-    ERC20(POOL.token1()).safeTransfer(mc0, mc0Token1);
-    ERC20(POOL.token0()).safeTransfer(mc1, mc1Token0);
-    ERC20(POOL.token0()).safeTransfer(mc1, mc1Token1);
+    ERC20(POOL.token0()).safeTransfer(masterChef0, mc0Token0);
+    ERC20(POOL.token1()).safeTransfer(masterChef0, mc0Token1);
+    ERC20(POOL.token0()).safeTransfer(masterChef1, mc1Token0);
+    ERC20(POOL.token0()).safeTransfer(masterChef1, mc1Token1);
   }
 
   function exit10() external {
@@ -313,8 +322,8 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
   function bootstrapClaim() external {
     _requireExitMode();
 
-    uint256 amount = BOOT.balanceOf(msg.sender);
-    BOOT.burn(msg.sender, amount);
+    uint256 amount = BOOT.balanceOf(msg.sender) / BOOT_MULTIPLIER;
+    BOOT.burn(msg.sender, BOOT.balanceOf(msg.sender));
 
     uint256 claim = (amount * exitBootstrap) / bootstrapAmount;
     exitBootstrapClaimed += claim;
@@ -461,7 +470,7 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
     uint256 mintAmount = newSupply > MAX_SUPPLY ? MAX_SUPPLY - amount : amount;
     if (mintAmount != 0) _mint(recipient, mintAmount);
 
-    emit ExitMinted(recipient, mintAmount);
+    emit MintExit(recipient, mintAmount);
   }
 
   function _requireExitMode() internal view {
@@ -484,6 +493,15 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
     require(_liquidityA == _liquidityB, 'EXIT10: Incorrect liquidity amount');
   }
 
+  function _requireOutOfTickRange() internal view {
+    // Uniswap's price is recorded as token1/token0
+    if (_compare(ERC20(POOL.token1()).symbol(), 'WETH')) {
+      require(_currentTick() <= TICK_LOWER, 'EXIT10: Current Tick not below TICK_LOWER');
+    } else {
+      require(_currentTick() >= TICK_UPPER, 'EXIT10: Current Tick not above TICK_UPPER');
+    }
+  }
+
   function _exitAmount() internal view returns (uint256) {
     return _liquidityAmount(positionId1) - (reserveAmount + bootstrapAmount);
   }
@@ -496,17 +514,21 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
     (, _tick, , , , , ) = POOL.slot0();
   }
 
-  function _calcAccruedAmount(
-    uint256 _startTime,
-    uint256 _capAmount,
-    uint256 _accrualParameter
-  ) internal view returns (uint256) {
-    if (_startTime == 0) {
+  function _getAccruedAmount(BondData memory _params) internal view returns (uint256) {
+    if (_params.startTime == 0) {
       return 0;
     }
-    uint256 bondDuration = 1e18 * (block.timestamp - _startTime);
-    uint256 accruedAmount = (_capAmount * bondDuration) / (bondDuration + _accrualParameter);
-    //assert(accruedAmount < _capAmount); // we leave it as a comment so we can uncomment it for automated testing tools
+    uint256 bondDuration = 1e18 * (block.timestamp - _params.startTime);
+    uint256 accruedAmount = (_params.bondAmount * bondDuration) / (bondDuration + ACCRUAL_PARAMETER);
+    //assert(accruedAmount < _params.bondAmount); // we leave it as a comment so we can uncomment it for automated testing tools
     return accruedAmount;
+  }
+
+  function _isBootstrapOngoing() internal view returns (bool) {
+    return (block.timestamp < DEPLOYMENT_TIMESTAMP + BOOTSTRAP_PERIOD);
+  }
+
+  function _compare(string memory _str1, string memory _str2) internal pure returns (bool) {
+    return keccak256(abi.encodePacked(_str1)) == keccak256(abi.encodePacked(_str2));
   }
 }

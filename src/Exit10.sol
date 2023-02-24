@@ -12,10 +12,13 @@ import './interfaces/IExit10.sol';
 import './utils/ChickenMath.sol';
 import './BaseToken.sol';
 
+import 'forge-std/Test.sol';
+
 contract Exit10 is IExit10, ChickenMath {
   using SafeERC20 for ERC20;
 
   uint256 private reserveAmount;
+  uint256 private finalExitAmount;
   uint256 private bootstrapAmount;
 
   uint256 public positionId0; // All liquidity in the pending bucket
@@ -166,6 +169,8 @@ contract Exit10 is IExit10, ChickenMath {
   {
     require(_isBootstrapOngoing(), 'EXIT10: Bootstrap ended');
 
+    _depositTokens(params.amount0Desired, params.amount1Desired);
+
     (tokenId, liquidityAdded, amountAdded0, amountAdded1) = _addLiquidity(positionId1, params);
 
     if (tokenId != positionId1) positionId1 = tokenId;
@@ -179,6 +184,8 @@ contract Exit10 is IExit10, ChickenMath {
   function createBond(AddLiquidity memory params) public returns (uint256 bondID) {
     _requireNoExitMode();
     require(!_isBootstrapOngoing(), 'EXIT10: Bootstrap ongoing');
+
+    _depositTokens(params.amount0Desired, params.amount1Desired);
 
     (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) = _addLiquidity(
       positionId0,
@@ -196,7 +203,6 @@ contract Exit10 is IExit10, ChickenMath {
     idToBondData[bondID] = bondData;
 
     _refundTokens(params.depositor, params.amount0Desired, amountAdded0, params.amount1Desired, amountAdded1);
-
     emit CreateBond(params.depositor, bondID, liquidityAdded);
   }
 
@@ -232,12 +238,12 @@ contract Exit10 is IExit10, ChickenMath {
 
     // Take out of pendingPosition and add to the generalPosition
     (uint256 amountRemoved0, uint256 amountRemoved1) = _decreaseLiquidity(positionId0, params);
-    _collect(positionId0, msg.sender, uint128(amountRemoved0), uint128(amountRemoved1));
+    _collect(positionId0, address(this), uint128(amountRemoved0), uint128(amountRemoved1));
 
     (uint256 tokenId, uint128 addedLiquidity, , ) = _addLiquidity(
       positionId1,
       AddLiquidity({
-        depositor: msg.sender,
+        depositor: address(this),
         amount0Desired: amountRemoved0,
         amount1Desired: amountRemoved1,
         amount0Min: 0,
@@ -259,6 +265,13 @@ contract Exit10 is IExit10, ChickenMath {
     uint256 exitLiquidityAcquired = addedLiquidity - accruedBoostToken;
 
     _mintExitCapped(msg.sender, (exitLiquidityAcquired * TOKEN_MULTIPLIER) / LP_PER_USD);
+
+    // Transfer dust as fees from liquidity transition
+    _transferTokens(
+      MASTERCHEF_1,
+      ERC20(POOL.token0()).balanceOf(address(this)),
+      ERC20(POOL.token1()).balanceOf(address(this))
+    );
 
     emit ChickenIn(msg.sender, bondID, bond.bondAmount, accruedBoostToken, exitLiquidityAcquired);
   }
@@ -289,14 +302,12 @@ contract Exit10 is IExit10, ChickenMath {
     uint256 mc1Token0 = pid1_amountCollected0 + (pid0_amountCollected0 - mc0Token0);
     uint256 mc1Token1 = pid1_amountCollected1 + (pid0_amountCollected1 - mc0Token1);
 
-    ERC20(POOL.token0()).safeTransfer(MASTERCHEF_0, mc0Token0);
-    ERC20(POOL.token1()).safeTransfer(MASTERCHEF_0, mc0Token1);
-    ERC20(POOL.token0()).safeTransfer(MASTERCHEF_1, mc1Token0);
-    ERC20(POOL.token0()).safeTransfer(MASTERCHEF_1, mc1Token1);
+    _transferTokens(MASTERCHEF_0, mc0Token0, mc0Token1);
+    _transferTokens(MASTERCHEF_1, mc1Token0, mc1Token1);
   }
 
   function exit10() external {
-    require(_currentTick() <= TICK_LOWER, 'EXIT10: Current Tick not below TICK_LOWER');
+    _requireOutOfTickRange();
     inExitMode = true;
 
     // TODO This might be an issue since Exit is continuously minted for EXIT/USDC providers.
@@ -306,15 +317,35 @@ contract Exit10 is IExit10, ChickenMath {
     // This would allow users to claim up to that blocktime.
     exitTotalSupply = EXIT.totalSupply();
 
-    uint128 exitBucketLiquidity = uint128(_liquidityAmount(positionId1) - reserveAmount);
-    (uint256 exitBucket, ) = _decreaseLiquidity(
-      positionId1,
-      RemoveLiquidity({ liquidity: exitBucketLiquidity, amount0Min: 0, amount1Min: 0, deadline: block.timestamp })
-    );
-    _collect(positionId1, address(this), uint128(exitBucket), 0);
+    finalExitAmount = uint128(_liquidityAmount(positionId1) - reserveAmount);
+    uint256 exitBucket;
+
+    if (_compare(ERC20(POOL.token1()).symbol(), 'WETH')) {
+      (exitBucket, ) = _decreaseLiquidity(
+        positionId1,
+        RemoveLiquidity({
+          liquidity: uint128(finalExitAmount),
+          amount0Min: 0,
+          amount1Min: 0,
+          deadline: block.timestamp
+        })
+      );
+      _collect(positionId1, address(this), uint128(exitBucket), 0);
+    } else {
+      (, exitBucket) = _decreaseLiquidity(
+        positionId1,
+        RemoveLiquidity({
+          liquidity: uint128(finalExitAmount),
+          amount0Min: 0,
+          amount1Min: 0,
+          deadline: block.timestamp
+        })
+      );
+      _collect(positionId1, address(this), 0, uint128(exitBucket));
+    }
 
     // Total initial deposits that needs to be returned to bootsrappers
-    exitBootstrap = (bootstrapAmount * exitBucket) / exitBucketLiquidity;
+    exitBootstrap = (bootstrapAmount * exitBucket) / finalExitAmount;
     exitLiquidity = exitBucket - exitBootstrap;
     // 30% of the exitLiquidity goes to Bootstrappers+Team+EarlyBackers.
     uint256 share = exitLiquidity / 10;
@@ -361,8 +392,6 @@ contract Exit10 is IExit10, ChickenMath {
       uint256 _amountAdded1
     )
   {
-    _depositTokens(_params.amount0Desired, _params.amount1Desired);
-
     if (_positionId == 0) {
       (_tokenId, _liquidityAdded, _amountAdded0, _amountAdded1) = INPM(NPM).mint(
         INPM.MintParams({
@@ -438,6 +467,7 @@ contract Exit10 is IExit10, ChickenMath {
     uint128 _amount0Max,
     uint128 _amount1Max
   ) internal returns (uint256 _amountCollected0, uint256 _amountCollected1) {
+    if (_positionId == 0) return (0, 0);
     (_amountCollected0, _amountCollected1) = INPM(NPM).collect(
       INPM.CollectParams({
         tokenId: _positionId,
@@ -451,6 +481,15 @@ contract Exit10 is IExit10, ChickenMath {
   function _depositTokens(uint256 _amount0, uint256 _amount1) internal {
     ERC20(POOL.token0()).safeTransferFrom(msg.sender, address(this), _amount0);
     ERC20(POOL.token1()).safeTransferFrom(msg.sender, address(this), _amount1);
+  }
+
+  function _transferTokens(
+    address _recipient,
+    uint256 _amount0,
+    uint256 _amount1
+  ) internal {
+    if (_amount0 != 0) ERC20(POOL.token0()).safeTransfer(_recipient, _amount0);
+    if (_amount1 != 0) ERC20(POOL.token1()).safeTransfer(_recipient, _amount1);
   }
 
   function _refundTokens(
@@ -482,9 +521,9 @@ contract Exit10 is IExit10, ChickenMath {
     emit MintExit(recipient, mintAmount);
   }
 
-  function _exitAmount() internal view returns (uint256) {
+  function _exitAmount() internal view returns (uint256 _exitBucket) {
     if (positionId1 == 0) return 0;
-    return _liquidityAmount(positionId1) - (reserveAmount + bootstrapAmount);
+    _exitBucket = inExitMode ? finalExitAmount : _liquidityAmount(positionId1) - (reserveAmount + bootstrapAmount);
   }
 
   function _liquidityAmount(uint256 _positionId) internal view returns (uint128 _liquidity) {

@@ -13,8 +13,8 @@ contract NFT is ERC721Enumerable, Ownable {
   IExit10 public exit10;
   uint256 public immutable transferLockoutPeriodSeconds;
 
-  modifier onlyBondsManager() {
-    require(msg.sender == address(exit10), 'BondNFT: Caller must be ChickenBondManager');
+  modifier onlyExit10() {
+    require(msg.sender == address(exit10), 'NFT: Caller must be Exit10');
     _;
   }
 
@@ -26,15 +26,15 @@ contract NFT is ERC721Enumerable, Ownable {
     transferLockoutPeriodSeconds = _transferLockoutPeriodSeconds;
   }
 
-  function setChickenBondManager(address _chickenBondManager) external onlyOwner {
-    require(_chickenBondManager != address(0), 'BondNFT: _chickenBondManagerAddress must be non-zero');
-    require(address(exit10) == address(0), 'BondNFT: setAddresses() can only be called once');
+  function setExit10(address _exit10) external onlyOwner {
+    require(_exit10 != address(0), 'NFT: _exit10 must be non-zero');
+    require(address(exit10) == address(0), 'NFT: setExit10() can only be called once');
 
-    exit10 = IExit10(_chickenBondManager);
+    exit10 = IExit10(_exit10);
     renounceOwnership();
   }
 
-  function mint(address _bonder) external onlyBondsManager returns (uint256 tokenID) {
+  function mint(address _bonder) external onlyExit10 returns (uint256 tokenID) {
     // We actually increase totalSupply in `ERC721Enumerable._beforeTokenTransfer` when we `_mint`.
     tokenID = totalSupply() + 1;
 
@@ -42,7 +42,7 @@ contract NFT is ERC721Enumerable, Ownable {
   }
 
   function tokenURI(uint256 _tokenID) public view virtual override returns (string memory) {
-    require(_exists(_tokenID), 'BondNFT: URI query for nonexistent token');
+    require(_exists(_tokenID), 'NFT: URI query for nonexistent token');
 
     return ('uri');
   }
@@ -59,7 +59,7 @@ contract NFT is ERC721Enumerable, Ownable {
 
       require(
         status == uint8(IExit10.BondStatus.active) || block.timestamp >= endTime + transferLockoutPeriodSeconds,
-        'BondNFT: cannot transfer during lockout period'
+        'NFT: cannot transfer during lockout period'
       );
     }
 

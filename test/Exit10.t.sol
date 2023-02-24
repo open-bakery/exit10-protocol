@@ -27,6 +27,10 @@ contract Exit10Test is Test {
   uint256 deployTime;
   uint256 constant MX = type(uint256).max;
 
+  address _masterchef0 = address(0x0a);
+  address _masterchef1 = address(0x0b);
+  address _masterchef2 = address(0x0c);
+
   function setUp() public {
     nft = new NFT('Bond Data', 'BND', 0);
     exit10 = new Exit10(
@@ -35,6 +39,9 @@ contract Exit10Test is Test {
         NPM: _npm,
         STO: _sto,
         pool: _pool,
+        masterchef0: _masterchef0,
+        masterchef1: _masterchef1,
+        masterchef2: _masterchef2,
         tickLower: _lowerTick,
         tickUpper: _upperTick,
         bootstrapPeriod: _bootstrapPeriod,
@@ -151,8 +158,7 @@ contract Exit10Test is Test {
     skip(1 days);
     uint64 endTime = uint64(block.timestamp);
     (uint256 bondAmount, , , , ) = exit10.getBondData(bondId);
-    uint256 balanceToken0 = token0.balanceOf(address(this));
-    uint256 balanceToken1 = token1.balanceOf(address(this));
+    (uint256 balanceToken0, uint256 balanceToken1) = _getTokensBalance();
     exit10.chickenOut(
       bondId,
       IExit10.RemoveLiquidity({
@@ -227,15 +233,45 @@ contract Exit10Test is Test {
     uint64 endTime = uint64(block.timestamp);
     checkBondData(bondId, liquidity, liquidity / 2, startTime, endTime, uint8(IExit10.BondStatus.chickenedIn));
     assertTrue(_liquidity(exit10.positionId0()) == 0, 'Check liquidity');
-    checkTreasury(0, liquidity / 2, _liquidity(exit10.positionId1()) - (liquidity / 2), 0);
+    uint256 exitBucket = _liquidity(exit10.positionId1()) - (liquidity / 2);
+    checkTreasury(0, liquidity / 2, exitBucket, 0);
     assertTrue(exit10.BLP().balanceOf(address(this)) == (liquidity / 2) * exit10.TOKEN_MULTIPLIER());
-    console.log(exit10.BLP().balanceOf(address(this)));
+    assertTrue(exit10.EXIT().balanceOf(address(this)) == exitBucket * exit10.TOKEN_MULTIPLIER(), 'Check exit bucket');
+  }
+
+  function testRedeem() public {
+    uint256 bondId = _skipBootAndCreateBond();
+    skip(_accrualParameter);
+    (uint256 bondAmount, , , , ) = exit10.getBondData(bondId);
+    exit10.chickenIn(
+      bondId,
+      IExit10.RemoveLiquidity({
+        liquidity: uint128(bondAmount),
+        amount0Min: 0,
+        amount1Min: 0,
+        deadline: block.timestamp
+      })
+    );
+    (uint256 balanceToken0, uint256 balanceToken1) = _getTokensBalance();
+    uint128 liquidityToRemove = uint128(exit10.BLP().balanceOf(address(this)) / exit10.TOKEN_MULTIPLIER());
+    exit10.redeem(
+      IExit10.RemoveLiquidity({ liquidity: liquidityToRemove, amount0Min: 0, amount1Min: 0, deadline: block.timestamp })
+    );
+    assertTrue(token0.balanceOf(address(this)) > balanceToken0, 'Check balance token0');
+    assertTrue(token1.balanceOf(address(this)) > balanceToken1, 'Check balance token1');
+    assertTrue(exit10.BLP().balanceOf(address(this)) == 0, 'Check balance BLP');
+    checkTreasury(0, 0, _liquidity(exit10.positionId1()), 0);
   }
 
   function testAccrualSchedule() public {
     uint256 bondId = _skipBootAndCreateBond();
     skip(_accrualParameter);
     assertTrue(exit10.getAccruedAmount(bondId) == _liquidity(exit10.positionId0()) / 2);
+  }
+
+  function _getTokensBalance() internal view returns (uint256 _token0, uint256 _token1) {
+    _token0 = token0.balanceOf(address(this));
+    _token1 = token1.balanceOf(address(this));
   }
 
   function _mintAndApprove(address _token, uint256 _amount) internal {

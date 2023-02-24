@@ -7,6 +7,9 @@ interface IExit10 {
     address NPM;
     address STO;
     address pool;
+    address masterchef0; // For STO + BOOT
+    address masterchef1; // For BLP
+    address masterchef2; // For EXIT/USDC
     int24 tickLower;
     int24 tickUpper;
     uint256 bootstrapPeriod; // Min duration of first chicken-in

@@ -12,7 +12,7 @@ import './interfaces/IExit10.sol';
 import './utils/ChickenMath.sol';
 import './BaseToken.sol';
 
-contract Exit10 is IExit10, ChickenMath, ERC20 {
+contract Exit10 is IExit10, ChickenMath {
   using SafeERC20 for ERC20;
 
   uint256 private reserveAmount;
@@ -24,8 +24,9 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
   uint256 public countChickenOut;
 
   // MasterChef
-  address masterChef0; // BOOT - STO Stakers
-  address masterChef1; // BLP Stakers
+  address public immutable MASTERCHEF_0; // BOOT - STO Stakers
+  address public immutable MASTERCHEF_1; // BLP Stakers
+  address public immutable MASTERCHEF_2; // EXIT/USDC Stakers
 
   // EXIT
   uint256 public exitTotalSupply;
@@ -51,6 +52,7 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
   // Token0 is USDC
   // Token1 is WETH
   IUniswapV3Pool public immutable POOL;
+  BaseToken public immutable EXIT;
   BaseToken public immutable BLP;
   BaseToken public immutable BOOT;
 
@@ -81,7 +83,7 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
   event Redeem(address indexed redeemer, uint256 amount0, uint256 amount1);
   event MintExit(address indexed recipient, uint256 amount);
 
-  constructor(DeployParams memory params) ERC20('Exit Liquidity', 'EXIT') {
+  constructor(DeployParams memory params) {
     DEPLOYMENT_TIMESTAMP = block.timestamp;
 
     NPM = params.NPM;
@@ -89,8 +91,13 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
     NFT = INFT(params.NFT);
 
     POOL = IUniswapV3Pool(params.pool);
+    EXIT = new BaseToken('Exit Liquidity', 'EXIT');
     BLP = new BaseToken('Boost Liquidity', 'BLP');
     BOOT = new BaseToken('Exit10 Bootstrap', 'BOOT');
+
+    MASTERCHEF_0 = params.masterchef0;
+    MASTERCHEF_1 = params.masterchef1;
+    MASTERCHEF_2 = params.masterchef2;
 
     TICK_LOWER = params.tickLower;
     TICK_UPPER = params.tickUpper;
@@ -249,8 +256,7 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
 
     BLP.mint(msg.sender, accruedBoostToken * TOKEN_MULTIPLIER);
 
-    // assert(bond.bondAmount > accruedbondToken); // Uncomment for tests.
-    uint256 exitLiquidityAcquired = bond.bondAmount - accruedBoostToken;
+    uint256 exitLiquidityAcquired = addedLiquidity - accruedBoostToken;
 
     _mintExitCapped(msg.sender, (exitLiquidityAcquired * TOKEN_MULTIPLIER) / LP_PER_USD);
 
@@ -262,7 +268,7 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
     require(amount != 0, 'EXIT10: Amount must be != 0');
 
     reserveAmount -= amount;
-    BLP.burn(msg.sender, amount);
+    BLP.burn(msg.sender, amount * TOKEN_MULTIPLIER);
 
     (uint256 amountRemoved0, uint256 amountRemoved1) = _decreaseLiquidity(positionId1, params);
     _collect(positionId1, msg.sender, uint128(amountRemoved0), uint128(amountRemoved1));
@@ -283,10 +289,10 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
     uint256 mc1Token0 = pid1_amountCollected0 + (pid0_amountCollected0 - mc0Token0);
     uint256 mc1Token1 = pid1_amountCollected1 + (pid0_amountCollected1 - mc0Token1);
 
-    ERC20(POOL.token0()).safeTransfer(masterChef0, mc0Token0);
-    ERC20(POOL.token1()).safeTransfer(masterChef0, mc0Token1);
-    ERC20(POOL.token0()).safeTransfer(masterChef1, mc1Token0);
-    ERC20(POOL.token0()).safeTransfer(masterChef1, mc1Token1);
+    ERC20(POOL.token0()).safeTransfer(MASTERCHEF_0, mc0Token0);
+    ERC20(POOL.token1()).safeTransfer(MASTERCHEF_0, mc0Token1);
+    ERC20(POOL.token0()).safeTransfer(MASTERCHEF_1, mc1Token0);
+    ERC20(POOL.token0()).safeTransfer(MASTERCHEF_1, mc1Token1);
   }
 
   function exit10() external {
@@ -298,7 +304,7 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
     // The modification would required to send all tokens to be distributed at once
     // (spread over total distribution time) but hard stop at exit10 blocktime.
     // This would allow users to claim up to that blocktime.
-    exitTotalSupply = totalSupply();
+    exitTotalSupply = EXIT.totalSupply();
 
     uint128 exitBucketLiquidity = uint128(_liquidityAmount(positionId1) - reserveAmount);
     (uint256 exitBucket, ) = _decreaseLiquidity(
@@ -338,7 +344,7 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
   function exitClaim(uint256 amount) external {
     _requireExitMode();
 
-    _burn(msg.sender, amount);
+    EXIT.burn(msg.sender, amount);
     uint256 claim = (amount * exitLiquidity) / exitTotalSupply;
     exitLiquidityClaimed += claim;
     exitLiquidityClaimed = (exitLiquidityClaimed > exitLiquidity) ? exitLiquidity : exitLiquidityClaimed;
@@ -469,40 +475,11 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
   }
 
   function _mintExitCapped(address recipient, uint256 amount) internal {
-    uint256 newSupply = totalSupply() + amount;
+    uint256 newSupply = EXIT.totalSupply() + amount;
     uint256 mintAmount = newSupply > MAX_SUPPLY ? MAX_SUPPLY - amount : amount;
-    if (mintAmount != 0) _mint(recipient, mintAmount);
+    if (mintAmount != 0) EXIT.mint(recipient, mintAmount);
 
     emit MintExit(recipient, mintAmount);
-  }
-
-  function _requireExitMode() internal view {
-    require(inExitMode, 'EXIT10: Not in Exit mode');
-  }
-
-  function _requireNoExitMode() internal view {
-    require(!inExitMode, 'EXIT10: In Exit mode');
-  }
-
-  function _requireCallerOwnsBond(uint256 _bondID) internal view {
-    require(msg.sender == NFT.ownerOf(_bondID), 'EXIT10: Caller must own the bond');
-  }
-
-  function _requireActiveStatus(BondStatus _status) internal pure {
-    require(_status == BondStatus.active, 'EXIT10: Bond must be active');
-  }
-
-  function _requireEqualLiquidity(uint256 _liquidityA, uint256 _liquidityB) internal pure {
-    require(_liquidityA == _liquidityB, 'EXIT10: Incorrect liquidity amount');
-  }
-
-  function _requireOutOfTickRange() internal view {
-    // Uniswap's price is recorded as token1/token0
-    if (_compare(ERC20(POOL.token1()).symbol(), 'WETH')) {
-      require(_currentTick() <= TICK_LOWER, 'EXIT10: Current Tick not below TICK_LOWER');
-    } else {
-      require(_currentTick() >= TICK_UPPER, 'EXIT10: Current Tick not above TICK_UPPER');
-    }
   }
 
   function _exitAmount() internal view returns (uint256) {
@@ -535,5 +512,34 @@ contract Exit10 is IExit10, ChickenMath, ERC20 {
 
   function _compare(string memory _str1, string memory _str2) internal pure returns (bool) {
     return keccak256(abi.encodePacked(_str1)) == keccak256(abi.encodePacked(_str2));
+  }
+
+  function _requireExitMode() internal view {
+    require(inExitMode, 'EXIT10: Not in Exit mode');
+  }
+
+  function _requireNoExitMode() internal view {
+    require(!inExitMode, 'EXIT10: In Exit mode');
+  }
+
+  function _requireOutOfTickRange() internal view {
+    // Uniswap's price is recorded as token1/token0
+    if (_compare(ERC20(POOL.token1()).symbol(), 'WETH')) {
+      require(_currentTick() <= TICK_LOWER, 'EXIT10: Current Tick not below TICK_LOWER');
+    } else {
+      require(_currentTick() >= TICK_UPPER, 'EXIT10: Current Tick not above TICK_UPPER');
+    }
+  }
+
+  function _requireCallerOwnsBond(uint256 _bondID) internal view {
+    require(msg.sender == NFT.ownerOf(_bondID), 'EXIT10: Caller must own the bond');
+  }
+
+  function _requireActiveStatus(BondStatus _status) internal pure {
+    require(_status == BondStatus.active, 'EXIT10: Bond must be active');
+  }
+
+  function _requireEqualLiquidity(uint256 _liquidityA, uint256 _liquidityB) internal pure {
+    require(_liquidityA == _liquidityB, 'EXIT10: Incorrect liquidity amount');
   }
 }

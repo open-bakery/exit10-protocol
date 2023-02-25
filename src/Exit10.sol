@@ -178,7 +178,7 @@ contract Exit10 is IExit10, ChickenMath {
     bootstrapAmount += liquidityAdded;
     BOOT.mint(params.depositor, liquidityAdded * TOKEN_MULTIPLIER);
 
-    _refundTokens(params.depositor, params.amount0Desired, amountAdded0, params.amount1Desired, amountAdded1);
+    _safeTransferTokens(params.depositor, params.amount0Desired - amountAdded0, params.amount1Desired - amountAdded1);
   }
 
   function createBond(AddLiquidity memory params) public returns (uint256 bondID) {
@@ -202,7 +202,7 @@ contract Exit10 is IExit10, ChickenMath {
     bondData.status = BondStatus.active;
     idToBondData[bondID] = bondData;
 
-    _refundTokens(params.depositor, params.amount0Desired, amountAdded0, params.amount1Desired, amountAdded1);
+    _safeTransferTokens(params.depositor, params.amount0Desired - amountAdded0, params.amount1Desired - amountAdded1);
     emit CreateBond(params.depositor, bondID, liquidityAdded);
   }
 
@@ -267,7 +267,7 @@ contract Exit10 is IExit10, ChickenMath {
     _mintExitCapped(msg.sender, (exitLiquidityAcquired * TOKEN_MULTIPLIER) / LP_PER_USD);
 
     // Transfer dust as fees from liquidity transition
-    _transferTokens(
+    _safeTransferTokens(
       MASTERCHEF_1,
       ERC20(POOL.token0()).balanceOf(address(this)),
       ERC20(POOL.token1()).balanceOf(address(this))
@@ -278,7 +278,7 @@ contract Exit10 is IExit10, ChickenMath {
 
   function redeem(RemoveLiquidity memory params) external {
     uint256 amount = params.liquidity;
-    require(amount != 0, 'EXIT10: Amount must be != 0');
+    _requireValidAmount(amount);
 
     reserveAmount -= amount;
     BLP.burn(msg.sender, amount * TOKEN_MULTIPLIER);
@@ -302,8 +302,8 @@ contract Exit10 is IExit10, ChickenMath {
     uint256 mc1Token0 = pid1_amountCollected0 + (pid0_amountCollected0 - mc0Token0);
     uint256 mc1Token1 = pid1_amountCollected1 + (pid0_amountCollected1 - mc0Token1);
 
-    _transferTokens(MASTERCHEF_0, mc0Token0, mc0Token1);
-    _transferTokens(MASTERCHEF_1, mc1Token0, mc1Token1);
+    _safeTransferTokens(MASTERCHEF_0, mc0Token0, mc0Token1);
+    _safeTransferTokens(MASTERCHEF_1, mc1Token0, mc1Token1);
   }
 
   function exit10() external {
@@ -356,31 +356,40 @@ contract Exit10 is IExit10, ChickenMath {
     // 70% Exit Token holders
     exitLiquidity -= share * 3;
 
-    ERC20(POOL.token0()).safeTransfer(STO, exitTeamPlusBackers);
+    _safeTransferToken(_returnUSDC(), STO, exitTeamPlusBackers);
   }
 
   function bootstrapClaim() external {
-    _requireExitMode();
-
-    uint256 amount = BOOT.balanceOf(msg.sender) / TOKEN_MULTIPLIER;
-    BOOT.burn(msg.sender, BOOT.balanceOf(msg.sender));
-
-    uint256 claim = (amount * exitBootstrap) / bootstrapAmount;
+    uint256 claim = _tokenClaim(BOOT, exitBootstrap, bootstrapAmount);
     exitBootstrapClaimed += claim;
     exitBootstrapClaimed = (exitBootstrapClaimed > exitBootstrap) ? exitBootstrap : exitBootstrapClaimed;
     // Make sure to not transfer more than the maximum reserved for Bootstrap
-    ERC20(POOL.token0()).safeTransfer(msg.sender, Math.min(claim, exitBootstrap - exitBootstrapClaimed));
+    _safeTransferToken(_returnUSDC(), msg.sender, Math.min(claim, exitBootstrap - exitBootstrapClaimed));
   }
 
-  function exitClaim(uint256 amount) external {
-    _requireExitMode();
-
-    EXIT.burn(msg.sender, amount);
-    uint256 claim = (amount * exitLiquidity) / exitTotalSupply;
+  function exitClaim() external {
+    uint256 claim = _tokenClaim(EXIT, exitLiquidity, exitTotalSupply);
     exitLiquidityClaimed += claim;
     exitLiquidityClaimed = (exitLiquidityClaimed > exitLiquidity) ? exitLiquidity : exitLiquidityClaimed;
     // Make sure to not transfer more than the maximum reserved for ExitLiquidity
-    ERC20(POOL.token0()).safeTransfer(msg.sender, Math.min(claim, exitLiquidity - exitLiquidityClaimed));
+    _safeTransferToken(_returnUSDC(), msg.sender, Math.min(claim, exitLiquidity - exitLiquidityClaimed));
+  }
+
+  function _tokenClaim(
+    BaseToken _token,
+    uint256 _share,
+    uint256 _supply
+  ) internal returns (uint256 _claim) {
+    _requireExitMode();
+    uint256 amount = _token.balanceOf(msg.sender) / TOKEN_MULTIPLIER;
+    _requireValidAmount(amount);
+
+    _token.burn(msg.sender, amount * TOKEN_MULTIPLIER);
+    _claim = (amount * _share) / _supply;
+  }
+
+  function _returnUSDC() internal view returns (address usdc) {
+    usdc = _compare(ERC20(POOL.token0()).symbol(), 'USDC') ? POOL.token0() : POOL.token1();
   }
 
   function _addLiquidity(uint256 _positionId, AddLiquidity memory _params)
@@ -483,34 +492,21 @@ contract Exit10 is IExit10, ChickenMath {
     ERC20(POOL.token1()).safeTransferFrom(msg.sender, address(this), _amount1);
   }
 
-  function _transferTokens(
+  function _safeTransferTokens(
     address _recipient,
     uint256 _amount0,
     uint256 _amount1
   ) internal {
-    if (_amount0 != 0) ERC20(POOL.token0()).safeTransfer(_recipient, _amount0);
-    if (_amount1 != 0) ERC20(POOL.token1()).safeTransfer(_recipient, _amount1);
+    _safeTransferToken(POOL.token0(), _recipient, _amount0);
+    _safeTransferToken(POOL.token1(), _recipient, _amount1);
   }
 
-  function _refundTokens(
-    address _recipient,
-    uint256 _amountDesired0,
-    uint256 _amountAdded0,
-    uint256 _amountDesired1,
-    uint256 _amountAdded1
-  ) internal returns (uint256 _amountRefunded0, uint256 _amountRefunded1) {
-    _amountRefunded0 = _refundToken(POOL.token0(), _recipient, _amountDesired0, _amountAdded0);
-    _amountRefunded1 = _refundToken(POOL.token1(), _recipient, _amountDesired1, _amountAdded1);
-  }
-
-  function _refundToken(
+  function _safeTransferToken(
     address _token,
     address _recipient,
-    uint256 _amountDesired,
-    uint256 _amountAdded
-  ) internal returns (uint256 _amountRefunded) {
-    _amountRefunded = _amountDesired - _amountAdded;
-    if (_amountRefunded != 0) ERC20(_token).safeTransfer(_recipient, _amountRefunded);
+    uint256 _amount
+  ) internal {
+    if (_amount != 0) ERC20(_token).safeTransfer(_recipient, _amount);
   }
 
   function _mintExitCapped(address recipient, uint256 amount) internal {
@@ -572,6 +568,10 @@ contract Exit10 is IExit10, ChickenMath {
 
   function _requireCallerOwnsBond(uint256 _bondID) internal view {
     require(msg.sender == NFT.ownerOf(_bondID), 'EXIT10: Caller must own the bond');
+  }
+
+  function _requireValidAmount(uint256 _amount) internal pure {
+    require(_amount != 0, 'EXIT10: Amount must be != 0');
   }
 
   function _requireActiveStatus(BondStatus _status) internal pure {

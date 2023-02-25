@@ -346,6 +346,23 @@ contract Exit10Test is Test {
     assertTrue(exit10.exitBootstrap() == exitBootstrapUSD + share, 'Check Bootstrap USD share amount');
     assertTrue(exit10.exitTeamPlusBackers() == share * 2, 'Check team plus backers'); // 20%
     assertTrue(AcquiredUSD - (exitBootstrapUSD + share * 3) == exit10.exitLiquidity(), 'Check exit liquidity');
+    assertTrue(ERC20(token1).balanceOf(address(exit10)) == 0, 'Check balance token1 == 0');
+  }
+
+  function testBootstrapClaim() public {}
+
+  function testBootstrapClaimRevert() public {
+    _skipBootAndCreateBond();
+    vm.expectRevert(bytes('EXIT10: Not in Exit mode'));
+    exit10.bootstrapClaim();
+  }
+
+  function testExitClaim() public {}
+
+  function testExitClaimRevert() public {
+    _skipBootAndCreateBond();
+    vm.expectRevert(bytes('EXIT10: Not in Exit mode'));
+    exit10.exitClaim();
   }
 
   function testAccrualSchedule() public {
@@ -392,7 +409,7 @@ contract Exit10Test is Test {
   }
 
   function _eth10k() internal {
-    _swap(address(token0), address(token1), 100_000_000_000000);
+    _swap(address(token0), address(token1), 200_000_000_000000);
   }
 
   function _swap(

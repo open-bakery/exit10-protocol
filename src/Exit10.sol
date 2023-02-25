@@ -377,15 +377,15 @@ contract Exit10 is IExit10, ChickenMath {
 
   function _tokenClaim(
     BaseToken _token,
-    uint256 _share,
+    uint256 _externalSum,
     uint256 _supply
   ) internal returns (uint256 _claim) {
     _requireExitMode();
-    uint256 amount = _token.balanceOf(msg.sender) / TOKEN_MULTIPLIER;
-    _requireValidAmount(amount);
+    uint256 balance = _token.balanceOf(msg.sender) / TOKEN_MULTIPLIER;
+    _requireValidAmount(balance);
 
-    _token.burn(msg.sender, amount * TOKEN_MULTIPLIER);
-    _claim = (amount * _share) / _supply;
+    _token.burn(msg.sender, balance * TOKEN_MULTIPLIER);
+    _claim = (balance * _externalSum) / _supply;
   }
 
   function _returnUSDC() internal view returns (address usdc) {

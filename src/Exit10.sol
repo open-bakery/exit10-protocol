@@ -183,7 +183,7 @@ contract Exit10 is IExit10, ChickenMath {
   function createBond(AddLiquidity memory params) public returns (uint256 bondID) {
     _requireNoExitMode();
     require(!_isBootstrapOngoing(), 'EXIT10: Bootstrap ongoing');
-    _claimAndDistributeFees();
+    claimAndDistributeFees();
 
     _depositTokens(params.amount0Desired, params.amount1Desired);
 
@@ -208,7 +208,7 @@ contract Exit10 is IExit10, ChickenMath {
     _requireCallerOwnsBond(bondID);
     _requireActiveStatus(bond.status);
     _requireEqualLiquidity(bond.bondAmount, params.liquidity);
-    _claimAndDistributeFees();
+    claimAndDistributeFees();
 
     idToBondData[bondID].status = BondStatus.chickenedOut;
     idToBondData[bondID].endTime = uint64(block.timestamp);
@@ -230,7 +230,7 @@ contract Exit10 is IExit10, ChickenMath {
     _requireCallerOwnsBond(bondID);
     _requireActiveStatus(bond.status);
     _requireEqualLiquidity(bond.bondAmount, params.liquidity);
-    _claimAndDistributeFees();
+    claimAndDistributeFees();
 
     idToBondData[bondID].status = BondStatus.chickenedIn;
     idToBondData[bondID].endTime = uint64(block.timestamp);
@@ -255,7 +255,7 @@ contract Exit10 is IExit10, ChickenMath {
   function redeem(RemoveLiquidity memory params) external {
     uint256 amount = params.liquidity;
     _requireValidAmount(amount);
-    _claimAndDistributeFees();
+    claimAndDistributeFees();
 
     reserveAmount -= amount;
     BLP.burn(msg.sender, amount * TOKEN_MULTIPLIER);
@@ -268,7 +268,7 @@ contract Exit10 is IExit10, ChickenMath {
 
   function exit10() external {
     _requireOutOfTickRange();
-    _claimAndDistributeFees();
+    claimAndDistributeFees();
 
     inExitMode = true;
 
@@ -316,30 +316,26 @@ contract Exit10 is IExit10, ChickenMath {
     // 70% Exit Token holders
     exitLiquidity -= share * 3;
 
-    _safeTransferToken(_returnUSDC(), STO, exitTeamPlusBackers);
+    _safeTransferToken(_getAddressUSDC(), STO, exitTeamPlusBackers);
   }
 
   function bootstrapClaim() external {
-    uint256 claim = _tokenClaim(BOOT, exitBootstrap, bootstrapAmount);
+    uint256 claim = _safeTokenClaim(BOOT, exitBootstrap, bootstrapAmount, exitBootstrapClaimed);
+
     exitBootstrapClaimed += claim;
-    exitBootstrapClaimed = (exitBootstrapClaimed > exitBootstrap) ? exitBootstrap : exitBootstrapClaimed;
-    // Make sure to not transfer more than the maximum reserved for Bootstrap
-    _safeTransferToken(_returnUSDC(), msg.sender, Math.min(claim, exitBootstrap - exitBootstrapClaimed));
+
+    _safeTransferToken(_getAddressUSDC(), msg.sender, claim);
   }
 
   function exitClaim() external {
-    uint256 claim = _tokenClaim(EXIT, exitLiquidity, exitTotalSupply);
+    uint256 claim = _safeTokenClaim(EXIT, exitLiquidity, exitTotalSupply, exitLiquidityClaimed);
+
     exitLiquidityClaimed += claim;
-    exitLiquidityClaimed = (exitLiquidityClaimed > exitLiquidity) ? exitLiquidity : exitLiquidityClaimed;
-    // Make sure to not transfer more than the maximum reserved for ExitLiquidity
-    _safeTransferToken(_returnUSDC(), msg.sender, Math.min(claim, exitLiquidity - exitLiquidityClaimed));
+
+    _safeTransferToken(_getAddressUSDC(), msg.sender, claim);
   }
 
-  function claimAndDistributeFees() external {
-    _claimAndDistributeFees();
-  }
-
-  function _claimAndDistributeFees() internal {
+  function claimAndDistributeFees() public {
     (uint256 amountCollected0, uint256 amountCollected1) = _collect(
       address(this),
       type(uint128).max,
@@ -355,10 +351,11 @@ contract Exit10 is IExit10, ChickenMath {
       );
   }
 
-  function _tokenClaim(
+  function _safeTokenClaim(
     BaseToken _token,
     uint256 _externalSum,
-    uint256 _supply
+    uint256 _supply,
+    uint256 _claimed
   ) internal returns (uint256 _claim) {
     _requireExitMode();
     uint256 balance = _token.balanceOf(msg.sender) / TOKEN_MULTIPLIER;
@@ -366,9 +363,10 @@ contract Exit10 is IExit10, ChickenMath {
 
     _token.burn(msg.sender, balance * TOKEN_MULTIPLIER);
     _claim = (balance * _externalSum) / _supply;
+    _claim = (_claimed + _claim <= _supply) ? _claim : _supply - _claimed;
   }
 
-  function _returnUSDC() internal view returns (address usdc) {
+  function _getAddressUSDC() internal view returns (address usdc) {
     usdc = _compare(ERC20(POOL.token0()).symbol(), 'USDC') ? POOL.token0() : POOL.token1();
   }
 

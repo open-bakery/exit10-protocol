@@ -174,7 +174,7 @@ contract Exit10Test is Test {
     uint256 bondId = _createBond();
     checkBondData(
       bondId,
-      _liquidity(exit10.positionId()),
+      _liquidity(exit10.positionId()) - liquidityAdded,
       0,
       uint64(block.timestamp),
       0,
@@ -182,7 +182,7 @@ contract Exit10Test is Test {
     );
     assertTrue(_liquidity(exit10.positionId()) != 0, 'Check liquidity');
     assertTrue(nft.ownerOf(bondId) == address(this), 'Check NFT owner');
-    checkTreasury(uint256(_liquidity(exit10.positionId())) + liquidityAdded, 0, 0, 0);
+    checkTreasury(uint256(_liquidity(exit10.positionId())) - liquidityAdded, 0, 0, liquidityAdded);
     checkBalances(address(exit10), 0, 0);
   }
 
@@ -371,7 +371,45 @@ contract Exit10Test is Test {
     assertTrue(ERC20(token1).balanceOf(address(exit10)) == 0, 'Check balance token1 == 0');
   }
 
-  function testBootstrapClaim() public {}
+  function testBootstrapClaim() public {
+    exit10.bootstrapLock(
+      IExit10.AddLiquidity({
+        depositor: address(this),
+        amount0Desired: 10000_000000,
+        amount1Desired: 10 ether,
+        amount0Min: 0,
+        amount1Min: 0,
+        deadline: block.timestamp
+      })
+    );
+    uint256 bondId = _skipBootAndCreateBond();
+    skip(_accrualParameter);
+    (uint256 bondAmount, , , , ) = exit10.getBondData(bondId);
+    exit10.chickenIn(
+      bondId,
+      IExit10.RemoveLiquidity({
+        liquidity: uint128(bondAmount),
+        amount0Min: 0,
+        amount1Min: 0,
+        deadline: block.timestamp
+      })
+    );
+    _eth10k();
+    exit10.exit10();
+    (uint256 pending, uint256 reserve, uint256 exit, uint256 bootstrap) = exit10.getTreasury();
+    assertTrue(_liquidity(exit10.positionId()) == pending + reserve, 'Check liquidity position');
+    uint256 currentBalanceUSDC = ERC20(token0).balanceOf(address(this));
+    uint256 bootBalance = ERC20(exit10.BOOT()).balanceOf(address(this));
+    exit10.bootstrapClaim();
+    uint256 claimableAmount = ((bootBalance / exit10.TOKEN_MULTIPLIER()) * exit10.exitBootstrap()) / bootstrap;
+    assertTrue(ERC20(exit10.BOOT()).balanceOf(address(this)) == 0, 'Check BOOT burned');
+    assertTrue(
+      ERC20(token0).balanceOf(address(this)) - currentBalanceUSDC == claimableAmount,
+      'Check claimable amount'
+    );
+    assertTrue(ERC20(token0).balanceOf(address(this)) == currentBalanceUSDC + claimableAmount, 'Check amount claimed');
+    assertTrue(claimableAmount != 0, 'Check claimable != 0');
+  }
 
   function testBootstrapClaimRevert() public {
     _skipBootAndCreateBond();

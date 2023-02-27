@@ -8,6 +8,7 @@ import '../src/STO.sol';
 import '../src/interfaces/IExit10.sol';
 import '../src/interfaces/ISwapRouter.sol';
 import '../src/interfaces/INonfungiblePositionManager.sol';
+import '../src/FeeSplitter.sol';
 
 contract Exit10Test is Test {
   Exit10 exit10;
@@ -28,6 +29,7 @@ contract Exit10Test is Test {
   uint256 deployTime;
   uint256 constant MX = type(uint256).max;
 
+  address _feeSplitter;
   address _masterchef0 = address(0x0a);
   address _masterchef1 = address(0x0b);
   address _masterchef2 = address(0x0c);
@@ -35,15 +37,15 @@ contract Exit10Test is Test {
   function setUp() public {
     nft = new NFT('Bond Data', 'BND', 0);
     sto = new STO(vm.envAddress('USDC'));
+    _feeSplitter = address(new FeeSplitter(_masterchef0, _masterchef1));
     exit10 = new Exit10(
       IExit10.DeployParams({
         NFT: address(nft),
         NPM: _npm,
         STO: address(sto),
         pool: _pool,
-        masterchef0: _masterchef0,
-        masterchef1: _masterchef1,
-        masterchef2: _masterchef2,
+        masterchef: _masterchef2,
+        feeSplitter: _feeSplitter,
         tickLower: _lowerTick,
         tickUpper: _upperTick,
         bootstrapPeriod: _bootstrapPeriod,
@@ -53,6 +55,8 @@ contract Exit10Test is Test {
     );
     sto.setExit10(address(exit10));
     nft.setExit10(address(exit10));
+    FeeSplitter(_feeSplitter).transferOwnership(address(exit10));
+
     deployTime = block.timestamp;
     token0 = ERC20(exit10.POOL().token0());
     token1 = ERC20(exit10.POOL().token1());
@@ -63,8 +67,7 @@ contract Exit10Test is Test {
   }
 
   function testSetup() public {
-    assertTrue(exit10.positionId0() == 0, 'Check positionId0');
-    assertTrue(exit10.positionId1() == 0, 'Check positionId1');
+    assertTrue(exit10.positionId() == 0, 'Check positionId');
     assertTrue(exit10.countChickenIn() == 0, 'Check countChickenIn');
     assertTrue(exit10.countChickenOut() == 0, 'Check countChickenOut');
     assertTrue(exit10.inExitMode() == false, 'Check inExitMode');
@@ -85,7 +88,7 @@ contract Exit10Test is Test {
     );
     assertTrue(amountAdded0 == MX - token0.balanceOf(address(this)), 'Check amountAdded0');
     assertTrue(amountAdded1 == MX - token1.balanceOf(address(this)), 'Check amountAdded1');
-    assertTrue(tokenId == exit10.positionId1(), 'Check positionId1');
+    assertTrue(tokenId == exit10.positionId(), 'Check positionId');
     assertTrue(liquidityAdded != 0, 'Check liquidityAdded');
     assertTrue(
       ERC20(exit10.BOOT()).balanceOf(address(this)) == liquidityAdded * exit10.TOKEN_MULTIPLIER(),
@@ -129,15 +132,15 @@ contract Exit10Test is Test {
     uint256 bondId = _createBond();
     checkBondData(
       bondId,
-      _liquidity(exit10.positionId0()),
+      _liquidity(exit10.positionId()),
       0,
       uint64(block.timestamp),
       0,
       uint8(IExit10.BondStatus.active)
     );
-    assertTrue(_liquidity(exit10.positionId0()) != 0, 'Check liquidity');
+    assertTrue(_liquidity(exit10.positionId()) != 0, 'Check liquidity');
     assertTrue(nft.ownerOf(bondId) == address(this), 'Check NFT owner');
-    checkTreasury(uint256(_liquidity(exit10.positionId0())), 0, 0, 0);
+    checkTreasury(uint256(_liquidity(exit10.positionId())), 0, 0, 0);
     checkBalances(address(exit10), 0, 0);
   }
 
@@ -158,7 +161,7 @@ contract Exit10Test is Test {
 
   function testChickenOut() public {
     uint256 bondId = _skipBootAndCreateBond();
-    uint256 liquidity = _liquidity(exit10.positionId0());
+    uint256 liquidity = _liquidity(exit10.positionId());
     uint64 startTime = uint64(block.timestamp);
     skip(1 days);
     uint64 endTime = uint64(block.timestamp);
@@ -174,7 +177,7 @@ contract Exit10Test is Test {
       })
     );
     checkBondData(bondId, liquidity, 0, startTime, endTime, uint8(IExit10.BondStatus.chickenedOut));
-    assertTrue(_liquidity(exit10.positionId0()) == 0, 'Check liquidity');
+    assertTrue(_liquidity(exit10.positionId()) == 0, 'Check liquidity');
     checkTreasury(0, 0, 0, 0);
     assertTrue(token0.balanceOf(address(this)) > balanceToken0, 'Check balance token0');
     assertTrue(token1.balanceOf(address(this)) > balanceToken1, 'Check balance token1');
@@ -224,7 +227,7 @@ contract Exit10Test is Test {
   function testChickenIn() public {
     uint256 bondId = _skipBootAndCreateBond();
     uint64 startTime = uint64(block.timestamp);
-    uint256 liquidity = _liquidity(exit10.positionId0());
+    uint256 liquidity = _liquidity(exit10.positionId());
     skip(_accrualParameter);
     (uint256 bondAmount, , , , ) = exit10.getBondData(bondId);
     exit10.chickenIn(
@@ -238,8 +241,7 @@ contract Exit10Test is Test {
     );
     uint64 endTime = uint64(block.timestamp);
     checkBondData(bondId, liquidity, liquidity / 2, startTime, endTime, uint8(IExit10.BondStatus.chickenedIn));
-    assertTrue(_liquidity(exit10.positionId0()) == 0, 'Check liquidity');
-    uint256 exitBucket = _liquidity(exit10.positionId1()) - (liquidity / 2);
+    uint256 exitBucket = _liquidity(exit10.positionId()) - (liquidity / 2);
     checkTreasury(0, liquidity / 2, exitBucket, 0);
     checkBalances(address(exit10), 0, 0);
     assertTrue(exit10.BLP().balanceOf(address(this)) == (liquidity / 2) * exit10.TOKEN_MULTIPLIER());
@@ -268,7 +270,7 @@ contract Exit10Test is Test {
     assertTrue(token1.balanceOf(address(this)) > balanceToken1, 'Check balance token1');
     checkBalances(address(exit10), 0, 0);
     assertTrue(exit10.BLP().balanceOf(address(this)) == 0, 'Check balance BLP');
-    checkTreasury(0, 0, _liquidity(exit10.positionId1()), 0);
+    checkTreasury(0, 0, _liquidity(exit10.positionId()), 0);
   }
 
   function testClaimAndDistributeFees() public {
@@ -284,19 +286,12 @@ contract Exit10Test is Test {
       })
     );
     _generateFees();
+    checkTreasury(_liquidity(exit10.positionId()), 0, 0, 0);
     exit10.claimAndDistributeFees();
-    uint256 m0t0 = token0.balanceOf(_masterchef0);
-    uint256 m0t1 = token1.balanceOf(_masterchef0);
-    uint256 m1t0 = token0.balanceOf(_masterchef1);
-    uint256 m1t1 = token1.balanceOf(_masterchef1);
-    assertTrue(m0t0 > 0, 'Check masterchef0 balance token0');
-    assertTrue(m0t1 > 0, 'Check masterchef0 balance token1');
-    assertTrue(m1t0 > 0, 'Check masterchef1 balance token0');
-    assertTrue(m1t1 > 0, 'Check masterchef1 balance token1');
-    uint256 totalBalance0 = m0t0 + m1t0;
-    uint256 totalBalance1 = m0t1 + m1t1;
-    assertTrue(m0t0 == (totalBalance0 / 10) * 4, 'Check masterchef0 balance token0');
-    assertTrue(m0t1 == (totalBalance1 / 10) * 4, 'Check masterchef0 balance token1');
+    uint256 feesClaimed0 = token0.balanceOf(_feeSplitter);
+    uint256 feesClaimed1 = token1.balanceOf(_feeSplitter);
+    assertTrue(feesClaimed0 != 0, 'Check fees claimed 0');
+    assertTrue(feesClaimed1 != 0, 'Check fees claimed 1');
     checkBalances(address(exit10), 0, 0);
   }
 
@@ -329,13 +324,13 @@ contract Exit10Test is Test {
         deadline: block.timestamp
       })
     );
-    (, uint256 reserve, uint256 exit, uint256 bootstrap) = exit10.getTreasury();
+    (uint256 pending, uint256 reserve, uint256 exit, uint256 bootstrap) = exit10.getTreasury();
     checkBalances(address(exit10), 0, 0);
     _eth10k();
-    uint128 totalLiquidity = _liquidity(exit10.positionId1());
+    uint128 totalLiquidity = _liquidity(exit10.positionId());
     exit10.exit10();
     assertTrue(exit10.inExitMode(), 'Check inExitMode');
-    assertTrue(_liquidity(exit10.positionId1()) == reserve, 'Check reserve amount');
+    assertTrue(_liquidity(exit10.positionId()) - pending == reserve, 'Check reserve amount');
     assertTrue(token0.balanceOf(address(exit10)) != 0, 'Check acquired USD != 0');
     uint256 AcquiredUSD = token0.balanceOf(address(exit10)) + token0.balanceOf(address(sto));
     uint256 exitLiquidityPlusBootstrap = totalLiquidity - reserve;
@@ -368,7 +363,7 @@ contract Exit10Test is Test {
   function testAccrualSchedule() public {
     uint256 bondId = _skipBootAndCreateBond();
     skip(_accrualParameter);
-    assertTrue(exit10.getAccruedAmount(bondId) == _liquidity(exit10.positionId0()) / 2);
+    assertTrue(exit10.getAccruedAmount(bondId) == _liquidity(exit10.positionId()) / 2);
   }
 
   function _getTokensBalance() internal view returns (uint256 _token0, uint256 _token1) {

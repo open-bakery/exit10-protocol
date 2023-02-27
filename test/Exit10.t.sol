@@ -159,6 +159,33 @@ contract Exit10Test is Test {
     assertTrue(nft.ownerOf(bondId) == address(0xdead), 'Check NFT owner');
   }
 
+  function testCreateBondWithBootstrap() public {
+    (, uint128 liquidityAdded, , ) = exit10.bootstrapLock(
+      IExit10.AddLiquidity({
+        depositor: address(this),
+        amount0Desired: 10000_000000,
+        amount1Desired: 10 ether,
+        amount0Min: 0,
+        amount1Min: 0,
+        deadline: block.timestamp
+      })
+    );
+    skip(exit10.BOOTSTRAP_PERIOD());
+    uint256 bondId = _createBond();
+    checkBondData(
+      bondId,
+      _liquidity(exit10.positionId()),
+      0,
+      uint64(block.timestamp),
+      0,
+      uint8(IExit10.BondStatus.active)
+    );
+    assertTrue(_liquidity(exit10.positionId()) != 0, 'Check liquidity');
+    assertTrue(nft.ownerOf(bondId) == address(this), 'Check NFT owner');
+    checkTreasury(uint256(_liquidity(exit10.positionId())) + liquidityAdded, 0, 0, 0);
+    checkBalances(address(exit10), 0, 0);
+  }
+
   function testChickenOut() public {
     uint256 bondId = _skipBootAndCreateBond();
     uint256 liquidity = _liquidity(exit10.positionId());

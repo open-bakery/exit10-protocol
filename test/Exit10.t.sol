@@ -37,7 +37,7 @@ contract Exit10Test is Test {
 
   function setUp() public {
     nft = new NFT('Bond Data', 'BND', 0);
-    sto = new STO(vm.envAddress('USDC'));
+    sto = new STO();
     _feeSplitter = address(new FeeSplitter(_masterchef0, _masterchef1));
     exit10 = new Exit10(
       IExit10.DeployParams({
@@ -456,14 +456,15 @@ contract Exit10Test is Test {
         deadline: block.timestamp
       })
     );
+
     assertTrue(ERC20(exit10.EXIT()).balanceOf(address(this)) != 0, 'Check exit balance');
+
     _eth10k();
     exit10.exit10();
-
     uint256 currentBalanceUSDC = ERC20(token0).balanceOf(address(this));
     exit10.exitClaim();
 
-    assertTrue(ERC20(exit10.EXIT()).balanceOf(address(this)) == 0, 'Check exit balance');
+    assertTrue(ERC20(exit10.EXIT()).balanceOf(address(this)) == 0, 'Check exit burn');
     assertTrue(ERC20(token0).balanceOf(address(this)) == currentBalanceUSDC + exit10.exitLiquidity());
   }
 

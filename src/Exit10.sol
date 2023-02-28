@@ -159,6 +159,10 @@ contract Exit10 is IExit10, BaseMath {
     return NFT.totalSupply() - (countConvertBond + countCancelBond);
   }
 
+  function getAddressUSDC() public view returns (address usdc) {
+    usdc = _compare(ERC20(POOL.token0()).symbol(), 'USDC') ? POOL.token0() : POOL.token1();
+  }
+
   function bootstrapLock(AddLiquidity memory params)
     external
     returns (
@@ -316,27 +320,35 @@ contract Exit10 is IExit10, BaseMath {
     // 70% Exit Token holders
     exitLiquidity -= share * 3;
 
-    _safeTransferToken(_getAddressUSDC(), STO, exitTeamPlusBackers);
+    _safeTransferToken(getAddressUSDC(), STO, exitTeamPlusBackers);
   }
 
   function bootstrapClaim() external {
-    uint256 amount = ERC20(BOOT).balanceOf(msg.sender) / TOKEN_MULTIPLIER;
-
-    uint256 claim = _safeTokenClaim(BOOT, amount, exitBootstrap, bootstrapAmount, exitBootstrapClaimed);
+    uint256 claim = _safeTokenClaim(
+      BOOT,
+      ERC20(BOOT).balanceOf(msg.sender) / TOKEN_MULTIPLIER,
+      exitBootstrap,
+      bootstrapAmount,
+      exitBootstrapClaimed
+    );
 
     exitBootstrapClaimed += claim;
 
-    _safeTransferToken(_getAddressUSDC(), msg.sender, claim);
+    _safeTransferToken(getAddressUSDC(), msg.sender, claim);
   }
 
   function exitClaim() external {
-    uint256 amount = ERC20(EXIT).balanceOf(msg.sender);
-
-    uint256 claim = _safeTokenClaim(EXIT, amount, exitLiquidity, exitTotalSupply, exitLiquidityClaimed);
+    uint256 claim = _safeTokenClaim(
+      EXIT,
+      ERC20(EXIT).balanceOf(msg.sender),
+      exitLiquidity,
+      exitTotalSupply,
+      exitLiquidityClaimed
+    );
 
     exitLiquidityClaimed += claim;
 
-    _safeTransferToken(_getAddressUSDC(), msg.sender, claim);
+    _safeTransferToken(getAddressUSDC(), msg.sender, claim);
   }
 
   function claimAndDistributeFees() public {
@@ -368,10 +380,6 @@ contract Exit10 is IExit10, BaseMath {
     _token.burn(msg.sender, ERC20(_token).balanceOf(msg.sender));
     _claim = (_amount * _externalSum) / _supply;
     _claim = (_claimed + _claim <= _supply) ? _claim : _supply - _claimed;
-  }
-
-  function _getAddressUSDC() internal view returns (address usdc) {
-    usdc = _compare(ERC20(POOL.token0()).symbol(), 'USDC') ? POOL.token0() : POOL.token1();
   }
 
   function _addLiquidity(AddLiquidity memory _params)

@@ -87,10 +87,6 @@ contract FeeSplitter is Ownable {
     if (_amount != 0) ERC20(_token).safeTransfer(_recipient, _amount);
   }
 
-  function _getAddressUSDC() internal view returns (address usdc) {
-    usdc = _compare(ERC20(_token0()).symbol(), 'USDC') ? _token0() : _token1();
-  }
-
   function _token0() internal view returns (address) {
     return Exit10(owner()).POOL().token0();
   }
@@ -102,9 +98,5 @@ contract FeeSplitter is Ownable {
   function _requireMasterchefCaller() internal view {
     bool allowed = (msg.sender == MASTERCHEF_0 || msg.sender == MASTERCHEF_1);
     require(allowed, 'IFeeSplitter: Caller not allowed');
-  }
-
-  function _compare(string memory _str1, string memory _str2) internal pure returns (bool) {
-    return keccak256(abi.encodePacked(_str1)) == keccak256(abi.encodePacked(_str2));
   }
 }

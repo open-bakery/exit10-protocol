@@ -72,5 +72,7 @@ interface IExit10 {
       uint256 bootstrap
     );
 
+  function getAddressUSDC() external view returns (address);
+
   function inExitMode() external view returns (bool);
 }

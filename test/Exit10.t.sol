@@ -26,6 +26,7 @@ contract Exit10Test is Test {
 
   ERC20 token0;
   ERC20 token1;
+  uint256 initialBalance = 1_000_000_000 ether;
   uint256 deployTime;
   uint256 constant MX = type(uint256).max;
 
@@ -60,19 +61,20 @@ contract Exit10Test is Test {
     deployTime = block.timestamp;
     token0 = ERC20(exit10.POOL().token0());
     token1 = ERC20(exit10.POOL().token1());
-    _mintAndApprove(address(token0), MX);
-    _mintAndApprove(address(token1), MX);
+
+    _mintAndApprove(address(token0), initialBalance);
+    _mintAndApprove(address(token1), initialBalance);
     _maxApprove(address(token0), address(UNISWAP_ROUTER));
     _maxApprove(address(token1), address(UNISWAP_ROUTER));
   }
 
   function testSetup() public {
     assertTrue(exit10.positionId() == 0, 'Check positionId');
-    assertTrue(exit10.countChickenIn() == 0, 'Check countChickenIn');
-    assertTrue(exit10.countChickenOut() == 0, 'Check countChickenOut');
+    assertTrue(exit10.countConvertBond() == 0, 'Check count convert bond');
+    assertTrue(exit10.countCancelBond() == 0, 'Check count cancel bond');
     assertTrue(exit10.inExitMode() == false, 'Check inExitMode');
-    assertTrue(token0.balanceOf(address(this)) == MX);
-    assertTrue(token1.balanceOf(address(this)) == MX);
+    assertTrue(token0.balanceOf(address(this)) == initialBalance);
+    assertTrue(token1.balanceOf(address(this)) == initialBalance);
   }
 
   function testBootstrapLock() public {
@@ -86,16 +88,17 @@ contract Exit10Test is Test {
         deadline: block.timestamp
       })
     );
-    assertTrue(amountAdded0 == MX - token0.balanceOf(address(this)), 'Check amountAdded0');
-    assertTrue(amountAdded1 == MX - token1.balanceOf(address(this)), 'Check amountAdded1');
+    assertTrue(amountAdded0 == initialBalance - token0.balanceOf(address(this)), 'Check amountAdded0');
+    assertTrue(amountAdded1 == initialBalance - token1.balanceOf(address(this)), 'Check amountAdded1');
     assertTrue(tokenId == exit10.positionId(), 'Check positionId');
     assertTrue(liquidityAdded != 0, 'Check liquidityAdded');
     assertTrue(
       ERC20(exit10.BOOT()).balanceOf(address(this)) == liquidityAdded * exit10.TOKEN_MULTIPLIER(),
       'Check BOOT balance'
     );
-    checkTreasury(0, 0, 0, liquidityAdded);
+
     checkBalances(address(exit10), 0, 0);
+    checkTreasury(0, 0, 0, liquidityAdded);
   }
 
   function testBootstrapRevert() public {
@@ -140,8 +143,9 @@ contract Exit10Test is Test {
     );
     assertTrue(_liquidity(exit10.positionId()) != 0, 'Check liquidity');
     assertTrue(nft.ownerOf(bondId) == address(this), 'Check NFT owner');
-    checkTreasury(uint256(_liquidity(exit10.positionId())), 0, 0, 0);
+
     checkBalances(address(exit10), 0, 0);
+    checkTreasury(uint256(_liquidity(exit10.positionId())), 0, 0, 0);
   }
 
   function testCreateBondOnBehalfOfUser() public {
@@ -182,11 +186,12 @@ contract Exit10Test is Test {
     );
     assertTrue(_liquidity(exit10.positionId()) != 0, 'Check liquidity');
     assertTrue(nft.ownerOf(bondId) == address(this), 'Check NFT owner');
-    checkTreasury(uint256(_liquidity(exit10.positionId())) - liquidityAdded, 0, 0, liquidityAdded);
+
     checkBalances(address(exit10), 0, 0);
+    checkTreasury(uint256(_liquidity(exit10.positionId())) - liquidityAdded, 0, 0, liquidityAdded);
   }
 
-  function testChickenOut() public {
+  function testCancelBond() public {
     uint256 bondId = _skipBootAndCreateBond();
     uint256 liquidity = _liquidity(exit10.positionId());
     uint64 startTime = uint64(block.timestamp);
@@ -194,7 +199,7 @@ contract Exit10Test is Test {
     uint64 endTime = uint64(block.timestamp);
     (uint256 bondAmount, , , , ) = exit10.getBondData(bondId);
     (uint256 balanceToken0, uint256 balanceToken1) = _getTokensBalance();
-    exit10.chickenOut(
+    exit10.cancelBond(
       bondId,
       IExit10.RemoveLiquidity({
         liquidity: uint128(bondAmount),
@@ -203,20 +208,22 @@ contract Exit10Test is Test {
         deadline: block.timestamp
       })
     );
-    checkBondData(bondId, liquidity, 0, startTime, endTime, uint8(IExit10.BondStatus.chickenedOut));
     assertTrue(_liquidity(exit10.positionId()) == 0, 'Check liquidity');
-    checkTreasury(0, 0, 0, 0);
     assertTrue(token0.balanceOf(address(this)) > balanceToken0, 'Check balance token0');
     assertTrue(token1.balanceOf(address(this)) > balanceToken1, 'Check balance token1');
+    assertTrue(exit10.countCancelBond() == 1, 'Check bond count');
+
     checkBalances(address(exit10), 0, 0);
+    checkBondData(bondId, liquidity, 0, startTime, endTime, uint8(IExit10.BondStatus.cancelled));
+    checkTreasury(0, 0, 0, 0);
   }
 
-  function testChickenOutNoBondsRevert() public {
+  function testCancelBondNoBondsRevert() public {
     uint256 bondId = _skipBootAndCreateBond();
     (uint256 bondAmount, , , , ) = exit10.getBondData(bondId);
     vm.prank(address(0xdead));
     vm.expectRevert(bytes('EXIT10: Caller must own the bond'));
-    exit10.chickenOut(
+    exit10.cancelBond(
       bondId,
       IExit10.RemoveLiquidity({
         liquidity: uint128(bondAmount),
@@ -227,10 +234,10 @@ contract Exit10Test is Test {
     );
   }
 
-  function testChickenOutActiveStatusRevert() public {
+  function testCancelBondActiveStatusRevert() public {
     uint256 bondId = _skipBootAndCreateBond();
     (uint256 bondAmount, , , , ) = exit10.getBondData(bondId);
-    exit10.chickenOut(
+    exit10.cancelBond(
       bondId,
       IExit10.RemoveLiquidity({
         liquidity: uint128(bondAmount),
@@ -240,7 +247,7 @@ contract Exit10Test is Test {
       })
     );
     vm.expectRevert(bytes('EXIT10: Bond must be active'));
-    exit10.chickenOut(
+    exit10.cancelBond(
       bondId,
       IExit10.RemoveLiquidity({
         liquidity: uint128(bondAmount),
@@ -251,13 +258,14 @@ contract Exit10Test is Test {
     );
   }
 
-  function testChickenIn() public {
+  function testConvertBond() public {
     uint256 bondId = _skipBootAndCreateBond();
     uint64 startTime = uint64(block.timestamp);
     uint256 liquidity = _liquidity(exit10.positionId());
+
     skip(_accrualParameter);
     (uint256 bondAmount, , , , ) = exit10.getBondData(bondId);
-    exit10.chickenIn(
+    exit10.convertBond(
       bondId,
       IExit10.RemoveLiquidity({
         liquidity: uint128(bondAmount),
@@ -266,20 +274,23 @@ contract Exit10Test is Test {
         deadline: block.timestamp
       })
     );
+
     uint64 endTime = uint64(block.timestamp);
-    checkBondData(bondId, liquidity, liquidity / 2, startTime, endTime, uint8(IExit10.BondStatus.chickenedIn));
     uint256 exitBucket = _liquidity(exit10.positionId()) - (liquidity / 2);
-    checkTreasury(0, liquidity / 2, exitBucket, 0);
-    checkBalances(address(exit10), 0, 0);
+
     assertTrue(exit10.BLP().balanceOf(address(this)) == (liquidity / 2) * exit10.TOKEN_MULTIPLIER());
     assertTrue(exit10.EXIT().balanceOf(address(this)) == exitBucket * exit10.TOKEN_MULTIPLIER(), 'Check exit bucket');
+
+    checkBalances(address(exit10), 0, 0);
+    checkBondData(bondId, liquidity, liquidity / 2, startTime, endTime, uint8(IExit10.BondStatus.converted));
+    checkTreasury(0, liquidity / 2, exitBucket, 0);
   }
 
   function testRedeem() public {
     uint256 bondId = _skipBootAndCreateBond();
     skip(_accrualParameter);
     (uint256 bondAmount, , , , ) = exit10.getBondData(bondId);
-    exit10.chickenIn(
+    exit10.convertBond(
       bondId,
       IExit10.RemoveLiquidity({
         liquidity: uint128(bondAmount),
@@ -293,10 +304,12 @@ contract Exit10Test is Test {
     exit10.redeem(
       IExit10.RemoveLiquidity({ liquidity: liquidityToRemove, amount0Min: 0, amount1Min: 0, deadline: block.timestamp })
     );
+
     assertTrue(token0.balanceOf(address(this)) > balanceToken0, 'Check balance token0');
     assertTrue(token1.balanceOf(address(this)) > balanceToken1, 'Check balance token1');
-    checkBalances(address(exit10), 0, 0);
     assertTrue(exit10.BLP().balanceOf(address(this)) == 0, 'Check balance BLP');
+
+    checkBalances(address(exit10), 0, 0);
     checkTreasury(0, 0, _liquidity(exit10.positionId()), 0);
   }
 
@@ -313,12 +326,16 @@ contract Exit10Test is Test {
       })
     );
     _generateFees();
+
     checkTreasury(_liquidity(exit10.positionId()), 0, 0, 0);
+
     exit10.claimAndDistributeFees();
     uint256 feesClaimed0 = token0.balanceOf(_feeSplitter);
     uint256 feesClaimed1 = token1.balanceOf(_feeSplitter);
+
     assertTrue(feesClaimed0 != 0, 'Check fees claimed 0');
     assertTrue(feesClaimed1 != 0, 'Check fees claimed 1');
+
     checkBalances(address(exit10), 0, 0);
   }
 
@@ -342,7 +359,7 @@ contract Exit10Test is Test {
     uint256 bondId = _skipBootAndCreateBond();
     skip(_accrualParameter);
     (uint256 bondAmount, , , , ) = exit10.getBondData(bondId);
-    exit10.chickenIn(
+    exit10.convertBond(
       bondId,
       IExit10.RemoveLiquidity({
         liquidity: uint128(bondAmount),
@@ -353,18 +370,24 @@ contract Exit10Test is Test {
     );
     (uint256 pending, uint256 reserve, uint256 exit, uint256 bootstrap) = exit10.getTreasury();
     checkBalances(address(exit10), 0, 0);
+
     _eth10k();
     uint128 totalLiquidity = _liquidity(exit10.positionId());
     exit10.exit10();
+
     assertTrue(exit10.inExitMode(), 'Check inExitMode');
     assertTrue(_liquidity(exit10.positionId()) - pending == reserve, 'Check reserve amount');
     assertTrue(token0.balanceOf(address(exit10)) != 0, 'Check acquired USD != 0');
+
     uint256 AcquiredUSD = token0.balanceOf(address(exit10)) + token0.balanceOf(address(sto));
     uint256 exitLiquidityPlusBootstrap = totalLiquidity - reserve;
+
     assertTrue(exit + bootstrap == exitLiquidityPlusBootstrap, 'Check Exitbucket');
+
     uint256 exitBootstrapUSD = (bootstrap * AcquiredUSD) / exitLiquidityPlusBootstrap;
     uint256 exitLiquidityUSD = (AcquiredUSD - exitBootstrapUSD);
     uint256 share = exitLiquidityUSD / 10;
+
     assertTrue(exit10.exitBootstrap() == exitBootstrapUSD + share, 'Check Bootstrap USD share amount');
     assertTrue(exit10.exitTeamPlusBackers() == share * 2, 'Check team plus backers'); // 20%
     assertTrue(AcquiredUSD - (exitBootstrapUSD + share * 3) == exit10.exitLiquidity(), 'Check exit liquidity');
@@ -385,7 +408,7 @@ contract Exit10Test is Test {
     uint256 bondId = _skipBootAndCreateBond();
     skip(_accrualParameter);
     (uint256 bondAmount, , , , ) = exit10.getBondData(bondId);
-    exit10.chickenIn(
+    exit10.convertBond(
       bondId,
       IExit10.RemoveLiquidity({
         liquidity: uint128(bondAmount),
@@ -396,12 +419,15 @@ contract Exit10Test is Test {
     );
     _eth10k();
     exit10.exit10();
-    (uint256 pending, uint256 reserve, uint256 exit, uint256 bootstrap) = exit10.getTreasury();
+    (uint256 pending, uint256 reserve, , uint256 bootstrap) = exit10.getTreasury();
+
     assertTrue(_liquidity(exit10.positionId()) == pending + reserve, 'Check liquidity position');
+
     uint256 currentBalanceUSDC = ERC20(token0).balanceOf(address(this));
     uint256 bootBalance = ERC20(exit10.BOOT()).balanceOf(address(this));
     exit10.bootstrapClaim();
     uint256 claimableAmount = ((bootBalance / exit10.TOKEN_MULTIPLIER()) * exit10.exitBootstrap()) / bootstrap;
+
     assertTrue(ERC20(exit10.BOOT()).balanceOf(address(this)) == 0, 'Check BOOT burned');
     assertTrue(
       ERC20(token0).balanceOf(address(this)) - currentBalanceUSDC == claimableAmount,
@@ -417,7 +443,29 @@ contract Exit10Test is Test {
     exit10.bootstrapClaim();
   }
 
-  function testExitClaim() public {}
+  function testExitClaim() public {
+    uint256 bondId = _skipBootAndCreateBond();
+    skip(_accrualParameter);
+    (uint256 bondAmount, , , , ) = exit10.getBondData(bondId);
+    exit10.convertBond(
+      bondId,
+      IExit10.RemoveLiquidity({
+        liquidity: uint128(bondAmount),
+        amount0Min: 0,
+        amount1Min: 0,
+        deadline: block.timestamp
+      })
+    );
+    assertTrue(ERC20(exit10.EXIT()).balanceOf(address(this)) != 0, 'Check exit balance');
+    _eth10k();
+    exit10.exit10();
+
+    uint256 currentBalanceUSDC = ERC20(token0).balanceOf(address(this));
+    exit10.exitClaim();
+
+    assertTrue(ERC20(exit10.EXIT()).balanceOf(address(this)) == 0, 'Check exit balance');
+    assertTrue(ERC20(token0).balanceOf(address(this)) == currentBalanceUSDC + exit10.exitLiquidity());
+  }
 
   function testExitClaimRevert() public {
     _skipBootAndCreateBond();

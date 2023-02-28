@@ -9,13 +9,13 @@ import './interfaces/INonfungiblePositionManager.sol';
 import './interfaces/IUniswapV3Pool.sol';
 import './interfaces/INFT.sol';
 import './interfaces/IExit10.sol';
-import './utils/ChickenMath.sol';
+import './utils/BaseMath.sol';
 import './BaseToken.sol';
 import './FeeSplitter.sol';
 
 import 'forge-std/Test.sol';
 
-contract Exit10 is IExit10, ChickenMath {
+contract Exit10 is IExit10, BaseMath {
   using SafeERC20 for ERC20;
 
   uint256 private pendingAmount;
@@ -24,8 +24,8 @@ contract Exit10 is IExit10, ChickenMath {
   uint256 private finalExitAmount;
 
   uint256 public positionId;
-  uint256 public countChickenIn;
-  uint256 public countChickenOut;
+  uint256 public countConvertBond;
+  uint256 public countCancelBond;
 
   // MasterChef
   address public immutable MASTERCHEF; // EXIT/USDC Stakers
@@ -75,8 +75,8 @@ contract Exit10 is IExit10, ChickenMath {
 
   // --- Events ---
   event CreateBond(address indexed bonder, uint256 bondID, uint256 amount);
-  event ChickenOut(address indexed bonder, uint256 bondID, uint256 amountReturned0, uint256 amountReturned1);
-  event ChickenIn(
+  event CancelBond(address indexed bonder, uint256 bondID, uint256 amountReturned0, uint256 amountReturned1);
+  event ConvertBond(
     address indexed bonder,
     uint256 bondID,
     uint256 bondAmount,
@@ -156,7 +156,7 @@ contract Exit10 is IExit10, ChickenMath {
   }
 
   function getOpenBondCount() external view returns (uint256) {
-    return NFT.totalSupply() - (countChickenIn + countChickenOut);
+    return NFT.totalSupply() - (countConvertBond + countCancelBond);
   }
 
   function bootstrapLock(AddLiquidity memory params)
@@ -203,27 +203,27 @@ contract Exit10 is IExit10, ChickenMath {
     emit CreateBond(params.depositor, bondID, liquidityAdded);
   }
 
-  function chickenOut(uint256 bondID, RemoveLiquidity memory params) external {
+  function cancelBond(uint256 bondID, RemoveLiquidity memory params) external {
     BondData memory bond = idToBondData[bondID];
     _requireCallerOwnsBond(bondID);
     _requireActiveStatus(bond.status);
     _requireEqualLiquidity(bond.bondAmount, params.liquidity);
     claimAndDistributeFees();
 
-    idToBondData[bondID].status = BondStatus.chickenedOut;
+    idToBondData[bondID].status = BondStatus.cancelled;
     idToBondData[bondID].endTime = uint64(block.timestamp);
 
-    countChickenOut += 1;
+    countCancelBond += 1;
 
     (uint256 amountRemoved0, uint256 amountRemoved1) = _decreaseLiquidity(params);
     _collect(msg.sender, uint128(amountRemoved0), uint128(amountRemoved1));
 
     pendingAmount -= params.liquidity;
 
-    emit ChickenOut(msg.sender, bondID, amountRemoved0, amountRemoved1);
+    emit CancelBond(msg.sender, bondID, amountRemoved0, amountRemoved1);
   }
 
-  function chickenIn(uint256 bondID, RemoveLiquidity memory params) external {
+  function convertBond(uint256 bondID, RemoveLiquidity memory params) external {
     _requireNoExitMode();
 
     BondData memory bond = idToBondData[bondID];
@@ -232,10 +232,10 @@ contract Exit10 is IExit10, ChickenMath {
     _requireEqualLiquidity(bond.bondAmount, params.liquidity);
     claimAndDistributeFees();
 
-    idToBondData[bondID].status = BondStatus.chickenedIn;
+    idToBondData[bondID].status = BondStatus.converted;
     idToBondData[bondID].endTime = uint64(block.timestamp);
 
-    countChickenIn += 1;
+    countConvertBond += 1;
     pendingAmount -= params.liquidity;
 
     uint256 accruedBoostToken = _getAccruedAmount(bond);
@@ -249,7 +249,7 @@ contract Exit10 is IExit10, ChickenMath {
 
     _mintExitCapped(msg.sender, (exitLiquidityAcquired * TOKEN_MULTIPLIER) / LP_PER_USD);
 
-    emit ChickenIn(msg.sender, bondID, bond.bondAmount, accruedBoostToken, exitLiquidityAcquired);
+    emit ConvertBond(msg.sender, bondID, bond.bondAmount, accruedBoostToken, exitLiquidityAcquired);
   }
 
   function redeem(RemoveLiquidity memory params) external {
@@ -320,7 +320,9 @@ contract Exit10 is IExit10, ChickenMath {
   }
 
   function bootstrapClaim() external {
-    uint256 claim = _safeTokenClaim(BOOT, exitBootstrap, bootstrapAmount, exitBootstrapClaimed);
+    uint256 amount = ERC20(BOOT).balanceOf(msg.sender) / TOKEN_MULTIPLIER;
+
+    uint256 claim = _safeTokenClaim(BOOT, amount, exitBootstrap, bootstrapAmount, exitBootstrapClaimed);
 
     exitBootstrapClaimed += claim;
 
@@ -328,7 +330,9 @@ contract Exit10 is IExit10, ChickenMath {
   }
 
   function exitClaim() external {
-    uint256 claim = _safeTokenClaim(EXIT, exitLiquidity, exitTotalSupply, exitLiquidityClaimed);
+    uint256 amount = ERC20(EXIT).balanceOf(msg.sender);
+
+    uint256 claim = _safeTokenClaim(EXIT, amount, exitLiquidity, exitTotalSupply, exitLiquidityClaimed);
 
     exitLiquidityClaimed += claim;
 
@@ -353,16 +357,16 @@ contract Exit10 is IExit10, ChickenMath {
 
   function _safeTokenClaim(
     BaseToken _token,
+    uint256 _amount,
     uint256 _externalSum,
     uint256 _supply,
     uint256 _claimed
   ) internal returns (uint256 _claim) {
     _requireExitMode();
-    uint256 balance = _token.balanceOf(msg.sender) / TOKEN_MULTIPLIER;
-    _requireValidAmount(balance);
+    _requireValidAmount(_amount);
 
-    _token.burn(msg.sender, balance * TOKEN_MULTIPLIER);
-    _claim = (balance * _externalSum) / _supply;
+    _token.burn(msg.sender, ERC20(_token).balanceOf(msg.sender));
+    _claim = (_amount * _externalSum) / _supply;
     _claim = (_claimed + _claim <= _supply) ? _claim : _supply - _claimed;
   }
 

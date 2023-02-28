@@ -7,8 +7,6 @@ import './IExit10.sol';
 interface INFT is IERC721Enumerable {
   function mint(address _bonder) external returns (uint256);
 
-  function chickenBondManager() external view returns (IExit10);
-
   function getBondAmount(uint256 _tokenID) external view returns (uint256 amount);
 
   function getBondStartTime(uint256 _tokenID) external view returns (uint256 startTime);

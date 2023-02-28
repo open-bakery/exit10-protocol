@@ -47,8 +47,8 @@ interface IExit10 {
   enum BondStatus {
     nonExistent,
     active,
-    chickenedOut,
-    chickenedIn
+    cancelled,
+    converted
   }
 
   function getBondData(uint256 _bondID)

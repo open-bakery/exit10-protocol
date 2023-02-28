@@ -37,7 +37,7 @@ contract Exit10Test is Test {
 
   function setUp() public {
     nft = new NFT('Bond Data', 'BND', 0);
-    sto = new STO();
+    sto = new STO(bytes32('merkle_root'));
     _feeSplitter = address(new FeeSplitter(_masterchef0, _masterchef1));
     exit10 = new Exit10(
       IExit10.DeployParams({

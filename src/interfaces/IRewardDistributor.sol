@@ -2,5 +2,5 @@
 pragma solidity >=0.8.0;
 
 interface IRewardDistributor {
-  function updateRewards() external returns (uint256);
+  function updateFees(uint256) external returns (uint256);
 }

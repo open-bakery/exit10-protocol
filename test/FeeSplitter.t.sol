@@ -34,7 +34,7 @@ contract FeeSplitterTest is Test {
   FeeSplitter feeSplitter;
 
   function setUp() public {
-    feeSplitter = new FeeSplitter(masterchef0, masterchef1);
+    feeSplitter = new FeeSplitter(masterchef0, masterchef1, address(0xabc));
     Masterchef(masterchef0).setRewardDistributor(address(feeSplitter));
     Masterchef(masterchef1).setRewardDistributor(address(feeSplitter));
 

@@ -21,7 +21,6 @@ contract Masterchef is Ownable {
   event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
   event Claim(address indexed user, uint256 indexed pid, uint256 amount);
   event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
-  event RewardsDeposited(uint256 amountDeposited);
 
   /// @notice Detail of each user.
   struct UserInfo {
@@ -87,9 +86,9 @@ contract Masterchef is Ownable {
     _;
   }
 
-  constructor(address _rewardToken, uint256 _rewardsDuration) {
-    rewardToken = _rewardToken;
-    rewardsDuration = _rewardsDuration;
+  constructor(address rewardToken_, uint256 rewardsDuration_) {
+    rewardToken = rewardToken_;
+    rewardsDuration = rewardsDuration_;
     timeDeployed = block.timestamp;
     periodFinish = timeDeployed + rewardsDuration;
   }
@@ -197,7 +196,8 @@ contract Masterchef is Ownable {
   function withdraw(
     uint256 _pid,
     uint256 _amount,
-    bool claimRewards
+    bool _shouldUpdateRewards,
+    uint256 _amountOut
   ) public {
     UserInfo storage user = userInfo[_pid][msg.sender];
     require(_amount <= user.amount, 'MasterchefExternalRewards: Withdraw amount is greater than user stake.');
@@ -206,6 +206,8 @@ contract Masterchef is Ownable {
     _claimFromPool(_pid, _getUserPendingReward(_pid));
     _transferAmountOut(_pid, _amount);
     _updateRewardDebt(_pid);
+
+    if (_shouldUpdateRewards) _updateRewards(_amountOut);
 
     emit Withdraw(msg.sender, _pid, _amount);
   }
@@ -236,7 +238,7 @@ contract Masterchef is Ownable {
   }
 
   /// Adds and evenly distributes rewards through the rewardsDuration.
-  function updateRewards() public virtual onlyAuthorized {
+  function updateRewards() external virtual onlyAuthorized {
     if (totalAllocPoint == 0) {
       return;
     }
@@ -249,10 +251,8 @@ contract Masterchef is Ownable {
     periodFinish = block.timestamp + rewardsDuration;
   }
 
-  function _updateRewards() internal returns (uint256 amount) {
-    amount = IRewardDistributor(rewardDistributor).updateRewards();
-
-    emit RewardsDeposited(amount);
+  function _updateRewards(uint256 _amountOut) internal {
+    IRewardDistributor(rewardDistributor).updateFees(_amountOut);
   }
 
   /// @notice Increases accRewardPerShare and accUndistributedReward since last update.

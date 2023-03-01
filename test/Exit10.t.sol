@@ -46,7 +46,7 @@ contract Exit10Test is Test {
   function setUp() public {
     nft = new NFT('Bond Data', 'BND', 0);
     sto = new STO(bytes32('merkle_root'));
-    feeSplitter = address(new FeeSplitter(masterchef0, masterchef1));
+    feeSplitter = address(new FeeSplitter(masterchef0, masterchef1, address(0xabc)));
 
     IExit10.DeployParams memory params = IExit10.DeployParams({
       NFT: address(nft),
@@ -61,7 +61,7 @@ contract Exit10Test is Test {
     exit10 = new Exit10(baseParams, params);
     sto.setExit10(address(exit10));
     nft.setExit10(address(exit10));
-    FeeSplitter(feeSplitter).transferOwnership(address(exit10));
+    FeeSplitter(feeSplitter).setExit10(address(exit10));
 
     deployTime = block.timestamp;
     token0 = ERC20(exit10.POOL().token0());

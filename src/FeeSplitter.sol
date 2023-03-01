@@ -1,66 +1,125 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 import './interfaces/IUniswapV3Pool.sol';
 import './interfaces/IFeeSplitter.sol';
+import './interfaces/ISwapper.sol';
+import './Masterchef.sol';
 import './Exit10.sol';
 
-contract FeeSplitter is Ownable {
+contract FeeSplitter {
   using SafeERC20 for ERC20;
 
+  address immutable EXIT10;
   address immutable MASTERCHEF_0;
   address immutable MASTERCHEF_1;
+  address immutable SWAPPER;
 
-  uint256 pendingBucketToken0;
-  uint256 pendingBucketToken1;
-  uint256 remainingBucketsToken0;
-  uint256 remainingBucketsToken1;
+  uint256 pendingBucketTokenOut; // USDC
+  uint256 pendingBucketTokenIn; // WETH
+  uint256 remainingBucketsTokenOut; // USDC
+  uint256 remainingBucketsTokenIn; // WETH
 
-  constructor(address masterchef0, address masterchef1) {
-    MASTERCHEF_0 = masterchef0;
-    MASTERCHEF_1 = masterchef1;
+  constructor(
+    address exit10_,
+    address masterchef0_,
+    address masterchef1_,
+    address swapper_
+  ) {
+    EXIT10 = exit10_;
+    MASTERCHEF_0 = masterchef0_;
+    MASTERCHEF_1 = masterchef1_;
+    SWAPPER = swapper_;
+
+    ERC20(Exit10(EXIT10).TOKEN_OUT()).approve(swapper_, type(uint256).max);
+  }
+
+  modifier onlyAuthorized() {
+    require(msg.sender == EXIT10, 'FeeSplitter: Caller not authorized');
+    _;
   }
 
   function collectFees(
     uint256 pendingBucket,
     uint256 remainingBuckets,
-    uint256 amountToken0,
-    uint256 amountToken1
-  ) external onlyOwner {
-    if (amountToken0 != 0) {
-      ERC20(_token0()).safeTransferFrom(address(owner()), address(this), amountToken0);
-      pendingBucketToken0 += _calcShare(pendingBucket, pendingBucket + remainingBuckets, amountToken0);
-      remainingBucketsToken0 += _calcShare(remainingBuckets, pendingBucket + remainingBuckets, amountToken0);
+    uint256 amountTokenOut,
+    uint256 amountTokenIn
+  ) external onlyAuthorized {
+    if (amountTokenOut != 0) {
+      ERC20(Exit10(EXIT10).TOKEN_OUT()).safeTransferFrom(EXIT10, address(this), amountTokenOut);
+      pendingBucketTokenOut += _calcShare(pendingBucket, pendingBucket + remainingBuckets, amountTokenOut);
+      remainingBucketsTokenOut += (amountTokenOut - pendingBucketTokenOut);
     }
 
-    if (amountToken1 != 0) {
-      ERC20(_token1()).safeTransferFrom(address(owner()), address(this), amountToken1);
-      pendingBucketToken1 += _calcShare(pendingBucket, pendingBucket + remainingBuckets, amountToken1);
-      remainingBucketsToken1 += _calcShare(remainingBuckets, pendingBucket + remainingBuckets, amountToken1);
+    if (amountTokenIn != 0) {
+      ERC20(Exit10(EXIT10).TOKEN_IN()).safeTransferFrom(EXIT10, address(this), amountTokenIn);
+      pendingBucketTokenIn += _calcShare(pendingBucket, pendingBucket + remainingBuckets, amountTokenIn);
+      remainingBucketsTokenIn += (amountTokenIn - pendingBucketTokenIn);
     }
   }
 
-  function updateFees() external {
-    _requireMasterchefCaller();
+  function updateFees(uint256 amount) external {
+    uint256 balanceTokenOut = ERC20(Exit10(EXIT10).TOKEN_OUT()).balanceOf(address(this));
 
-    uint256 mc0Token0 = (pendingBucketToken0 / 10) * 4;
-    uint256 mc0Token1 = (pendingBucketToken1 / 10) * 4;
-    uint256 mc1Token0 = remainingBucketsToken0 + (pendingBucketToken0 - mc0Token0);
-    uint256 mc1Token1 = remainingBucketsToken1 + (pendingBucketToken1 - mc0Token1);
+    amount = Math.min(amount, balanceTokenOut);
 
-    pendingBucketToken0 = pendingBucketToken1 = 0;
-    remainingBucketsToken0 = remainingBucketsToken1 = 0;
+    if (amount != 0) {
+      uint256 totalExchanged = _swap(amount);
 
-    _safeTransferTokens(MASTERCHEF_0, mc0Token0, mc0Token1);
-    _safeTransferTokens(MASTERCHEF_1, mc1Token0, mc1Token1);
-    //
+      uint256 notExchanged;
+      uint256 notExchangedPendingShare;
+
+      if (amount != balanceTokenOut) {
+        notExchanged = balanceTokenOut - amount;
+        notExchangedPendingShare = _calcShare(
+          pendingBucketTokenOut,
+          pendingBucketTokenOut + remainingBucketsTokenOut,
+          notExchanged
+        );
+      }
+
+      uint256 exchangedPendingShare = _calcShare(
+        pendingBucketTokenOut,
+        pendingBucketTokenOut + remainingBucketsTokenOut,
+        totalExchanged
+      );
+
+      pendingBucketTokenIn += exchangedPendingShare;
+      remainingBucketsTokenIn += (totalExchanged - exchangedPendingShare);
+
+      pendingBucketTokenOut = notExchangedPendingShare;
+      remainingBucketsTokenOut = notExchanged - notExchangedPendingShare;
+    }
+
+    uint256 mc0TokenIn = (pendingBucketTokenIn / 10) * 4;
+    uint256 mc1TokenIn = remainingBucketsTokenIn + (pendingBucketTokenIn - mc0TokenIn);
+
+    pendingBucketTokenIn = 0;
+    remainingBucketsTokenIn = 0;
+
+    _safeTransferToken(Exit10(EXIT10).TOKEN_IN(), MASTERCHEF_0, mc0TokenIn);
+    _safeTransferToken(Exit10(EXIT10).TOKEN_IN(), MASTERCHEF_1, mc1TokenIn);
+
+    Masterchef(MASTERCHEF_0).updateRewards();
+    Masterchef(MASTERCHEF_1).updateRewards();
   }
 
-  function _swapToEth(uint256 _amount) internal returns (uint256 _acquiredEth) {}
+  function _swap(uint256 _amount) internal returns (uint256 _acquiredEth) {
+    ISwapper.SwapParameters memory params = ISwapper.SwapParameters({
+      recipient: address(this),
+      tokenIn: Exit10(EXIT10).TOKEN_OUT(),
+      tokenOut: Exit10(EXIT10).TOKEN_IN(),
+      fee: Exit10(EXIT10).FEE(),
+      amountIn: _amount,
+      slippage: 100,
+      oracleSeconds: 60
+    });
+
+    _acquiredEth = ISwapper(SWAPPER).swap(params);
+  }
 
   function _calcShare(
     uint256 _part,
@@ -70,33 +129,11 @@ contract FeeSplitter is Ownable {
     if (_total != 0) _share = (_part * _externalSum) / _total;
   }
 
-  function _safeTransferTokens(
-    address _recipient,
-    uint256 _amount0,
-    uint256 _amount1
-  ) internal {
-    _safeTransferToken(_token0(), _recipient, _amount0);
-    _safeTransferToken(_token1(), _recipient, _amount1);
-  }
-
   function _safeTransferToken(
     address _token,
     address _recipient,
     uint256 _amount
   ) internal {
     if (_amount != 0) ERC20(_token).safeTransfer(_recipient, _amount);
-  }
-
-  function _token0() internal view returns (address) {
-    return Exit10(owner()).POOL().token0();
-  }
-
-  function _token1() internal view returns (address) {
-    return Exit10(owner()).POOL().token1();
-  }
-
-  function _requireMasterchefCaller() internal view {
-    bool allowed = (msg.sender == MASTERCHEF_0 || msg.sender == MASTERCHEF_1);
-    require(allowed, 'IFeeSplitter: Caller not allowed');
   }
 }

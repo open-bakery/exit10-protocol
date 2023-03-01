@@ -7,12 +7,14 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 
+import './interfaces/IRewardDistributor.sol';
+
 import 'forge-std/console.sol';
 
 /// @title Masterchef External Rewards
 /// @notice Modified masterchef contract (https://etherscan.io/address/0xc2edad668740f1aa35e4d8f227fb8e17dca888cd#code)
 /// to support external rewards
-contract MasterchefBase is Ownable {
+contract Masterchef is Ownable {
   using SafeERC20 for IERC20;
 
   event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
@@ -81,7 +83,7 @@ contract MasterchefBase is Ownable {
   mapping(address => bool) private poolToken;
 
   modifier onlyAuthorized() {
-    require(msg.sender == rewardDistributor, 'MasterchefExternalRewards: Caller not authorized');
+    require(msg.sender == rewardDistributor, 'Masterchef: Caller not authorized');
     _;
   }
 
@@ -92,8 +94,9 @@ contract MasterchefBase is Ownable {
     periodFinish = timeDeployed + rewardsDuration;
   }
 
-  function setRewardDistributor(address account) external onlyOwner {
-    rewardDistributor = account;
+  function setRewardDistributor(address rd) external onlyOwner {
+    require(rewardDistributor == address(0), 'Masterchef: Reward distributor already set');
+    rewardDistributor = rd;
   }
 
   /// @notice Average reward per second generated since contract deployment.
@@ -126,9 +129,10 @@ contract MasterchefBase is Ownable {
 
   /// @notice Add a new pool.
   function add(uint256 _allocPoint, address _token) public onlyOwner {
-    require(poolToken[address(_token)] == false, 'MasterchefExternalRewards: A pool already exists for this token');
+    require(rewardDistributor != address(0), 'Masterchef: Reward distributor not set');
+    require(poolToken[address(_token)] == false, 'Masterchef: A pool already exists for this token');
 
-    require(_token != rewardToken, 'MasterchefExternalRewards: Does not support staking reward token');
+    require(_token != rewardToken, 'Masterchef: Does not support staking reward token');
 
     totalAllocPoint = totalAllocPoint + _allocPoint;
 
@@ -190,7 +194,11 @@ contract MasterchefBase is Ownable {
   }
 
   // Withdraw tokens from pool. Claims any rewards pending implicitly.
-  function withdraw(uint256 _pid, uint256 _amount) public {
+  function withdraw(
+    uint256 _pid,
+    uint256 _amount,
+    bool claimRewards
+  ) public {
     UserInfo storage user = userInfo[_pid][msg.sender];
     require(_amount <= user.amount, 'MasterchefExternalRewards: Withdraw amount is greater than user stake.');
 
@@ -218,12 +226,17 @@ contract MasterchefBase is Ownable {
     // No mass update dont update pending rewards
   }
 
+  /// @notice Updates rewards for all pools by adding pending rewards.
+  /// Can spend a lot of gas.
+  function massUpdatePools() public {
+    uint256 length = poolInfo.length;
+    for (uint256 pid = 0; pid < length; ++pid) {
+      _updatePool(pid);
+    }
+  }
+
   /// Adds and evenly distributes rewards through the rewardsDuration.
-  function updateRewards(uint256 amount) external virtual onlyAuthorized {
-    require(amount != 0, 'MasterchefExternalRewards: Reward amount must be greater than zero');
-
-    IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), amount);
-
+  function updateRewards() public virtual onlyAuthorized {
     if (totalAllocPoint == 0) {
       return;
     }
@@ -234,17 +247,12 @@ contract MasterchefBase is Ownable {
     uint256 rewardTokenBalance = IERC20(rewardToken).balanceOf(address(this));
     rewardRate = (rewardTokenBalance * precision) / rewardsDuration;
     periodFinish = block.timestamp + rewardsDuration;
-
-    emit RewardsDeposited(amount);
   }
 
-  /// @notice Updates rewards for all pools by adding pending rewards.
-  /// Can spend a lot of gas.
-  function massUpdatePools() public {
-    uint256 length = poolInfo.length;
-    for (uint256 pid = 0; pid < length; ++pid) {
-      _updatePool(pid);
-    }
+  function _updateRewards() internal returns (uint256 amount) {
+    amount = IRewardDistributor(rewardDistributor).updateRewards();
+
+    emit RewardsDeposited(amount);
   }
 
   /// @notice Increases accRewardPerShare and accUndistributedReward since last update.

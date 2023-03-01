@@ -4,35 +4,12 @@ pragma solidity >=0.8.0;
 interface IExit10 {
   struct DeployParams {
     address NFT;
-    address NPM;
     address STO;
-    address pool;
     address masterchef; // For EXIT/USDC
     address feeSplitter;
-    int24 tickLower;
-    int24 tickUpper;
     uint256 bootstrapPeriod; // Min duration of first chicken-in
     uint256 accrualParameter; // Initial value for `accrualParameter`
     uint256 lpPerUSD; // Amount of LP per USD that is minted on the 500 - 10000 Range Pool
-  }
-
-  /// @notice AddLiquidity Struct which is responsible for adding liquidity to a position.
-  /// @dev depositor The address which the position will be credited to.
-
-  struct AddLiquidity {
-    address depositor;
-    uint256 amount0Desired;
-    uint256 amount1Desired;
-    uint256 amount0Min;
-    uint256 amount1Min;
-    uint256 deadline;
-  }
-
-  struct RemoveLiquidity {
-    uint128 liquidity;
-    uint256 amount0Min;
-    uint256 amount1Min;
-    uint256 deadline;
   }
 
   struct BondData {
@@ -71,8 +48,6 @@ interface IExit10 {
       uint256 exit,
       uint256 bootstrap
     );
-
-  function getAddressUSDC() external view returns (address);
 
   function inExitMode() external view returns (bool);
 }

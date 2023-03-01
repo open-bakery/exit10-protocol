@@ -12,10 +12,11 @@ import './interfaces/IExit10.sol';
 import './utils/BaseMath.sol';
 import './BaseToken.sol';
 import './FeeSplitter.sol';
+import './UniswapBase.sol';
 
 import 'forge-std/Test.sol';
 
-contract Exit10 is IExit10, BaseMath {
+contract Exit10 is IExit10, BaseMath, UniswapBase {
   using SafeERC20 for ERC20;
 
   uint256 private pendingAmount;
@@ -23,7 +24,6 @@ contract Exit10 is IExit10, BaseMath {
   uint256 private bootstrapAmount;
   uint256 private finalExitAmount;
 
-  uint256 public positionId;
   uint256 public countConvertBond;
   uint256 public countCancelBond;
 
@@ -53,18 +53,14 @@ contract Exit10 is IExit10, BaseMath {
   // On Ethereum Mainnet:
   // Token0 is USDC
   // Token1 is WETH
-  IUniswapV3Pool public immutable POOL;
+
   BaseToken public immutable EXIT;
   BaseToken public immutable BLP;
   BaseToken public immutable BOOT;
 
   address public immutable STO; // STO token distribution
-  address public immutable NPM; // Uniswap Nonfungible Position Manager
   INFT public immutable NFT;
   address public FEE_SPLITTER;
-
-  int24 public immutable TICK_LOWER;
-  int24 public immutable TICK_UPPER;
 
   uint256 constant MAX_UINT256 = type(uint256).max;
   uint256 public immutable MAX_SUPPLY = 10_000_000 ether;
@@ -86,14 +82,12 @@ contract Exit10 is IExit10, BaseMath {
   event Redeem(address indexed redeemer, uint256 amount0, uint256 amount1);
   event MintExit(address indexed recipient, uint256 amount);
 
-  constructor(DeployParams memory params) {
+  constructor(IUniswapBase.BaseDeployParams memory baseParams_, DeployParams memory params) UniswapBase(baseParams_) {
     DEPLOYMENT_TIMESTAMP = block.timestamp;
 
-    NPM = params.NPM;
     STO = params.STO;
     NFT = INFT(params.NFT);
 
-    POOL = IUniswapV3Pool(params.pool);
     EXIT = new BaseToken('Exit Liquidity', 'EXIT');
     BLP = new BaseToken('Boost Liquidity', 'BLP');
     BOOT = new BaseToken('Exit10 Bootstrap', 'BOOT');
@@ -101,17 +95,14 @@ contract Exit10 is IExit10, BaseMath {
     MASTERCHEF = params.masterchef;
     FEE_SPLITTER = params.feeSplitter;
 
-    TICK_LOWER = params.tickLower;
-    TICK_UPPER = params.tickUpper;
-
     BOOTSTRAP_PERIOD = params.bootstrapPeriod;
     ACCRUAL_PARAMETER = params.accrualParameter * DECIMAL_PRECISION;
     LP_PER_USD = params.lpPerUSD;
 
-    ERC20(IUniswapV3Pool(params.pool).token0()).approve(NPM, type(uint256).max);
-    ERC20(IUniswapV3Pool(params.pool).token1()).approve(NPM, type(uint256).max);
-    ERC20(IUniswapV3Pool(params.pool).token0()).approve(FEE_SPLITTER, type(uint256).max);
-    ERC20(IUniswapV3Pool(params.pool).token1()).approve(FEE_SPLITTER, type(uint256).max);
+    ERC20(IUniswapV3Pool(POOL).token0()).approve(NPM, type(uint256).max);
+    ERC20(IUniswapV3Pool(POOL).token1()).approve(NPM, type(uint256).max);
+    ERC20(IUniswapV3Pool(POOL).token0()).approve(FEE_SPLITTER, type(uint256).max);
+    ERC20(IUniswapV3Pool(POOL).token1()).approve(FEE_SPLITTER, type(uint256).max);
   }
 
   function getBondData(uint256 bondID)
@@ -157,10 +148,6 @@ contract Exit10 is IExit10, BaseMath {
 
   function getOpenBondCount() external view returns (uint256) {
     return NFT.totalSupply() - (countConvertBond + countCancelBond);
-  }
-
-  function getAddressUSDC() public view returns (address usdc) {
-    usdc = _compare(ERC20(POOL.token0()).symbol(), 'USDC') ? POOL.token0() : POOL.token1();
   }
 
   function bootstrapLock(AddLiquidity memory params)
@@ -286,7 +273,7 @@ contract Exit10 is IExit10, BaseMath {
     finalExitAmount = uint128(_liquidityAmount() - (pendingAmount + reserveAmount));
     uint256 exitBucket;
 
-    if (_compare(ERC20(POOL.token1()).symbol(), 'WETH')) {
+    if (POOL.token1() == TOKEN_IN) {
       (exitBucket, ) = _decreaseLiquidity(
         RemoveLiquidity({
           liquidity: uint128(finalExitAmount),
@@ -320,7 +307,7 @@ contract Exit10 is IExit10, BaseMath {
     // 70% Exit Token holders
     exitLiquidity -= share * 3;
 
-    _safeTransferToken(getAddressUSDC(), STO, exitTeamPlusBackers);
+    _safeTransferToken(TOKEN_OUT, STO, exitTeamPlusBackers);
   }
 
   function bootstrapClaim() external {
@@ -334,7 +321,7 @@ contract Exit10 is IExit10, BaseMath {
 
     exitBootstrapClaimed += claim;
 
-    _safeTransferToken(getAddressUSDC(), msg.sender, claim);
+    _safeTransferToken(TOKEN_OUT, msg.sender, claim);
   }
 
   function exitClaim() external {
@@ -348,7 +335,7 @@ contract Exit10 is IExit10, BaseMath {
 
     exitLiquidityClaimed += claim;
 
-    _safeTransferToken(getAddressUSDC(), msg.sender, claim);
+    _safeTransferToken(TOKEN_OUT, msg.sender, claim);
   }
 
   function claimAndDistributeFees() public {
@@ -380,77 +367,6 @@ contract Exit10 is IExit10, BaseMath {
     _token.burn(msg.sender, ERC20(_token).balanceOf(msg.sender));
     _claim = (_amount * _externalSum) / _supply;
     _claim = (_claimed + _claim <= _supply) ? _claim : _supply - _claimed;
-  }
-
-  function _addLiquidity(AddLiquidity memory _params)
-    internal
-    returns (
-      uint256 _tokenId,
-      uint128 _liquidityAdded,
-      uint256 _amountAdded0,
-      uint256 _amountAdded1
-    )
-  {
-    if (positionId == 0) {
-      (_tokenId, _liquidityAdded, _amountAdded0, _amountAdded1) = INPM(NPM).mint(
-        INPM.MintParams({
-          token0: POOL.token0(),
-          token1: POOL.token1(),
-          fee: POOL.fee(),
-          tickLower: TICK_LOWER, //Tick needs to exist (right spacing)
-          tickUpper: TICK_UPPER, //Tick needs to exist (right spacing)
-          amount0Desired: _params.amount0Desired,
-          amount1Desired: _params.amount1Desired,
-          amount0Min: _params.amount0Min, // slippage check
-          amount1Min: _params.amount1Min, // slippage check
-          recipient: address(this), // receiver of ERC721
-          deadline: _params.deadline
-        })
-      );
-      positionId = _tokenId;
-    } else {
-      (_liquidityAdded, _amountAdded0, _amountAdded1) = INPM(NPM).increaseLiquidity(
-        INPM.IncreaseLiquidityParams({
-          tokenId: positionId,
-          amount0Desired: _params.amount0Desired,
-          amount1Desired: _params.amount1Desired,
-          amount0Min: _params.amount0Min,
-          amount1Min: _params.amount1Min,
-          deadline: _params.deadline
-        })
-      );
-    }
-  }
-
-  function _decreaseLiquidity(RemoveLiquidity memory _params)
-    internal
-    returns (uint256 _amountRemoved0, uint256 _amountRemoved1)
-  {
-    (_amountRemoved0, _amountRemoved1) = INPM(NPM).decreaseLiquidity(
-      INPM.DecreaseLiquidityParams({
-        tokenId: positionId,
-        liquidity: _params.liquidity,
-        amount0Min: _params.amount0Min,
-        amount1Min: _params.amount1Min,
-        deadline: _params.deadline
-      })
-    );
-  }
-
-  function _collect(
-    address _recipient,
-    uint128 _amount0Max,
-    uint128 _amount1Max
-  ) internal returns (uint256 _amountCollected0, uint256 _amountCollected1) {
-    if (positionId == 0) return (0, 0);
-    (_amountCollected0, _amountCollected1) = INPM(NPM).collect(
-      INPM.CollectParams({
-        tokenId: positionId,
-        recipient: _recipient,
-        amount0Max: _amount0Max,
-        amount1Max: _amount1Max
-      })
-    );
   }
 
   function _depositTokens(uint256 _amount0, uint256 _amount1) internal {
@@ -511,10 +427,6 @@ contract Exit10 is IExit10, BaseMath {
     return (block.timestamp < DEPLOYMENT_TIMESTAMP + BOOTSTRAP_PERIOD);
   }
 
-  function _compare(string memory _str1, string memory _str2) internal pure returns (bool) {
-    return keccak256(abi.encodePacked(_str1)) == keccak256(abi.encodePacked(_str2));
-  }
-
   function _requireExitMode() internal view {
     require(inExitMode, 'EXIT10: Not in Exit mode');
   }
@@ -526,7 +438,7 @@ contract Exit10 is IExit10, BaseMath {
   function _requireOutOfTickRange() internal view {
     // Uniswap's price is recorded as token1/token0
     // https://github.com/timeless-fi/uniswap-poor-oracle.git
-    if (_compare(ERC20(POOL.token1()).symbol(), 'WETH')) {
+    if (TOKEN_IN > TOKEN_OUT) {
       require(_currentTick() <= TICK_LOWER, 'EXIT10: Current Tick not below TICK_LOWER');
     } else {
       require(_currentTick() >= TICK_UPPER, 'EXIT10: Current Tick not above TICK_UPPER');

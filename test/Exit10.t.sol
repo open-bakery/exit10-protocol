@@ -6,7 +6,8 @@ import '../src/Exit10.sol';
 import '../src/NFT.sol';
 import '../src/STO.sol';
 import '../src/interfaces/IExit10.sol';
-import '../src/interfaces/ISwapRouter.sol';
+import '../src/interfaces/IUniswapBase.sol';
+import '../src/interfaces/IUniswapV3Router.sol';
 import '../src/interfaces/INonfungiblePositionManager.sol';
 import '../src/FeeSplitter.sol';
 
@@ -14,49 +15,53 @@ contract Exit10Test is Test {
   Exit10 exit10;
   NFT nft;
   STO sto;
-  ISwapRouter public immutable UNISWAP_ROUTER = ISwapRouter(vm.envAddress('UNISWAP_ROUTER'));
-
-  address _npm = vm.envAddress('UNISWAP_V3_NPM');
-  address _pool = vm.envAddress('POOL');
-  int24 _lowerTick = int24(vm.envInt('LOWER_TICK'));
-  int24 _upperTick = int24(vm.envInt('UPPER_TICK'));
-  uint256 _accrualParameter = 1 days;
-  uint256 _bootstrapPeriod = 1 hours;
-  uint256 _lpPerUSD = 1; // made up number
-
   ERC20 token0;
   ERC20 token1;
+
+  uint256 bootstrapPeriod = 1 hours;
+  uint256 accrualParameter = 1 days;
+  uint256 lpPerUSD = 1; // made up number
+
   uint256 initialBalance = 1_000_000_000 ether;
   uint256 deployTime;
   uint256 constant MX = type(uint256).max;
 
-  address _feeSplitter;
-  address _masterchef0 = address(0x0a);
-  address _masterchef1 = address(0x0b);
-  address _masterchef2 = address(0x0c);
+  IUniswapV3Router UNISWAP_ROUTER = IUniswapV3Router(vm.envAddress('UNISWAP_V3_ROUTER'));
+  address feeSplitter;
+  address masterchef0 = address(0x0a);
+  address masterchef1 = address(0x0b);
+  address masterchef2 = address(0x0c);
+
+  IUniswapBase.BaseDeployParams baseParams =
+    IUniswapBase.BaseDeployParams({
+      uniswapFactory: vm.envAddress('UNISWAP_V3_FACTORY'),
+      nonfungiblePositionManager: vm.envAddress('UNISWAP_V3_NPM'),
+      tokenIn: vm.envAddress('WETH'),
+      tokenOut: vm.envAddress('USDC'),
+      fee: uint24(vm.envUint('FEE')),
+      tickLower: int24(vm.envInt('LOWER_TICK')),
+      tickUpper: int24(vm.envInt('UPPER_TICK'))
+    });
 
   function setUp() public {
     nft = new NFT('Bond Data', 'BND', 0);
     sto = new STO(bytes32('merkle_root'));
-    _feeSplitter = address(new FeeSplitter(_masterchef0, _masterchef1));
-    exit10 = new Exit10(
-      IExit10.DeployParams({
-        NFT: address(nft),
-        NPM: _npm,
-        STO: address(sto),
-        pool: _pool,
-        masterchef: _masterchef2,
-        feeSplitter: _feeSplitter,
-        tickLower: _lowerTick,
-        tickUpper: _upperTick,
-        bootstrapPeriod: _bootstrapPeriod,
-        accrualParameter: _accrualParameter,
-        lpPerUSD: _lpPerUSD
-      })
-    );
+    feeSplitter = address(new FeeSplitter(masterchef0, masterchef1));
+
+    IExit10.DeployParams memory params = IExit10.DeployParams({
+      NFT: address(nft),
+      STO: address(sto),
+      masterchef: masterchef2,
+      feeSplitter: feeSplitter,
+      bootstrapPeriod: bootstrapPeriod,
+      accrualParameter: accrualParameter,
+      lpPerUSD: lpPerUSD
+    });
+
+    exit10 = new Exit10(baseParams, params);
     sto.setExit10(address(exit10));
     nft.setExit10(address(exit10));
-    FeeSplitter(_feeSplitter).transferOwnership(address(exit10));
+    FeeSplitter(feeSplitter).transferOwnership(address(exit10));
 
     deployTime = block.timestamp;
     token0 = ERC20(exit10.POOL().token0());
@@ -79,7 +84,7 @@ contract Exit10Test is Test {
 
   function testBootstrapLock() public {
     (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) = exit10.bootstrapLock(
-      IExit10.AddLiquidity({
+      IUniswapBase.AddLiquidity({
         depositor: address(this),
         amount0Desired: 10000_000000,
         amount1Desired: 10 ether,
@@ -105,7 +110,7 @@ contract Exit10Test is Test {
     skip(exit10.BOOTSTRAP_PERIOD());
     vm.expectRevert(bytes('EXIT10: Bootstrap ended'));
     exit10.bootstrapLock(
-      IExit10.AddLiquidity({
+      IUniswapBase.AddLiquidity({
         depositor: address(this),
         amount0Desired: 10000_000000,
         amount1Desired: 10 ether,
@@ -119,7 +124,7 @@ contract Exit10Test is Test {
   function testCreateBondBootstrapOngoingRevert() public {
     vm.expectRevert(bytes('EXIT10: Bootstrap ongoing'));
     exit10.createBond(
-      IExit10.AddLiquidity({
+      IUniswapBase.AddLiquidity({
         depositor: address(this),
         amount0Desired: 10000_000000,
         amount1Desired: 10 ether,
@@ -151,7 +156,7 @@ contract Exit10Test is Test {
   function testCreateBondOnBehalfOfUser() public {
     skip(exit10.BOOTSTRAP_PERIOD());
     uint256 bondId = exit10.createBond(
-      IExit10.AddLiquidity({
+      IUniswapBase.AddLiquidity({
         depositor: address(0xdead),
         amount0Desired: 10000_000000,
         amount1Desired: 10 ether,
@@ -165,7 +170,7 @@ contract Exit10Test is Test {
 
   function testCreateBondWithBootstrap() public {
     (, uint128 liquidityAdded, , ) = exit10.bootstrapLock(
-      IExit10.AddLiquidity({
+      IUniswapBase.AddLiquidity({
         depositor: address(this),
         amount0Desired: 10000_000000,
         amount1Desired: 10 ether,
@@ -201,7 +206,7 @@ contract Exit10Test is Test {
     (uint256 balanceToken0, uint256 balanceToken1) = _getTokensBalance();
     exit10.cancelBond(
       bondId,
-      IExit10.RemoveLiquidity({
+      IUniswapBase.RemoveLiquidity({
         liquidity: uint128(bondAmount),
         amount0Min: 0,
         amount1Min: 0,
@@ -225,7 +230,7 @@ contract Exit10Test is Test {
     vm.expectRevert(bytes('EXIT10: Caller must own the bond'));
     exit10.cancelBond(
       bondId,
-      IExit10.RemoveLiquidity({
+      IUniswapBase.RemoveLiquidity({
         liquidity: uint128(bondAmount),
         amount0Min: 0,
         amount1Min: 0,
@@ -239,7 +244,7 @@ contract Exit10Test is Test {
     (uint256 bondAmount, , , , ) = exit10.getBondData(bondId);
     exit10.cancelBond(
       bondId,
-      IExit10.RemoveLiquidity({
+      IUniswapBase.RemoveLiquidity({
         liquidity: uint128(bondAmount),
         amount0Min: 0,
         amount1Min: 0,
@@ -249,7 +254,7 @@ contract Exit10Test is Test {
     vm.expectRevert(bytes('EXIT10: Bond must be active'));
     exit10.cancelBond(
       bondId,
-      IExit10.RemoveLiquidity({
+      IUniswapBase.RemoveLiquidity({
         liquidity: uint128(bondAmount),
         amount0Min: 0,
         amount1Min: 0,
@@ -263,11 +268,11 @@ contract Exit10Test is Test {
     uint64 startTime = uint64(block.timestamp);
     uint256 liquidity = _liquidity(exit10.positionId());
 
-    skip(_accrualParameter);
+    skip(accrualParameter);
     (uint256 bondAmount, , , , ) = exit10.getBondData(bondId);
     exit10.convertBond(
       bondId,
-      IExit10.RemoveLiquidity({
+      IUniswapBase.RemoveLiquidity({
         liquidity: uint128(bondAmount),
         amount0Min: 0,
         amount1Min: 0,
@@ -288,11 +293,11 @@ contract Exit10Test is Test {
 
   function testRedeem() public {
     uint256 bondId = _skipBootAndCreateBond();
-    skip(_accrualParameter);
+    skip(accrualParameter);
     (uint256 bondAmount, , , , ) = exit10.getBondData(bondId);
     exit10.convertBond(
       bondId,
-      IExit10.RemoveLiquidity({
+      IUniswapBase.RemoveLiquidity({
         liquidity: uint128(bondAmount),
         amount0Min: 0,
         amount1Min: 0,
@@ -302,7 +307,12 @@ contract Exit10Test is Test {
     (uint256 balanceToken0, uint256 balanceToken1) = _getTokensBalance();
     uint128 liquidityToRemove = uint128(exit10.BLP().balanceOf(address(this)) / exit10.TOKEN_MULTIPLIER());
     exit10.redeem(
-      IExit10.RemoveLiquidity({ liquidity: liquidityToRemove, amount0Min: 0, amount1Min: 0, deadline: block.timestamp })
+      IUniswapBase.RemoveLiquidity({
+        liquidity: liquidityToRemove,
+        amount0Min: 0,
+        amount1Min: 0,
+        deadline: block.timestamp
+      })
     );
 
     assertTrue(token0.balanceOf(address(this)) > balanceToken0, 'Check balance token0');
@@ -316,7 +326,7 @@ contract Exit10Test is Test {
   function testClaimAndDistributeFees() public {
     skip(exit10.BOOTSTRAP_PERIOD());
     exit10.createBond(
-      IExit10.AddLiquidity({
+      IUniswapBase.AddLiquidity({
         depositor: address(this),
         amount0Desired: 10_000_000_000000,
         amount1Desired: 10_000 ether,
@@ -330,8 +340,8 @@ contract Exit10Test is Test {
     checkTreasury(_liquidity(exit10.positionId()), 0, 0, 0);
 
     exit10.claimAndDistributeFees();
-    uint256 feesClaimed0 = token0.balanceOf(_feeSplitter);
-    uint256 feesClaimed1 = token1.balanceOf(_feeSplitter);
+    uint256 feesClaimed0 = token0.balanceOf(feeSplitter);
+    uint256 feesClaimed1 = token1.balanceOf(feeSplitter);
 
     assertTrue(feesClaimed0 != 0, 'Check fees claimed 0');
     assertTrue(feesClaimed1 != 0, 'Check fees claimed 1');
@@ -347,7 +357,7 @@ contract Exit10Test is Test {
 
   function testExit10() public {
     exit10.bootstrapLock(
-      IExit10.AddLiquidity({
+      IUniswapBase.AddLiquidity({
         depositor: address(this),
         amount0Desired: 10000_000000,
         amount1Desired: 10 ether,
@@ -357,11 +367,11 @@ contract Exit10Test is Test {
       })
     );
     uint256 bondId = _skipBootAndCreateBond();
-    skip(_accrualParameter);
+    skip(accrualParameter);
     (uint256 bondAmount, , , , ) = exit10.getBondData(bondId);
     exit10.convertBond(
       bondId,
-      IExit10.RemoveLiquidity({
+      IUniswapBase.RemoveLiquidity({
         liquidity: uint128(bondAmount),
         amount0Min: 0,
         amount1Min: 0,
@@ -396,7 +406,7 @@ contract Exit10Test is Test {
 
   function testBootstrapClaim() public {
     exit10.bootstrapLock(
-      IExit10.AddLiquidity({
+      IUniswapBase.AddLiquidity({
         depositor: address(this),
         amount0Desired: 10000_000000,
         amount1Desired: 10 ether,
@@ -406,11 +416,11 @@ contract Exit10Test is Test {
       })
     );
     uint256 bondId = _skipBootAndCreateBond();
-    skip(_accrualParameter);
+    skip(accrualParameter);
     (uint256 bondAmount, , , , ) = exit10.getBondData(bondId);
     exit10.convertBond(
       bondId,
-      IExit10.RemoveLiquidity({
+      IUniswapBase.RemoveLiquidity({
         liquidity: uint128(bondAmount),
         amount0Min: 0,
         amount1Min: 0,
@@ -445,11 +455,11 @@ contract Exit10Test is Test {
 
   function testExitClaim() public {
     uint256 bondId = _skipBootAndCreateBond();
-    skip(_accrualParameter);
+    skip(accrualParameter);
     (uint256 bondAmount, , , , ) = exit10.getBondData(bondId);
     exit10.convertBond(
       bondId,
-      IExit10.RemoveLiquidity({
+      IUniswapBase.RemoveLiquidity({
         liquidity: uint128(bondAmount),
         amount0Min: 0,
         amount1Min: 0,
@@ -476,7 +486,7 @@ contract Exit10Test is Test {
 
   function testAccrualSchedule() public {
     uint256 bondId = _skipBootAndCreateBond();
-    skip(_accrualParameter);
+    skip(accrualParameter);
     assertTrue(exit10.getAccruedAmount(bondId) == _liquidity(exit10.positionId()) / 2);
   }
 
@@ -501,7 +511,7 @@ contract Exit10Test is Test {
 
   function _createBond() internal returns (uint256 _bondId) {
     _bondId = exit10.createBond(
-      IExit10.AddLiquidity({
+      IUniswapBase.AddLiquidity({
         depositor: address(this),
         amount0Desired: 10000_000000,
         amount1Desired: 10 ether,
@@ -527,7 +537,7 @@ contract Exit10Test is Test {
     uint256 _amount
   ) internal returns (uint256 _amountOut) {
     _amountOut = UNISWAP_ROUTER.exactInputSingle(
-      ISwapRouter.ExactInputSingleParams({
+      IUniswapV3Router.ExactInputSingleParams({
         tokenIn: _in,
         tokenOut: _out,
         fee: 500,

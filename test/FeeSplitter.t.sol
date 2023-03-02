@@ -19,6 +19,7 @@ contract FeeSplitterTest is Test {
   address swapper = vm.envAddress('SWAPPER');
   address public immutable TOKEN_IN = WETH;
   address public immutable TOKEN_OUT = USDC;
+  uint24 public immutable FEE = 500;
 
   address masterchef0 = address(new Masterchef(WETH, 2 weeks));
   address masterchef1 = address(new Masterchef(WETH, 2 weeks));
@@ -41,7 +42,7 @@ contract FeeSplitterTest is Test {
     _dealTokens(amountTokenOut, amountTokenIn);
     _simulateCollectFees(pendingShare, remainingShare, amountTokenOut, amountTokenIn);
     _checkBuckets(40_000_000000, 4_000 ether, 60_000_000000, 6_000 ether);
-    _checkBalances(amountTokenOut, amountTokenIn);
+    _checkBalances(address(feeSplitter), amountTokenOut, amountTokenIn);
   }
 
   function testSwapper() public {
@@ -61,7 +62,63 @@ contract FeeSplitterTest is Test {
         oracleSeconds: 60
       })
     );
-    console.log(ERC20(TOKEN_IN).balanceOf(address(this)));
+    assertTrue(ERC20(WETH).balanceOf(address(this)) > amountTokenIn);
+  }
+
+  function testUpdateFeesPartialSell() public {
+    uint256 pendingShare = 4;
+    uint256 remainingShare = 6;
+    uint256 amountTokenOut = 100_000_000000;
+    uint256 amountTokenIn = 10_000 ether;
+    uint256 exchangeAmount = 20_000_000000;
+    _dealTokens(amountTokenOut, amountTokenIn);
+    _simulateCollectFees(pendingShare, remainingShare, amountTokenOut, amountTokenIn);
+    uint256 exchanged = feeSplitter.updateFees(exchangeAmount);
+
+    uint256 pendingTokenOut = ((amountTokenOut / 10) * pendingShare) - ((exchangeAmount / 10) * pendingShare);
+    uint256 remainingTokenOut = ((amountTokenOut / 10) * remainingShare) - ((exchangeAmount / 10) * remainingShare);
+    _checkBuckets(pendingTokenOut, 0, remainingTokenOut, 0);
+    _checkBalances(address(feeSplitter), amountTokenOut - exchangeAmount, 0);
+
+    uint256 exchangedPending = (exchanged / 10) * pendingShare;
+    uint256 pendingTokenIn = exchangedPending + (amountTokenIn / 10) * pendingShare;
+    _checkBalances(masterchef0, 0, (pendingTokenIn / 10) * 4);
+    _checkBalances(masterchef1, 0, (amountTokenIn + exchanged) - ERC20(TOKEN_IN).balanceOf(masterchef0));
+  }
+
+  function testUpdateFeesNoSell() public {
+    uint256 pendingShare = 4;
+    uint256 remainingShare = 6;
+    uint256 amountTokenOut = 100_000_000000;
+    uint256 amountTokenIn = 10_000 ether;
+    _dealTokens(amountTokenOut, amountTokenIn);
+    _simulateCollectFees(pendingShare, remainingShare, amountTokenOut, amountTokenIn);
+    feeSplitter.updateFees(0);
+    _checkBuckets(40_000_000000, 0, 60_000_000000, 0);
+    _checkBalances(address(feeSplitter), 100_000_000000, 0);
+
+    uint256 pendingTokenIn = (amountTokenIn / 10) * pendingShare;
+    uint256 mc0BalanceTokenIn = (pendingTokenIn / 10) * 4;
+    _checkBalances(masterchef0, 0, mc0BalanceTokenIn);
+    _checkBalances(masterchef1, 0, amountTokenIn - mc0BalanceTokenIn);
+  }
+
+  function testUpdateFeesFullSell() public {
+    uint256 pendingShare = 4;
+    uint256 remainingShare = 6;
+    uint256 amountTokenOut = 100_000_000000;
+    uint256 amountTokenIn = 10_000 ether;
+    _dealTokens(amountTokenOut, amountTokenIn);
+    _simulateCollectFees(pendingShare, remainingShare, amountTokenOut, amountTokenIn);
+    uint256 exchanged = feeSplitter.updateFees(100_000_000_000000);
+    _checkBuckets(0, 0, 0, 0);
+    _checkBalances(address(feeSplitter), 0, 0);
+
+    uint256 exchangedPending = (exchanged / 10) * pendingShare;
+    uint256 pendingTokenIn = (amountTokenIn / 10) * pendingShare + exchangedPending;
+    uint256 mc0BalanceTokenIn = (pendingTokenIn / 10) * 4;
+    _checkBalances(masterchef0, 0, mc0BalanceTokenIn);
+    _checkBalances(masterchef1, 0, exchanged + amountTokenIn - mc0BalanceTokenIn);
   }
 
   function _simulateCollectFees(
@@ -90,8 +147,12 @@ contract FeeSplitterTest is Test {
     assertTrue(_remainingBucketsTokenIn == feeSplitter.remainingBucketsTokenIn(), 'Check remaining bucket token in');
   }
 
-  function _checkBalances(uint256 _amountTokenOut, uint256 _amountTokenIn) internal {
-    assertTrue(_amountTokenOut == ERC20(TOKEN_OUT).balanceOf(address(feeSplitter)), 'Check balance token out');
-    assertTrue(_amountTokenIn == ERC20(TOKEN_IN).balanceOf(address(feeSplitter)), 'Check balance token in');
+  function _checkBalances(
+    address _target,
+    uint256 _amountTokenOut,
+    uint256 _amountTokenIn
+  ) internal {
+    assertTrue(_amountTokenOut == ERC20(TOKEN_OUT).balanceOf(_target), 'Check balance token out');
+    assertTrue(_amountTokenIn == ERC20(TOKEN_IN).balanceOf(_target), 'Check balance token in');
   }
 }

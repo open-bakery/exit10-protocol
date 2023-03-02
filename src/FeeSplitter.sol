@@ -65,13 +65,13 @@ contract FeeSplitter is Ownable {
     }
   }
 
-  function updateFees(uint256 amount) external {
+  function updateFees(uint256 amount) external returns (uint256 totalExchanged) {
     uint256 balanceTokenOut = ERC20(Exit10(exit10).TOKEN_OUT()).balanceOf(address(this));
 
     amount = Math.min(amount, balanceTokenOut);
 
     if (amount != 0) {
-      uint256 totalExchanged = _swap(amount);
+      totalExchanged = _swap(amount);
 
       uint256 notExchanged;
       uint256 notExchangedPendingShare;

@@ -46,7 +46,7 @@ contract Exit10Test is Test {
   function setUp() public {
     nft = new NFT('Bond Data', 'BND', 0);
     sto = new STO(bytes32('merkle_root'));
-    feeSplitter = address(new FeeSplitter(masterchef0, masterchef1, address(0xabc)));
+    feeSplitter = address(new FeeSplitter(masterchef0, masterchef1, vm.envAddress('SWAPPER')));
 
     IExit10.DeployParams memory params = IExit10.DeployParams({
       NFT: address(nft),

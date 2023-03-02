@@ -20,10 +20,10 @@ contract FeeSplitter is Ownable {
 
   address public exit10;
 
-  uint256 pendingBucketTokenOut; // USDC
-  uint256 pendingBucketTokenIn; // WETH
-  uint256 remainingBucketsTokenOut; // USDC
-  uint256 remainingBucketsTokenIn; // WETH
+  uint256 public pendingBucketTokenOut; // USDC
+  uint256 public pendingBucketTokenIn; // WETH
+  uint256 public remainingBucketsTokenOut; // USDC
+  uint256 public remainingBucketsTokenIn; // WETH
 
   constructor(
     address masterchef0_,
@@ -43,7 +43,7 @@ contract FeeSplitter is Ownable {
   function setExit10(address exit10_) external onlyOwner {
     exit10 = exit10_;
     ERC20(Exit10(exit10).TOKEN_OUT()).approve(SWAPPER, type(uint256).max);
-    transferOwnership(address(0));
+    renounceOwnership();
   }
 
   function collectFees(
@@ -125,19 +125,19 @@ contract FeeSplitter is Ownable {
     _acquiredEth = ISwapper(SWAPPER).swap(params);
   }
 
-  function _calcShare(
-    uint256 _part,
-    uint256 _total,
-    uint256 _externalSum
-  ) internal pure returns (uint256 _share) {
-    if (_total != 0) _share = (_part * _externalSum) / _total;
-  }
-
   function _safeTransferToken(
     address _token,
     address _recipient,
     uint256 _amount
   ) internal {
     if (_amount != 0) ERC20(_token).safeTransfer(_recipient, _amount);
+  }
+
+  function _calcShare(
+    uint256 _part,
+    uint256 _total,
+    uint256 _externalSum
+  ) internal pure returns (uint256 _share) {
+    if (_total != 0) _share = (_part * _externalSum) / _total;
   }
 }

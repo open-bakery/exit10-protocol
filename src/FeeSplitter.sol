@@ -107,8 +107,8 @@ contract FeeSplitter is Ownable {
     _safeTransferToken(Exit10(exit10).TOKEN_IN(), MASTERCHEF_0, mc0TokenIn);
     _safeTransferToken(Exit10(exit10).TOKEN_IN(), MASTERCHEF_1, mc1TokenIn);
 
-    Masterchef(MASTERCHEF_0).updateRewards();
-    Masterchef(MASTERCHEF_1).updateRewards();
+    Masterchef(MASTERCHEF_0).updateRewards(mc0TokenIn);
+    Masterchef(MASTERCHEF_1).updateRewards(mc1TokenIn);
   }
 
   function _swap(uint256 _amount) internal returns (uint256 _acquiredEth) {

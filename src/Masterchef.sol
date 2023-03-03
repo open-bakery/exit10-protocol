@@ -238,7 +238,7 @@ contract Masterchef is Ownable {
   }
 
   /// Adds and evenly distributes rewards through the rewardsDuration.
-  function updateRewards() external virtual onlyAuthorized {
+  function updateRewards(uint256 amount) external virtual onlyAuthorized {
     if (totalAllocPoint == 0) {
       return;
     }
@@ -246,8 +246,13 @@ contract Masterchef is Ownable {
     //Updates pool to account for the previous rewardRate.
     massUpdatePools();
 
-    uint256 rewardTokenBalance = IERC20(rewardToken).balanceOf(address(this));
-    rewardRate = (rewardTokenBalance * precision) / rewardsDuration;
+    if (block.timestamp <= periodFinish) {
+      uint256 undistributedRewards = rewardRate * (periodFinish - block.timestamp);
+      rewardRate = ((undistributedRewards + amount) * precision) / rewardsDuration;
+    } else {
+      rewardRate = (amount * precision) / rewardsDuration;
+    }
+
     periodFinish = block.timestamp + rewardsDuration;
   }
 

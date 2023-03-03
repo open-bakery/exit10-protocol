@@ -43,6 +43,8 @@ contract FeeSplitter is Ownable {
   function setExit10(address exit10_) external onlyOwner {
     exit10 = exit10_;
     ERC20(Exit10(exit10).TOKEN_OUT()).approve(SWAPPER, type(uint256).max);
+    ERC20(Exit10(exit10).TOKEN_IN()).approve(MASTERCHEF_0, type(uint256).max);
+    ERC20(Exit10(exit10).TOKEN_IN()).approve(MASTERCHEF_1, type(uint256).max);
     renounceOwnership();
   }
 
@@ -103,9 +105,6 @@ contract FeeSplitter is Ownable {
 
     pendingBucketTokenIn = 0;
     remainingBucketsTokenIn = 0;
-
-    _safeTransferToken(Exit10(exit10).TOKEN_IN(), MASTERCHEF_0, mc0TokenIn);
-    _safeTransferToken(Exit10(exit10).TOKEN_IN(), MASTERCHEF_1, mc1TokenIn);
 
     Masterchef(MASTERCHEF_0).updateRewards(mc0TokenIn);
     Masterchef(MASTERCHEF_1).updateRewards(mc1TokenIn);

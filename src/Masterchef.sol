@@ -246,6 +246,8 @@ contract Masterchef is Ownable {
     //Updates pool to account for the previous rewardRate.
     massUpdatePools();
 
+    IERC20(rewardToken).safeTransferFrom(rewardDistributor, address(this), amount);
+
     if (block.timestamp <= periodFinish) {
       uint256 undistributedRewards = rewardRate * (periodFinish - block.timestamp);
       rewardRate = ((undistributedRewards + amount) * precision) / rewardsDuration;

@@ -32,6 +32,8 @@ contract FeeSplitterTest is Test {
     feeSplitter.setExit10(address(this));
     ERC20(USDC).approve(address(feeSplitter), type(uint256).max);
     ERC20(WETH).approve(address(feeSplitter), type(uint256).max);
+    Masterchef(masterchef0).add(10, address(0x01));
+    Masterchef(masterchef1).add(10, address(0x01));
   }
 
   function testSimulateCollectFees() public {

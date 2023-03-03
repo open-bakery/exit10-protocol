@@ -2,13 +2,13 @@
 
 pragma solidity ^0.8.0;
 
-import './MasterchefBase.sol';
+import './AMasterchefBase.sol';
 import './interfaces/IRewardDistributor.sol';
 
 /// @title Masterchef External Rewards
 /// @notice Modified masterchef contract (https://etherscan.io/address/0xc2edad668740f1aa35e4d8f227fb8e17dca888cd#code)
 /// to support external rewards
-contract Masterchef is MasterchefBase {
+contract Masterchef is AMasterchefBase {
   using SafeERC20 for IERC20;
 
   /// @notice Address authorized to distribute the rewards.
@@ -19,7 +19,7 @@ contract Masterchef is MasterchefBase {
     _;
   }
 
-  constructor(address rewardToken_, uint256 rewardsDuration_) MasterchefBase(rewardToken_, rewardsDuration_) {}
+  constructor(address rewardToken_, uint256 rewardsDuration_) AMasterchefBase(rewardToken_, rewardsDuration_) {}
 
   function setRewardDistributor(address rd) external onlyOwner {
     require(rewardDistributor == address(0), 'Masterchef: Reward distributor already set');

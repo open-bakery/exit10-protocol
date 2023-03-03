@@ -7,7 +7,7 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 
-abstract contract MasterchefBase is Ownable {
+abstract contract AMasterchefBase is Ownable {
   using SafeERC20 for IERC20;
 
   event Deposit(address indexed user, uint256 indexed pid, uint256 amount);

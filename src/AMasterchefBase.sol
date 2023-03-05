@@ -7,6 +7,8 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 
+import 'forge-std/Test.sol';
+
 abstract contract AMasterchefBase is Ownable {
   using SafeERC20 for IERC20;
 
@@ -17,17 +19,8 @@ abstract contract AMasterchefBase is Ownable {
 
   /// @notice Detail of each user.
   struct UserInfo {
-    uint256 amount; // Number of tokens staked
-    uint256 rewardDebt; // The amount to be discounted from future reward claims.
-    //
-    // At any point in time, pending user reward for a given pool is:
-    // pendingReward = (user.amount * pool.accRewardPerShare) - user.rewardDebt
-    //
-    // Whenever a user deposits or withdraws a pool token:
-    //   1. The pool's `accRewardPerShare` (and `lastUpdate`) gets updated.
-    //   2. User's total staked `amount` gets updated.
-    //   3. User's `rewardDebt` gets updated based on new staked amount.
-    //   4. The pending reward is sent to the user's address.
+    uint256 amount;
+    uint256 rewardDebt;
   }
 
   /// @notice Detail of each pool.
@@ -35,13 +28,13 @@ abstract contract AMasterchefBase is Ownable {
     address token; // Token to stake.
     uint256 allocPoint; // How many allocation points assigned to this pool.
     uint256 lastUpdateTime; // Last time that pending reward accounting happened.
-    uint256 accRewardPerShare; // Accumulated rewards per share.
     uint256 totalStaked; // Total amount of tokens staked in the pool.
+    uint256 accRewardPerShare; // Accumulated rewards per share.
     uint256 accUndistributedReward; // Accumulated rewards while a pool has no stake in it.
   }
 
   /// @dev Division PRECISION.
-  uint256 internal constant PRECISION = 1e18;
+  uint256 internal constant PRECISION = 1e20;
 
   ///  @notice Rewards are equaly split between the duration.
   uint256 public immutable REWARDS_DURATION;
@@ -52,19 +45,17 @@ abstract contract AMasterchefBase is Ownable {
   /// @notice Total allocation points. Must be the sum of all allocation points in all pools.
   uint256 public totalAllocPoint;
 
-  /// @notice Time of the contract deployment.
-
   /// @notice Total rewards claimed since contract deployment.
   uint256 public totalClaimedRewards;
-
-  /// @notice Detail of each pool.
-  PoolInfo[] public poolInfo;
 
   /// @notice Period in which the latest distribution of rewards will end.
   uint256 public periodFinish;
 
   /// @notice Reward rate per second. Has increased PRECISION (when doing math with it, do div(PRECISION))
   uint256 public rewardRate;
+
+  /// @notice Detail of each pool.
+  PoolInfo[] public poolInfo;
 
   /// @notice Detail of each user who stakes tokens.
   mapping(uint256 => mapping(address => UserInfo)) public userInfo;
@@ -111,8 +102,8 @@ abstract contract AMasterchefBase is Ownable {
         token: _token,
         allocPoint: _allocPoint,
         lastUpdateTime: block.timestamp,
-        accRewardPerShare: 0,
         totalStaked: 0,
+        accRewardPerShare: 0,
         accUndistributedReward: 0
       })
     );
@@ -198,16 +189,32 @@ abstract contract AMasterchefBase is Ownable {
   }
 
   function withdrawStuckTokens(address _token, uint256 _amount) external onlyOwner {
-    require(_token != address(REWARD_TOKEN), 'MasterchefExternalRewards: Cannot withdraw reward tokens');
-    require(poolToken[address(_token)] == false, 'MasterchefExternalRewards: Cannot withdraw stake tokens');
+    require(_token != address(REWARD_TOKEN), 'Masterchef: Cannot withdraw reward tokens');
+    require(poolToken[address(_token)] == false, 'Masterchef: Cannot withdraw stake tokens');
     IERC20(_token).safeTransfer(msg.sender, _amount);
   }
 
   /// @notice Updates rewardRate.
   /// Must add and evenly distribute rewards through the rewardsDuration.
-  function updateRewards(uint256 amount) external virtual;
+  function updateRewards(uint256 amount) external virtual onlyOwner {
+    require(totalAllocPoint != 0, 'Masterchef: Must initiate a pool before updating rewards');
 
-  /// @notice Updates rewards for all pools by adding pending rewards.
+    //Updates pool to account for the previous rewardRate.
+    _massUpdatePools();
+
+    IERC20(REWARD_TOKEN).safeTransferFrom(msg.sender, address(this), amount);
+
+    if (block.timestamp <= periodFinish) {
+      uint256 undistributedRewards = rewardRate * (periodFinish - block.timestamp);
+      rewardRate = ((undistributedRewards + amount) * PRECISION) / REWARDS_DURATION;
+    } else {
+      rewardRate = (amount * PRECISION) / REWARDS_DURATION;
+    }
+
+    periodFinish = block.timestamp + REWARDS_DURATION;
+  }
+
+  /// @notice Increases accRewardPerShare and accUndistributedReward for all pools since last update up to block.timestamp.
   /// Every time there is an update on *rewardRate* or *totalAllocPoint* we should update ALL pools.
   function _massUpdatePools() internal {
     uint256 length = poolInfo.length;
@@ -263,9 +270,7 @@ abstract contract AMasterchefBase is Ownable {
   }
 
   function _transferAmountIn(address _token, uint256 _amount) internal {
-    if (_amount != 0) {
-      IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
-    }
+    if (_amount != 0) IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
   }
 
   function _transferAmountOut(address _token, uint256 _amount) internal {

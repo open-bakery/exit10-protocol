@@ -37,7 +37,7 @@ contract Masterchef is AMasterchefBase {
   }
 
   /// Adds and evenly distributes rewards through the rewardsDuration.
-  function updateRewards(uint256 amount) external virtual override onlyAuthorized {
+  function updateRewards(uint256 amount) external override onlyAuthorized {
     require(totalAllocPoint != 0, 'Masterchef: Must initiate a pool before updating rewards');
 
     //Updates pool to account for the previous rewardRate.

@@ -33,29 +33,15 @@ contract Masterchef is AMasterchefBase {
     uint256 _amountOut
   ) public {
     withdraw(_pid, _amount);
-    if (_shouldUpdateRewards) _updateRewards(_amountOut);
+    if (_shouldUpdateRewards) IRewardDistributor(rewardDistributor).updateFees(_amountOut);
   }
 
   /// Adds and evenly distributes rewards through the rewardsDuration.
   function updateRewards(uint256 amount) external override onlyAuthorized {
     require(totalAllocPoint != 0, 'Masterchef: Must initiate a pool before updating rewards');
 
-    //Updates pool to account for the previous rewardRate.
-    _massUpdatePools();
-
     IERC20(REWARD_TOKEN).safeTransferFrom(rewardDistributor, address(this), amount);
 
-    if (block.timestamp <= periodFinish) {
-      uint256 undistributedRewards = rewardRate * (periodFinish - block.timestamp);
-      rewardRate = ((undistributedRewards + amount) * PRECISION) / REWARDS_DURATION;
-    } else {
-      rewardRate = (amount * PRECISION) / REWARDS_DURATION;
-    }
-
-    periodFinish = block.timestamp + REWARDS_DURATION;
-  }
-
-  function _updateRewards(uint256 _amountOut) internal {
-    IRewardDistributor(rewardDistributor).updateFees(_amountOut);
+    _updateUndistributedRewards(amount);
   }
 }

@@ -32,13 +32,13 @@ contract MasterchefExitTest is Test {
 
   function testSetup() public {
     assertTrue(rewardToken.balanceOf(address(mc)) == rewardAmount, 'Check balance reward');
-    assertTrue(mc.rewardRate() == ((rewardAmount * 1e18) / mc.REWARDS_DURATION()), 'Check reward rate');
+    assertTrue(mc.rewardRate() == ((rewardAmount * mc.PRECISION()) / mc.REWARDS_DURATION()), 'Check reward rate');
   }
 
   function testRewards() public {
     uint256 interval = 1 days;
     skip(interval);
-    uint256 expectedReward = (mc.rewardRate() * interval) / 1e18;
+    uint256 expectedReward = (mc.rewardRate() * interval) / mc.PRECISION();
     mc.withdraw(0, 0);
     _assertWithin(rewardToken.balanceOf(address(this)), expectedReward, 10);
   }
@@ -46,7 +46,7 @@ contract MasterchefExitTest is Test {
   function testDeleteRewards() public {
     uint256 interval = 1 days;
     skip(interval);
-    uint256 expectedReward = (mc.rewardRate() * interval) / 1e18;
+    uint256 expectedReward = (mc.rewardRate() * interval) / mc.PRECISION();
     rewardToken.burn(address(mc), rewardAmount - expectedReward);
     mc.stopRewards();
     skip(7 days);
@@ -62,7 +62,7 @@ contract MasterchefExitTest is Test {
   function testDeleteRewardsTwoDepositors() public {
     uint256 interval = 1 days;
     skip(interval);
-    uint256 expectedIntervalReward = (mc.rewardRate() * interval) / 1e18;
+    uint256 expectedIntervalReward = (mc.rewardRate() * interval) / mc.PRECISION();
     _depositAs(alice, stakeAmount);
     skip(interval);
     rewardToken.burn(address(mc), rewardAmount - expectedIntervalReward * 2);

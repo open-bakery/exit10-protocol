@@ -17,20 +17,28 @@ contract MasterchefExit is AMasterchefBase {
     require(totalAllocPoint != 0, 'MasterchefExit: Must add a pool prior to adding rewards');
     require(!isRewardDeposited, 'MasterchefExit: Can only deposit rewards once');
 
-    //Updates pool to account for the previous rewardRate.
-    _massUpdatePools();
-
     IERC20(REWARD_TOKEN).safeTransferFrom(msg.sender, address(this), amount);
-    rewardRate = (amount * PRECISION) / REWARDS_DURATION;
-
-    periodFinish = block.timestamp + REWARDS_DURATION;
+    _updateUndistributedRewards(amount);
     isRewardDeposited = true;
   }
 
-  function stopRewards() external onlyOwner {
+  function _updateUndistributedRewards(uint256 _amount) internal virtual override {
     //Updates pool to account for the previous rewardRate.
     _massUpdatePools();
 
+    if (!isRewardDeposited) {
+      rewardRate = (_amount * PRECISION) / REWARDS_DURATION;
+      periodFinish = block.timestamp + REWARDS_DURATION;
+    } else {
+      if (block.timestamp < periodFinish) {
+        uint256 remainingTime = periodFinish - block.timestamp;
+        uint256 undistributedRewards = rewardRate * remainingTime;
+        rewardRate = (undistributedRewards + _amount) / remainingTime;
+      }
+    }
+  }
+
+  function stopRewards() external onlyOwner {
     periodFinish = block.timestamp;
   }
 }

@@ -12,7 +12,7 @@ gas-report:
 	forge test -vv --mc FeeSplitter --gas-report --fork-url $(MAINNET_RPC)
 
 trace:
-	forge test -vv --fork-url $(MAINNET_RPC)
+	forge test -vv --mt testPermit --fork-url $(MAINNET_RPC)
 	
 
 	

@@ -6,9 +6,6 @@ import 'forge-std/Test.sol';
 import '../src/interfaces/IUniswapV3Factory.sol';
 import '../src/interfaces/IUniswapV3Router.sol';
 
-import '../src/interfaces/IUniswapV2Factory.sol';
-import '../src/interfaces/IUniswapV2Router.sol';
-
 import '../src/Exit10.sol';
 import '../src/FeeSplitter.sol';
 import '../src/Masterchef.sol';
@@ -18,7 +15,9 @@ import '../src/NFT.sol';
 import '../src/BaseToken.sol';
 import '../src/STO.sol';
 
-contract SystemTest is Test {
+import './ABaseExit10.t.sol';
+
+contract SystemTest is Test, ABaseExit10Test {
   Exit10 exit10;
   NFT nft;
   STO sto;
@@ -46,13 +45,8 @@ contract SystemTest is Test {
   uint256 accrualParameter = 1 days;
   uint256 lpPerUSD = 1; // made up number
 
-  uint256 initialBalance = 1_000_000_000 ether;
   uint256 deployTime;
   uint256 constant MX = type(uint256).max;
-
-  IUniswapV2Factory immutable UNISWAP_V2_FACTORY = IUniswapV2Factory(vm.envAddress('UNISWAP_V2_FACTORY'));
-  IUniswapV2Router immutable UNISWAP_V2_ROUTER = IUniswapV2Router(vm.envAddress('UNISWAP_V2_ROUTER'));
-  IUniswapV3Router immutable UNISWAP_V3_ROUTER = IUniswapV3Router(vm.envAddress('UNISWAP_V3_ROUTER'));
 
   address feeSplitter;
   Masterchef masterchef0; // 50% BOOT 50% STO
@@ -86,6 +80,7 @@ contract SystemTest is Test {
     lp = _setUpExitLiquidity(amountExit, amountUSDC);
 
     // Deploy dependency contracts
+    masterchef0 = new Masterchef(weth, REWARDS_DURATION);
     masterchef1 = new Masterchef(weth, REWARDS_DURATION);
     masterchef2 = new MasterchefExit(address(exit), REWARDS_DURATION);
 
@@ -115,21 +110,27 @@ contract SystemTest is Test {
 
     deployTime = block.timestamp;
 
-    // _mintAndApprove(address(token0), initialBalance);
-    // _mintAndApprove(address(token1), initialBalance);
-    // _maxApprove(address(token0), address(UNISWAP_ROUTER));
-    // _maxApprove(address(token1), address(UNISWAP_ROUTER));
+    uint256 initialBalanceWeth = _tokenAmount(weth, 10);
+    uint256 initialBalanceUsdc = _tokenAmount(usdc, 10_000);
+    _mintAndApprove(weth, initialBalanceWeth, address(exit10));
+    _mintAndApprove(usdc, initialBalanceUsdc, address(exit10));
+    _maxApprove(weth, address(UNISWAP_V3_ROUTER));
+    _maxApprove(usdc, address(UNISWAP_V3_ROUTER));
   }
 
-  function testSetup() public {
-    _setMasternodes();
+  function testSetupMasterchef() public {
+    _setMasterchefs(feeSplitter);
+    assertTrue(Masterchef(masterchef0).poolLength() == 2, 'Check mc0 pool length');
+    assertTrue(Masterchef(masterchef1).poolLength() == 1, 'Check mc1 pool length');
   }
 
-  function _setMasternodes() internal {
+  function _setMasterchefs(address _rewardDistributor) internal {
     masterchef0.add(50, address(sto));
     masterchef0.add(50, address(boot));
     masterchef1.add(100, address(blp));
     masterchef2.add(100, lp);
+    masterchef0.setRewardDistributor(_rewardDistributor);
+    masterchef1.setRewardDistributor(_rewardDistributor);
     masterchef0.renounceOwnership();
     masterchef1.renounceOwnership();
     masterchef2.renounceOwnership();
@@ -137,10 +138,6 @@ contract SystemTest is Test {
 
   function _dealTokens() internal {
     deal(address(sto), alice, 10_000 ether);
-  }
-
-  function _tokenAmount(address _token, uint256 _amount) internal view returns (uint256) {
-    return _amount * 10**ERC20(_token).decimals();
   }
 
   function _setUpExitLiquidity(uint256 _amountExit, uint256 _amountUSDC) internal returns (address exit_usdc_lp) {

@@ -12,7 +12,7 @@ gas-report:
 	forge test -vv --mc Exit10 --gas-report --fork-url $(MAINNET_RPC)
 
 trace:
-	forge test -vv --mc Exit10Test --fork-url $(MAINNET_RPC)
+	forge test -vv --mc SystemTest --fork-url $(MAINNET_RPC)
 	
 
 	

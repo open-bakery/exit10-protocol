@@ -5,10 +5,19 @@ import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import 'forge-std/Test.sol';
 
 import '../src/interfaces/IUniswapV3Router.sol';
+import '../src/interfaces/IUniswapV2Factory.sol';
+import '../src/interfaces/IUniswapV2Router.sol';
+
 import '../src/Exit10.sol';
 
 abstract contract ABaseTest is Test {
+  IUniswapV2Factory immutable UNISWAP_V2_FACTORY = IUniswapV2Factory(vm.envAddress('UNISWAP_V2_FACTORY'));
+  IUniswapV2Router immutable UNISWAP_V2_ROUTER = IUniswapV2Router(vm.envAddress('UNISWAP_V2_ROUTER'));
   IUniswapV3Router UNISWAP_V3_ROUTER = IUniswapV3Router(vm.envAddress('UNISWAP_V3_ROUTER'));
+
+  function _tokenAmount(address _token, uint256 _amount) internal view returns (uint256) {
+    return _amount * 10**ERC20(_token).decimals();
+  }
 
   function _getTokensBalance(address _tokenA, address _tokenB)
     internal

@@ -5,6 +5,9 @@ interface IExit10 {
   struct DeployParams {
     address NFT;
     address STO;
+    address BOOT;
+    address BLP;
+    address EXIT;
     address masterchef; // For EXIT/USDC
     address feeSplitter;
     uint256 bootstrapPeriod; // Min duration of first chicken-in

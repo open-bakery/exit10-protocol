@@ -14,6 +14,8 @@ import './BaseToken.sol';
 import './FeeSplitter.sol';
 import './UniswapBase.sol';
 
+import './MasterchefExit.sol';
+
 import 'forge-std/Test.sol';
 
 contract Exit10 is IExit10, BaseMath, UniswapBase {
@@ -88,9 +90,9 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
     STO = params.STO;
     NFT = INFT(params.NFT);
 
-    EXIT = new BaseToken('Exit Liquidity', 'EXIT');
-    BLP = new BaseToken('Boost Liquidity', 'BLP');
-    BOOT = new BaseToken('Exit10 Bootstrap', 'BOOT');
+    BOOT = BaseToken(params.BOOT);
+    BLP = BaseToken(params.BLP);
+    EXIT = BaseToken(params.EXIT);
 
     MASTERCHEF = params.masterchef;
     FEE_SPLITTER = params.feeSplitter;

@@ -9,10 +9,10 @@ anvil-mainnet-fork:
 	anvil --fork-url $(MAINNET_RPC)
 
 gas-report:
-	forge test -vv --mc FeeSplitter --gas-report --fork-url $(MAINNET_RPC)
+	forge test -vv --mc Exit10 --gas-report --fork-url $(MAINNET_RPC)
 
 trace:
-	forge test -vv --fork-url $(MAINNET_RPC)
+	forge test -vv --mc Exit10Test --fork-url $(MAINNET_RPC)
 	
 
 	

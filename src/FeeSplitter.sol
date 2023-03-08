@@ -117,7 +117,7 @@ contract FeeSplitter is Ownable {
       tokenOut: Exit10(exit10).TOKEN_IN(),
       fee: Exit10(exit10).FEE(),
       amountIn: _amount,
-      slippage: 100,
+      slippage: 1000,
       oracleSeconds: 60
     });
 

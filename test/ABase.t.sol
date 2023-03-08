@@ -57,6 +57,7 @@ abstract contract ABaseTest is Test {
     address _tokenB,
     uint256 _amountA
   ) internal {
+    deal(_tokenA, address(this), _amountA);
     uint256 amountOut = _swap(_tokenA, _tokenB, _amountA);
     _swap(_tokenB, _tokenA, amountOut / 2);
   }

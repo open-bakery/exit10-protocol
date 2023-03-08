@@ -5,6 +5,7 @@ import 'forge-std/Test.sol';
 
 import '../src/interfaces/IUniswapV3Factory.sol';
 import '../src/interfaces/IUniswapV3Router.sol';
+import '@openzeppelin/contracts/utils/Strings.sol';
 
 import '../src/Exit10.sol';
 import '../src/FeeSplitter.sol';
@@ -41,8 +42,8 @@ contract SystemTest is Test, ABaseExit10Test {
   address bob = address(0xb);
   address charlie = address(0xc);
 
-  uint256 bootstrapPeriod = 1 hours;
-  uint256 accrualParameter = 1 days;
+  uint256 bootstrapPeriod = 2 weeks;
+  uint256 accrualParameter = 1 weeks;
   uint256 lpPerUSD = 1; // made up number
 
   uint256 deployTime;
@@ -116,12 +117,26 @@ contract SystemTest is Test, ABaseExit10Test {
     _mintAndApprove(usdc, initialBalanceUsdc, address(exit10));
     _maxApprove(weth, address(UNISWAP_V3_ROUTER));
     _maxApprove(usdc, address(UNISWAP_V3_ROUTER));
+    _setMasterchefs(feeSplitter);
   }
 
-  function testSetupMasterchef() public {
-    _setMasterchefs(feeSplitter);
-    assertTrue(Masterchef(masterchef0).poolLength() == 2, 'Check mc0 pool length');
-    assertTrue(Masterchef(masterchef1).poolLength() == 1, 'Check mc1 pool length');
+  function testScenario_0() public {
+    (, , uint256 at0, uint256 at1) = _lockBootstrap(alice, _tokenAmount(usdc, 10_000), _tokenAmount(weth, 10));
+    (, , uint256 bt0, uint256 bt1) = _lockBootstrap(bob, _tokenAmount(usdc, 1_000), _tokenAmount(weth, 1));
+    (, , uint256 ct0, uint256 ct1) = _lockBootstrap(charlie, _tokenAmount(usdc, 100_000), _tokenAmount(weth, 100));
+    _displayTotal('TOTAL BOOTSTRAPPED', at0 + bt0 + ct0, at1 + bt1 + ct1);
+    _stake(alice, address(masterchef0), 1, address(boot));
+    _stake(bob, address(masterchef0), 1, address(boot));
+    _stake(charlie, address(masterchef0), 1, address(boot));
+    _generateClaimAndDistributeFees();
+    masterchef0.withdraw(0, 0, true, ERC20(usdc).balanceOf(feeSplitter));
+    _displayRewardBalanceMasterchefs();
+    _displayTreasury();
+    skip(bootstrapPeriod);
+    _createBond(alice, _tokenAmount(usdc, 100_000), _tokenAmount(weth, 100));
+    skip(accrualParameter);
+    _generateClaimAndDistributeFees();
+    _displayTreasury();
   }
 
   function _setMasterchefs(address _rewardDistributor) internal {
@@ -136,8 +151,178 @@ contract SystemTest is Test, ABaseExit10Test {
     masterchef2.renounceOwnership();
   }
 
-  function _dealTokens() internal {
-    deal(address(sto), alice, 10_000 ether);
+  function _generateFees() internal {
+    _generateFees(usdc, weth, _tokenAmount(usdc, 100_000_000));
+    _title('GENERATING FEE');
+    _spacer();
+  }
+
+  function _generateClaimAndDistributeFees() internal {
+    _generateFees();
+    exit10.claimAndDistributeFees();
+
+    _title('FEE DISTRIBUTION');
+    console.log('Fee Splitter Balance of USDC: ', ERC20(usdc).balanceOf(feeSplitter));
+    console.log('Fee Splitter Balance of WETH: ', ERC20(weth).balanceOf(feeSplitter));
+    _spacer();
+  }
+
+  function _displayRewardBalanceMasterchefs() internal view {
+    _displayBalance('Masterchef0', address(masterchef0), weth);
+    _displayBalance('Masterchef1', address(masterchef1), weth);
+    _displayBalance('Masterchef2', address(masterchef2), address(exit));
+  }
+
+  function _lockBootstrap(
+    address _user,
+    uint256 _usdcAmount,
+    uint256 _wethAmount
+  )
+    internal
+    returns (
+      uint256 tokenId,
+      uint128 liquidityAdded,
+      uint256 amountAdded0,
+      uint256 amountAdded1
+    )
+  {
+    deal(usdc, _user, _usdcAmount);
+    deal(weth, _user, _wethAmount);
+
+    vm.startPrank(_user);
+    ERC20(weth).approve(address(exit10), _wethAmount);
+    ERC20(usdc).approve(address(exit10), _usdcAmount);
+    (tokenId, liquidityAdded, amountAdded0, amountAdded1) = exit10.bootstrapLock(
+      IUniswapBase.AddLiquidity({
+        depositor: _user,
+        amount0Desired: _usdcAmount,
+        amount1Desired: _wethAmount,
+        amount0Min: 0,
+        amount1Min: 0,
+        deadline: block.timestamp
+      })
+    );
+    vm.stopPrank();
+
+    string memory log0 = string.concat('User: ', Strings.toHexString(_user));
+    string memory log1 = string.concat('USDC Value: ', Strings.toString(_usdcAmount));
+    string memory log2 = string.concat('WETH Value: ', Strings.toString(_wethAmount));
+    _title('ENTERING BOOTSTRAP PHASE');
+    console.log(log0);
+    console.log(log1);
+    console.log(log2);
+    _spacer();
+  }
+
+  function _createBond(
+    address _user,
+    uint256 _usdcAmount,
+    uint256 _wethAmount
+  ) internal {
+    deal(usdc, _user, _usdcAmount);
+    deal(weth, _user, _wethAmount);
+
+    vm.startPrank(_user);
+    ERC20(weth).approve(address(exit10), _wethAmount);
+    ERC20(usdc).approve(address(exit10), _usdcAmount);
+    exit10.createBond(
+      IUniswapBase.AddLiquidity({
+        depositor: _user,
+        amount0Desired: _usdcAmount,
+        amount1Desired: _wethAmount,
+        amount0Min: 0,
+        amount1Min: 0,
+        deadline: block.timestamp
+      })
+    );
+    vm.stopPrank();
+
+    string memory log0 = string.concat('User: ', Strings.toHexString(_user));
+    string memory log1 = string.concat('Amount USDC: ', Strings.toString(_usdcAmount));
+    string memory log2 = string.concat('Amount WETH: ', Strings.toString(_wethAmount));
+    _title('CREATING BOND');
+    console.log(log0);
+    console.log(log1);
+    console.log(log2);
+    _spacer();
+  }
+
+  function _cancelBond() internal {}
+
+  function _convertBond() internal {}
+
+  function _stake(
+    address _user,
+    address _mc,
+    uint256 _pid,
+    address _token
+  ) internal {
+    vm.startPrank(_user);
+    uint256 balance = ERC20(_token).balanceOf(_user);
+    ERC20(_token).approve(address(_mc), balance);
+    AMasterchefBase(_mc).deposit(_pid, balance);
+    vm.stopPrank();
+
+    string memory log0 = string.concat('User: ', Strings.toHexString(_user));
+    string memory log1 = string.concat('Amount: ', Strings.toString(balance));
+    _title('STAKING IN MASTERCHEF');
+    console.log(log0);
+    console.log(log1);
+    _spacer();
+  }
+
+  function _displayTreasury() internal view {
+    (uint256 pending, uint256 reserve, uint256 exitBucket, uint256 bootstrap) = exit10.getTreasury();
+    _title('TREASURY BREAKDOWN');
+    console.log('Pending Bucket: ', pending);
+    console.log('Reserve Bucket: ', reserve);
+    console.log('Exit Bucket: ', exitBucket);
+    console.log('Bootstrap Bucket: ', bootstrap);
+    _spacer();
+  }
+
+  function _displayBalance(
+    string memory _targetTitle,
+    address _target,
+    address _token
+  ) internal view {
+    string memory log0 = string.concat(
+      _targetTitle,
+      ' - balance of ',
+      ERC20(_token).symbol(),
+      ': ',
+      Strings.toString(ERC20(_token).balanceOf(_target))
+    );
+    console.log(log0);
+  }
+
+  function _displayBalances(
+    string memory _targetTitle,
+    address _target,
+    address _tokenA,
+    address _tokenB
+  ) internal view {
+    _displayBalance(_targetTitle, _target, _tokenA);
+    _displayBalance(_targetTitle, _target, _tokenB);
+  }
+
+  function _displayTotal(
+    string memory _titleText,
+    uint256 _amountUSDC,
+    uint256 _amountWETH
+  ) internal view {
+    _title(_titleText);
+    console.log('Deposited USDC: ', _amountUSDC);
+    console.log('Deposited WETH: ', _amountWETH);
+    _spacer();
+  }
+
+  function _title(string memory _titleText) internal view {
+    console.log(string.concat('-----', _titleText, '-----'));
+  }
+
+  function _spacer() internal view {
+    console.log('----------------------------------');
   }
 
   function _setUpExitLiquidity(uint256 _amountExit, uint256 _amountUSDC) internal returns (address exit_usdc_lp) {

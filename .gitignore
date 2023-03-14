@@ -9,3 +9,4 @@ broadcast/
 # IDE
 .idea
 .reinitSubmodules.sh
+anvil.log

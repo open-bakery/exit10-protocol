@@ -1,23 +1,60 @@
 # include .env file and export its env vars
 # (-include to ignore error if it does not exist)
+SHELL := /bin/bash
 -include .env
+SED_REPLACE="s/{{WETH}}/$$WETH/;s/{{USDC}}/$$USDC/;s/{{UNISWAP_V3_FACTORY}}/$$UNISWAP_V3_FACTORY/;s/{{UNISWAP_V3_ROUTER}}/$$UNISWAP_V3_ROUTER/;s/{{UNISWAP_V3_NPM}}/$$UNISWAP_V3_NPM/;s/{{SWAPPER}}/$$SWAPPER/;s/{{UNISWAP_V2_ROUTER}}/$$UNISWAP_V2_ROUTER/;s/{{UNISWAP_V2_FACTORY}}/$$UNISWAP_V2_FACTORY/;s/{{POOL}}/$$POOL/"
 
-deploy-mainnet-fork:
-	forge script script/Deploy.s.sol:DeployScript --fork-url http://localhost:8545 --broadcast
+kill-anvil:
+	@if lsof -i :8545 > /dev/null 2>&1; then \
+		echo "Anvil is already running, killing it..."; \
+		kill $$(lsof -t -i:8545); \
+	fi
 
-anvil-mainnet-fork:	
-	anvil --fork-url $(MAINNET_RPC)
+wait-for-anvil:
+	@echo "Waiting for anvil to be online...";
+	@while ! curl -s http://127.0.0.1:8545 > /dev/null; do sleep 1; done
+	@echo "Anvil online and outputting to anvil.log";
+	@echo 'Kill it with: kill $(lsof -t -i:8545)'
+
+start-anvil-local:
+	$(MAKE) kill-anvil
+	@echo "Starting anvil...";
+	@anvil --balance 1000000 > anvil.log &
+	$(MAKE) wait-for-anvil
+
+start-anvil-mainnet-fork:
+	$(MAKE) kill-anvil
+	@echo "Starting anvil mainnet fork...";
+	@anvil --fork-url $(MAINNET_RPC)
+	$(MAKE) wait-for-anvil
+
+deploy-infrastructure:
+	@echo "Deploying infrastrucure locally..."
+	@./deploy/deploy-infrastructure.sh
+	@echo "Deployed!"
+
+dev:
+	#trap "kill $(jobs -p)" SIGINT SIGTERM EXIT
+	$(MAKE) start-anvil-local
+	$(MAKE) deploy-infrastructure
+	@source ./config/local.ini ; sed < .env.template > .env $(SED_REPLACE)
+	@./deploy/deploy-dev-data.sh
+
+dev-mainnet-fork:
+	#trap "kill $(jobs -p)" SIGINT SIGTERM EXIT
+	$(MAKE) start-anvil-mainnet-fork
+	$(MAKE) deploy-infrastructure
+	@source ./config/mainnet.ini ; sed < .env.template > .env $(SED_REPLACE)
 
 gas-report:
 	forge test -vv --mc Exit10 --gas-report --fork-url $(MAINNET_RPC)
 
-trace:
+test:
 	forge test -vv --fork-url $(MAINNET_RPC)
-	
 
-	
-# $(MAINNET_RPC) 
-# forge test -vvv --mc FeeSplitter --fork-url  http://localhost:8545; 
-# --fork-block-number $(BLOCK_NUMBER)
-# Verify Contracts
-#forge verify-contract --chain-id 42161 --watch --constructor-args $(cast abi-encode "constructor((string,string,address,uint256))" "("Share" "Token","STO",0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8,1000000000)") 0xb428cC8Fe759D79037355138cc0987F65f704587 src/Minter.sol:Minter QSWEZY6SZZ213F5748W3U7MKUAR7GGI7YB --verifier-url "https://api.arbiscan.io/api"
+trace:
+	forge test -vvv --fork-url $(MAINNET_RPC)
+
+trace1:
+	forge test -vvv --mc Exit10 --fork-url $(MAINNET_RPC)
+

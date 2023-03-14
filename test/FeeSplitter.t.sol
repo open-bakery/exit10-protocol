@@ -149,11 +149,7 @@ contract FeeSplitterTest is Test {
     assertTrue(_remainingBucketsTokenIn == feeSplitter.remainingBucketsTokenIn(), 'Check remaining bucket token in');
   }
 
-  function _checkBalances(
-    address _target,
-    uint256 _amountTokenOut,
-    uint256 _amountTokenIn
-  ) internal {
+  function _checkBalances(address _target, uint256 _amountTokenOut, uint256 _amountTokenIn) internal {
     assertTrue(_amountTokenOut == ERC20(TOKEN_OUT).balanceOf(_target), 'Check balance token out');
     assertTrue(_amountTokenIn == ERC20(TOKEN_IN).balanceOf(_target), 'Check balance token in');
   }

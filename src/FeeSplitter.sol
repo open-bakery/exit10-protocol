@@ -25,11 +25,7 @@ contract FeeSplitter is Ownable {
   uint256 public remainingBucketsTokenOut; // USDC
   uint256 public remainingBucketsTokenIn; // WETH
 
-  constructor(
-    address masterchef0_,
-    address masterchef1_,
-    address swapper_
-  ) {
+  constructor(address masterchef0_, address masterchef1_, address swapper_) {
     MASTERCHEF_0 = masterchef0_;
     MASTERCHEF_1 = masterchef1_;
     SWAPPER = swapper_;
@@ -117,26 +113,18 @@ contract FeeSplitter is Ownable {
       tokenOut: Exit10(exit10).TOKEN_IN(),
       fee: Exit10(exit10).FEE(),
       amountIn: _amount,
-      slippage: 1000,
+      slippage: 100,
       oracleSeconds: 60
     });
 
     _acquiredEth = ISwapper(SWAPPER).swap(params);
   }
 
-  function _safeTransferToken(
-    address _token,
-    address _recipient,
-    uint256 _amount
-  ) internal {
+  function _safeTransferToken(address _token, address _recipient, uint256 _amount) internal {
     if (_amount != 0) ERC20(_token).safeTransfer(_recipient, _amount);
   }
 
-  function _calcShare(
-    uint256 _part,
-    uint256 _total,
-    uint256 _externalSum
-  ) internal pure returns (uint256 _share) {
+  function _calcShare(uint256 _part, uint256 _total, uint256 _externalSum) internal pure returns (uint256 _share) {
     if (_total != 0) _share = (_part * _externalSum) / _total;
   }
 }

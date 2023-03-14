@@ -22,10 +22,9 @@ contract MasterchefExitTest is Test {
     rewardDuration = 4 weeks;
     mc = new MasterchefExit(address(rewardToken), rewardDuration);
     mc.add(10, address(stakeToken));
-    rewardToken.mint(address(this), rewardAmount);
     stakeToken.mint(address(this), stakeAmount);
-    rewardToken.approve(address(mc), type(uint256).max);
     stakeToken.approve(address(mc), type(uint256).max);
+    rewardToken.mint(address(mc), rewardAmount);
     mc.updateRewards(rewardAmount);
     mc.deposit(0, stakeAmount);
   }
@@ -89,11 +88,7 @@ contract MasterchefExitTest is Test {
     vm.stopPrank();
   }
 
-  function _assertWithin(
-    uint256 _targetValue,
-    uint256 _compareValue,
-    uint256 _basisPoints
-  ) internal {
+  function _assertWithin(uint256 _targetValue, uint256 _compareValue, uint256 _basisPoints) internal {
     uint256 range = (_targetValue / 10_000) * _basisPoints;
     bool inRange = (_compareValue <= _targetValue + range && _compareValue >= _targetValue - range);
     assertTrue(inRange, 'Check within range');

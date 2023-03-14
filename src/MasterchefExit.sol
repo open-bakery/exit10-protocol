@@ -16,8 +16,8 @@ contract MasterchefExit is AMasterchefBase {
   function updateRewards(uint256 amount) external override onlyOwner {
     require(totalAllocPoint != 0, 'MasterchefExit: Must add a pool prior to adding rewards');
     require(!isRewardDeposited, 'MasterchefExit: Can only deposit rewards once');
+    require(IERC20(REWARD_TOKEN).balanceOf(address(this)) >= amount, 'MasterchefExit: Token balance not sufficient');
 
-    IERC20(REWARD_TOKEN).safeTransferFrom(msg.sender, address(this), amount);
     _updateUndistributedRewards(amount);
     isRewardDeposited = true;
   }

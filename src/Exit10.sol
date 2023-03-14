@@ -26,9 +26,6 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
   uint256 private bootstrapAmount;
   uint256 private finalExitAmount;
 
-  // MasterChef
-  address public immutable MASTERCHEF; // EXIT/USDC Stakers
-
   // EXIT
   uint256 public exitTotalSupply;
   uint256 public exitLiquidity; // 70% of Exit Bucket
@@ -60,10 +57,11 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
   BaseToken public immutable EXIT;
   BaseToken public immutable BLP;
   BaseToken public immutable BOOT;
-
-  address public immutable STO; // STO token distribution
   INFT public immutable NFT;
-  address public FEE_SPLITTER;
+
+  address public immutable MASTERCHEF; // EXIT/USDC Stakers
+  address public immutable STO;
+  address public immutable FEE_SPLITTER;
 
   uint256 public immutable MAX_SUPPLY = 10_000_000 ether;
   uint256 public immutable DEPLOYMENT_TIMESTAMP;
@@ -101,6 +99,8 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
     ACCRUAL_PARAMETER = params.accrualParameter * DECIMAL_PRECISION;
     LP_PER_USD = params.lpPerUSD;
 
+    // _distributeInitialExitRewards();
+
     ERC20(IUniswapV3Pool(POOL).token0()).approve(NPM, MAX_UINT_256);
     ERC20(IUniswapV3Pool(POOL).token1()).approve(NPM, MAX_UINT_256);
     ERC20(IUniswapV3Pool(POOL).token0()).approve(FEE_SPLITTER, MAX_UINT_256);
@@ -124,7 +124,7 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
 
   function createBond(
     AddLiquidity memory params
-  ) public returns (uint256 bondID, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
+  ) external returns (uint256 bondID, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
     _requireNoExitMode();
     require(!_isBootstrapOngoing(), 'EXIT10: Bootstrap ongoing');
     claimAndDistributeFees();
@@ -343,6 +343,18 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
         amountCollected0,
         amountCollected1
       );
+  }
+
+  function _stopExitRewards() internal {
+    MasterchefExit mc = MasterchefExit(MASTERCHEF);
+    uint256 distributedRewards = (mc.rewardRate() * (block.timestamp - (mc.periodFinish() - mc.REWARDS_DURATION()))) /
+      mc.PRECISION();
+    EXIT.burn(MASTERCHEF, INITIAL_EXIT_REWARD - distributedRewards);
+  }
+
+  function _distributeInitialExitRewards() internal {
+    EXIT.mint(MASTERCHEF, INITIAL_EXIT_REWARD);
+    MasterchefExit(MASTERCHEF).updateRewards(INITIAL_EXIT_REWARD);
   }
 
   function _safeTokenClaim(

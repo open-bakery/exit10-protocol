@@ -160,6 +160,8 @@ contract System is Test, ABaseExit10Test {
   function _generateClaimAndDistributeFees() internal {
     _generateFees();
     exit10.claimAndDistributeFees();
+    // Allow oracle to update
+    skip(60);
 
     _title('FEE DISTRIBUTION');
     console.log('Fee Splitter Balance of USDC: ', ERC20(usdc).balanceOf(feeSplitter));

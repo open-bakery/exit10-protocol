@@ -26,9 +26,6 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
   uint256 private bootstrapAmount;
   uint256 private finalExitAmount;
 
-  uint256 public countConvertBond;
-  uint256 public countCancelBond;
-
   // MasterChef
   address public immutable MASTERCHEF; // EXIT/USDC Stakers
 
@@ -50,7 +47,11 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
   mapping(address => uint256) public bootstrapDeposit;
 
   // --- Constants ---
+  uint256 private constant DEADLINE = 1e10;
   uint256 public constant TOKEN_MULTIPLIER = 1e8;
+  uint256 public constant INITIAL_EXIT_REWARD = 20_000_000 ether;
+  uint256 constant MAX_UINT_256 = type(uint256).max;
+  uint128 constant MAX_UINT_128 = type(uint128).max;
 
   // On Ethereum Mainnet:
   // Token0 is USDC
@@ -64,7 +65,6 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
   INFT public immutable NFT;
   address public FEE_SPLITTER;
 
-  uint256 constant MAX_UINT256 = type(uint256).max;
   uint256 public immutable MAX_SUPPLY = 10_000_000 ether;
   uint256 public immutable DEPLOYMENT_TIMESTAMP;
   uint256 public immutable BOOTSTRAP_PERIOD;
@@ -101,66 +101,15 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
     ACCRUAL_PARAMETER = params.accrualParameter * DECIMAL_PRECISION;
     LP_PER_USD = params.lpPerUSD;
 
-    ERC20(IUniswapV3Pool(POOL).token0()).approve(NPM, type(uint256).max);
-    ERC20(IUniswapV3Pool(POOL).token1()).approve(NPM, type(uint256).max);
-    ERC20(IUniswapV3Pool(POOL).token0()).approve(FEE_SPLITTER, type(uint256).max);
-    ERC20(IUniswapV3Pool(POOL).token1()).approve(FEE_SPLITTER, type(uint256).max);
+    ERC20(IUniswapV3Pool(POOL).token0()).approve(NPM, MAX_UINT_256);
+    ERC20(IUniswapV3Pool(POOL).token1()).approve(NPM, MAX_UINT_256);
+    ERC20(IUniswapV3Pool(POOL).token0()).approve(FEE_SPLITTER, MAX_UINT_256);
+    ERC20(IUniswapV3Pool(POOL).token1()).approve(FEE_SPLITTER, MAX_UINT_256);
   }
 
-  function getBondData(uint256 bondID)
-    external
-    view
-    returns (
-      uint256 bondAmount,
-      uint256 claimedBoostAmount,
-      uint64 startTime,
-      uint64 endTime,
-      uint8 status
-    )
-  {
-    BondData memory bond = idToBondData[bondID];
-    return (bond.bondAmount, bond.claimedBoostAmount, bond.startTime, bond.endTime, uint8(bond.status));
-  }
-
-  function getTreasury()
-    external
-    view
-    returns (
-      uint256 pending,
-      uint256 reserve,
-      uint256 exit,
-      uint256 bootstrap
-    )
-  {
-    pending = pendingAmount;
-    reserve = reserveAmount;
-    bootstrap = bootstrapAmount;
-    exit = _exitAmount();
-  }
-
-  function getAccruedAmount(uint256 bondID) external view returns (uint256) {
-    BondData memory bond = idToBondData[bondID];
-
-    if (bond.status != BondStatus.active) {
-      return 0;
-    }
-
-    return _getAccruedAmount(bond);
-  }
-
-  function getOpenBondCount() external view returns (uint256) {
-    return NFT.totalSupply() - (countConvertBond + countCancelBond);
-  }
-
-  function bootstrapLock(AddLiquidity memory params)
-    external
-    returns (
-      uint256 tokenId,
-      uint128 liquidityAdded,
-      uint256 amountAdded0,
-      uint256 amountAdded1
-    )
-  {
+  function bootstrapLock(
+    AddLiquidity memory params
+  ) external returns (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
     require(_isBootstrapOngoing(), 'EXIT10: Bootstrap ended');
 
     _depositTokens(params.amount0Desired, params.amount1Desired);
@@ -173,14 +122,16 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
     _safeTransferTokens(params.depositor, params.amount0Desired - amountAdded0, params.amount1Desired - amountAdded1);
   }
 
-  function createBond(AddLiquidity memory params) public returns (uint256 bondID) {
+  function createBond(
+    AddLiquidity memory params
+  ) public returns (uint256 bondID, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
     _requireNoExitMode();
     require(!_isBootstrapOngoing(), 'EXIT10: Bootstrap ongoing');
     claimAndDistributeFees();
 
     _depositTokens(params.amount0Desired, params.amount1Desired);
 
-    (, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) = _addLiquidity(params);
+    (, liquidityAdded, amountAdded0, amountAdded1) = _addLiquidity(params);
 
     bondID = NFT.mint(params.depositor);
 
@@ -196,7 +147,10 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
     emit CreateBond(params.depositor, bondID, liquidityAdded);
   }
 
-  function cancelBond(uint256 bondID, RemoveLiquidity memory params) external {
+  function cancelBond(
+    uint256 bondID,
+    RemoveLiquidity memory params
+  ) external returns (uint256 amountRemoved0, uint256 amountRemoved1) {
     BondData memory bond = idToBondData[bondID];
     _requireCallerOwnsBond(bondID);
     _requireActiveStatus(bond.status);
@@ -206,9 +160,7 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
     idToBondData[bondID].status = BondStatus.cancelled;
     idToBondData[bondID].endTime = uint64(block.timestamp);
 
-    countCancelBond += 1;
-
-    (uint256 amountRemoved0, uint256 amountRemoved1) = _decreaseLiquidity(params);
+    (amountRemoved0, amountRemoved1) = _decreaseLiquidity(params);
     _collect(msg.sender, uint128(amountRemoved0), uint128(amountRemoved1));
 
     pendingAmount -= params.liquidity;
@@ -216,7 +168,10 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
     emit CancelBond(msg.sender, bondID, amountRemoved0, amountRemoved1);
   }
 
-  function convertBond(uint256 bondID, RemoveLiquidity memory params) external {
+  function convertBond(
+    uint256 bondID,
+    RemoveLiquidity memory params
+  ) external returns (uint256 boostTokenAmount, uint256 exitTokenAmount) {
     _requireNoExitMode();
 
     BondData memory bond = idToBondData[bondID];
@@ -228,24 +183,24 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
     idToBondData[bondID].status = BondStatus.converted;
     idToBondData[bondID].endTime = uint64(block.timestamp);
 
-    countConvertBond += 1;
     pendingAmount -= params.liquidity;
 
-    uint256 accruedBoostToken = _getAccruedAmount(bond);
+    uint256 accruedBoostLiquidity = _getAccruedAmount(bond);
 
-    idToBondData[bondID].claimedBoostAmount = accruedBoostToken;
-    reserveAmount += accruedBoostToken; // Increase the amount of the reserve
+    idToBondData[bondID].claimedBoostAmount = accruedBoostLiquidity;
+    reserveAmount += accruedBoostLiquidity; // Increase the amount of the reserve
 
-    BLP.mint(msg.sender, accruedBoostToken * TOKEN_MULTIPLIER);
+    boostTokenAmount = accruedBoostLiquidity * TOKEN_MULTIPLIER;
+    BLP.mint(msg.sender, boostTokenAmount);
 
-    uint256 exitLiquidityAcquired = bond.bondAmount - accruedBoostToken;
+    uint256 remainingLiquidity = bond.bondAmount - accruedBoostLiquidity;
+    exitTokenAmount = (remainingLiquidity * TOKEN_MULTIPLIER) / LP_PER_USD;
+    _mintExitCapped(msg.sender, exitTokenAmount);
 
-    _mintExitCapped(msg.sender, (exitLiquidityAcquired * TOKEN_MULTIPLIER) / LP_PER_USD);
-
-    emit ConvertBond(msg.sender, bondID, bond.bondAmount, accruedBoostToken, exitLiquidityAcquired);
+    emit ConvertBond(msg.sender, bondID, bond.bondAmount, boostTokenAmount, exitTokenAmount);
   }
 
-  function redeem(RemoveLiquidity memory params) external {
+  function redeem(RemoveLiquidity memory params) external returns (uint256 amountRemoved0, uint256 amountRemoved1) {
     uint256 amount = params.liquidity;
     _requireValidAmount(amount);
     claimAndDistributeFees();
@@ -253,7 +208,7 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
     reserveAmount -= amount;
     BLP.burn(msg.sender, amount * TOKEN_MULTIPLIER);
 
-    (uint256 amountRemoved0, uint256 amountRemoved1) = _decreaseLiquidity(params);
+    (amountRemoved0, amountRemoved1) = _decreaseLiquidity(params);
     _collect(msg.sender, uint128(amountRemoved0), uint128(amountRemoved1));
 
     emit Redeem(msg.sender, amountRemoved0, amountRemoved1);
@@ -271,28 +226,17 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
     // (spread over total distribution time) but hard stop at exit10 blocktime.
     // This would allow users to claim up to that blocktime.
     exitTotalSupply = EXIT.totalSupply();
-
     finalExitAmount = uint128(_liquidityAmount() - (pendingAmount + reserveAmount));
     uint256 exitBucket;
 
     if (POOL.token1() == TOKEN_IN) {
       (exitBucket, ) = _decreaseLiquidity(
-        RemoveLiquidity({
-          liquidity: uint128(finalExitAmount),
-          amount0Min: 0,
-          amount1Min: 0,
-          deadline: block.timestamp
-        })
+        RemoveLiquidity({ liquidity: uint128(finalExitAmount), amount0Min: 0, amount1Min: 0, deadline: DEADLINE })
       );
       _collect(address(this), uint128(exitBucket), 0);
     } else {
       (, exitBucket) = _decreaseLiquidity(
-        RemoveLiquidity({
-          liquidity: uint128(finalExitAmount),
-          amount0Min: 0,
-          amount1Min: 0,
-          deadline: block.timestamp
-        })
+        RemoveLiquidity({ liquidity: uint128(finalExitAmount), amount0Min: 0, amount1Min: 0, deadline: DEADLINE })
       );
       _collect(address(this), 0, uint128(exitBucket));
     }
@@ -340,12 +284,57 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
     _safeTransferToken(TOKEN_OUT, msg.sender, claim);
   }
 
+  function getBondData(
+    uint256 bondID
+  )
+    external
+    view
+    returns (uint256 bondAmount, uint256 claimedBoostAmount, uint64 startTime, uint64 endTime, uint8 status)
+  {
+    BondData memory bond = idToBondData[bondID];
+    return (bond.bondAmount, bond.claimedBoostAmount, bond.startTime, bond.endTime, uint8(bond.status));
+  }
+
+  function getTreasury() external view returns (uint256 pending, uint256 reserve, uint256 exit, uint256 bootstrap) {
+    pending = pendingAmount;
+    reserve = reserveAmount;
+    bootstrap = bootstrapAmount;
+    exit = _exitAmount();
+  }
+
+  function getAccruedAmount(uint256 bondID) external view returns (uint256) {
+    BondData memory bond = idToBondData[bondID];
+
+    if (bond.status != BondStatus.active) {
+      return 0;
+    }
+
+    return _getAccruedAmount(bond);
+  }
+
   function claimAndDistributeFees() public {
-    (uint256 amountCollected0, uint256 amountCollected1) = _collect(
-      address(this),
-      type(uint128).max,
-      type(uint128).max
-    );
+    (uint256 amountCollected0, uint256 amountCollected1) = _collect(address(this), MAX_UINT_128, MAX_UINT_128);
+
+    if (_liquidityAmount() != 0) {
+      uint256 bootstrapFees0 = (bootstrapAmount * amountCollected0) / _liquidityAmount();
+      uint256 bootstrapFees1 = (bootstrapAmount * amountCollected1) / _liquidityAmount();
+
+      if (bootstrapFees0 != 0 && bootstrapFees1 != 0) {
+        (, uint256 amountAdded0, uint256 amountAdded1) = INPM(NPM).increaseLiquidity(
+          INPM.IncreaseLiquidityParams({
+            tokenId: positionId,
+            amount0Desired: bootstrapFees0,
+            amount1Desired: bootstrapFees1,
+            amount0Min: 0,
+            amount1Min: 0,
+            deadline: DEADLINE
+          })
+        );
+
+        amountCollected0 -= amountAdded0;
+        amountCollected1 -= amountAdded1;
+      }
+    }
 
     if (amountCollected0 + amountCollected1 != 0)
       FeeSplitter(FEE_SPLITTER).collectFees(
@@ -376,20 +365,12 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
     ERC20(POOL.token1()).safeTransferFrom(msg.sender, address(this), _amount1);
   }
 
-  function _safeTransferTokens(
-    address _recipient,
-    uint256 _amount0,
-    uint256 _amount1
-  ) internal {
+  function _safeTransferTokens(address _recipient, uint256 _amount0, uint256 _amount1) internal {
     _safeTransferToken(POOL.token0(), _recipient, _amount0);
     _safeTransferToken(POOL.token1(), _recipient, _amount1);
   }
 
-  function _safeTransferToken(
-    address _token,
-    address _recipient,
-    uint256 _amount
-  ) internal {
+  function _safeTransferToken(address _token, address _recipient, uint256 _amount) internal {
     if (_amount != 0) ERC20(_token).safeTransfer(_recipient, _amount);
   }
 
@@ -407,22 +388,19 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
   }
 
   function _liquidityAmount() internal view returns (uint128 _liquidity) {
-    if (positionId == 0) return 0;
-    (, , , , , , , _liquidity, , , , ) = INPM(NPM).positions(positionId);
+    if (positionId != 0) (, , , , , , , _liquidity, , , , ) = INPM(NPM).positions(positionId);
   }
 
   function _currentTick() internal view returns (int24 _tick) {
     (, _tick, , , , , ) = POOL.slot0();
   }
 
-  function _getAccruedAmount(BondData memory _params) internal view returns (uint256) {
-    if (_params.startTime == 0) {
-      return 0;
+  function _getAccruedAmount(BondData memory _params) internal view returns (uint256 accruedAmount) {
+    if (_params.startTime != 0) {
+      uint256 bondDuration = 1e18 * (block.timestamp - _params.startTime);
+      accruedAmount = (_params.bondAmount * bondDuration) / (bondDuration + ACCRUAL_PARAMETER);
+      //assert(accruedAmount < _params.bondAmount); // we leave it as a comment so we can uncomment it for automated testing tools
     }
-    uint256 bondDuration = 1e18 * (block.timestamp - _params.startTime);
-    uint256 accruedAmount = (_params.bondAmount * bondDuration) / (bondDuration + ACCRUAL_PARAMETER);
-    //assert(accruedAmount < _params.bondAmount); // we leave it as a comment so we can uncomment it for automated testing tools
-    return accruedAmount;
   }
 
   function _isBootstrapOngoing() internal view returns (bool) {

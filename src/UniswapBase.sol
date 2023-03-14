@@ -33,15 +33,9 @@ contract UniswapBase is IUniswapBase {
     TICK_UPPER = params.tickUpper;
   }
 
-  function _addLiquidity(AddLiquidity memory _params)
-    internal
-    returns (
-      uint256 _tokenId,
-      uint128 _liquidityAdded,
-      uint256 _amountAdded0,
-      uint256 _amountAdded1
-    )
-  {
+  function _addLiquidity(
+    AddLiquidity memory _params
+  ) internal returns (uint256 _tokenId, uint128 _liquidityAdded, uint256 _amountAdded0, uint256 _amountAdded1) {
     (address token0, address token1) = TOKEN_IN < TOKEN_OUT ? (TOKEN_IN, TOKEN_OUT) : (TOKEN_OUT, TOKEN_IN);
 
     if (positionId == 0) {
@@ -75,10 +69,9 @@ contract UniswapBase is IUniswapBase {
     }
   }
 
-  function _decreaseLiquidity(RemoveLiquidity memory _params)
-    internal
-    returns (uint256 _amountRemoved0, uint256 _amountRemoved1)
-  {
+  function _decreaseLiquidity(
+    RemoveLiquidity memory _params
+  ) internal returns (uint256 _amountRemoved0, uint256 _amountRemoved1) {
     (_amountRemoved0, _amountRemoved1) = INPM(NPM).decreaseLiquidity(
       INPM.DecreaseLiquidityParams({
         tokenId: positionId,

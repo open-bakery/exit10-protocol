@@ -13,12 +13,8 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
     _bondId = _createBond(_exit10, 10_000_000000, 10 ether);
   }
 
-  function _createBond(
-    Exit10 _exit10,
-    uint256 _amount0,
-    uint256 _amount1
-  ) internal returns (uint256 _bondId) {
-    _bondId = _exit10.createBond(
+  function _createBond(Exit10 _exit10, uint256 _amount0, uint256 _amount1) internal returns (uint256 _bondId) {
+    (_bondId, , , ) = _exit10.createBond(
       IUniswapBase.AddLiquidity({
         depositor: address(this),
         amount0Desired: _amount0,

@@ -92,8 +92,6 @@ contract Exit10Test is Test, ABaseExit10Test {
 
   function testSetup() public {
     assertTrue(exit10.positionId() == 0, 'Check positionId');
-    assertTrue(exit10.countConvertBond() == 0, 'Check count convert bond');
-    assertTrue(exit10.countCancelBond() == 0, 'Check count cancel bond');
     assertTrue(exit10.inExitMode() == false, 'Check inExitMode');
     assertTrue(token0.balanceOf(address(this)) == initialBalance);
     assertTrue(token1.balanceOf(address(this)) == initialBalance);
@@ -173,7 +171,7 @@ contract Exit10Test is Test, ABaseExit10Test {
 
   function testCreateBondOnBehalfOfUser() public {
     skip(exit10.BOOTSTRAP_PERIOD());
-    uint256 bondId = exit10.createBond(
+    (uint256 bondId, , , ) = exit10.createBond(
       IUniswapBase.AddLiquidity({
         depositor: address(0xdead),
         amount0Desired: 10000_000000,
@@ -235,7 +233,6 @@ contract Exit10Test is Test, ABaseExit10Test {
     assertTrue(_liquidity(exit10.positionId(), exit10) == 0, 'Check liquidity');
     assertTrue(token0.balanceOf(address(this)) > balanceToken0, 'Check balance token0');
     assertTrue(token1.balanceOf(address(this)) > balanceToken1, 'Check balance token1');
-    assertTrue(exit10.countCancelBond() == 1, 'Check bond count');
 
     _checkBalances(address(exit10), address(token0), address(token1), 0, 0);
     _checkBondData(exit10, bondId, liquidity, 0, startTime, endTime, uint8(IExit10.BondStatus.cancelled));

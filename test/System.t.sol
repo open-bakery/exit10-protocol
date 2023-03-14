@@ -18,7 +18,7 @@ import '../src/STO.sol';
 
 import './ABaseExit10.t.sol';
 
-contract SystemTest is Test, ABaseExit10Test {
+contract System is Test, ABaseExit10Test {
   Exit10 exit10;
   NFT nft;
   STO sto;
@@ -177,15 +177,7 @@ contract SystemTest is Test, ABaseExit10Test {
     address _user,
     uint256 _usdcAmount,
     uint256 _wethAmount
-  )
-    internal
-    returns (
-      uint256 tokenId,
-      uint128 liquidityAdded,
-      uint256 amountAdded0,
-      uint256 amountAdded1
-    )
-  {
+  ) internal returns (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
     deal(usdc, _user, _usdcAmount);
     deal(weth, _user, _wethAmount);
 
@@ -214,11 +206,7 @@ contract SystemTest is Test, ABaseExit10Test {
     _spacer();
   }
 
-  function _createBond(
-    address _user,
-    uint256 _usdcAmount,
-    uint256 _wethAmount
-  ) internal {
+  function _createBond(address _user, uint256 _usdcAmount, uint256 _wethAmount) internal {
     deal(usdc, _user, _usdcAmount);
     deal(weth, _user, _wethAmount);
 
@@ -251,12 +239,7 @@ contract SystemTest is Test, ABaseExit10Test {
 
   function _convertBond() internal {}
 
-  function _stake(
-    address _user,
-    address _mc,
-    uint256 _pid,
-    address _token
-  ) internal {
+  function _stake(address _user, address _mc, uint256 _pid, address _token) internal {
     vm.startPrank(_user);
     uint256 balance = ERC20(_token).balanceOf(_user);
     ERC20(_token).approve(address(_mc), balance);
@@ -281,11 +264,7 @@ contract SystemTest is Test, ABaseExit10Test {
     _spacer();
   }
 
-  function _displayBalance(
-    string memory _targetTitle,
-    address _target,
-    address _token
-  ) internal view {
+  function _displayBalance(string memory _targetTitle, address _target, address _token) internal view {
     string memory log0 = string.concat(
       _targetTitle,
       ' - balance of ',
@@ -306,11 +285,7 @@ contract SystemTest is Test, ABaseExit10Test {
     _displayBalance(_targetTitle, _target, _tokenB);
   }
 
-  function _displayTotal(
-    string memory _titleText,
-    uint256 _amountUSDC,
-    uint256 _amountWETH
-  ) internal view {
+  function _displayTotal(string memory _titleText, uint256 _amountUSDC, uint256 _amountWETH) internal view {
     _title(_titleText);
     console.log('Deposited USDC: ', _amountUSDC);
     console.log('Deposited WETH: ', _amountWETH);

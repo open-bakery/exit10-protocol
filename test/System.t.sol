@@ -18,7 +18,7 @@ import '../src/STO.sol';
 
 import './ABaseExit10.t.sol';
 
-contract System is Test, ABaseExit10Test {
+contract SystemTest is Test, ABaseExit10Test {
   Exit10 exit10;
   NFT nft;
   STO sto;
@@ -41,6 +41,8 @@ contract System is Test, ABaseExit10Test {
   address alice = address(0xa);
   address bob = address(0xb);
   address charlie = address(0xc);
+
+  mapping(address => string) userName;
 
   uint256 bootstrapPeriod = 2 weeks;
   uint256 accrualParameter = 1 weeks;
@@ -80,7 +82,7 @@ contract System is Test, ABaseExit10Test {
     deal(usdc, address(this), amountUSDC);
     lp = _setUpExitLiquidity(amountExit, amountUSDC);
 
-    // Deploy dependency contracts
+    // // Deploy dependency contracts
     masterchef0 = new Masterchef(weth, REWARDS_DURATION);
     masterchef1 = new Masterchef(weth, REWARDS_DURATION);
     masterchef2 = new MasterchefExit(address(exit), REWARDS_DURATION);
@@ -118,6 +120,8 @@ contract System is Test, ABaseExit10Test {
     _maxApprove(weth, address(UNISWAP_V3_ROUTER));
     _maxApprove(usdc, address(UNISWAP_V3_ROUTER));
     _setMasterchefs(feeSplitter);
+
+    // _setupNames();
   }
 
   function testScenario_0() public {
@@ -133,16 +137,20 @@ contract System is Test, ABaseExit10Test {
     _displayRewardBalanceMasterchefs();
     _displayTreasury();
     skip(bootstrapPeriod);
-    _createBond(alice, _tokenAmount(usdc, 100_000), _tokenAmount(weth, 100));
+    uint bondId = _createBond(alice, _tokenAmount(usdc, 100_000), _tokenAmount(weth, 100));
     skip(accrualParameter);
-    _generateClaimAndDistributeFees();
+    _generateFees();
+    _convertBond(bondId, alice);
     _displayTreasury();
+    _lpExit(alice);
+    _stake(alice, address(masterchef2), 0, lp);
   }
 
   function _setMasterchefs(address _rewardDistributor) internal {
     masterchef0.add(50, address(sto));
     masterchef0.add(50, address(boot));
     masterchef1.add(100, address(blp));
+
     masterchef2.add(100, lp);
     masterchef0.setRewardDistributor(_rewardDistributor);
     masterchef1.setRewardDistributor(_rewardDistributor);
@@ -153,6 +161,8 @@ contract System is Test, ABaseExit10Test {
 
   function _generateFees() internal {
     _generateFees(usdc, weth, _tokenAmount(usdc, 100_000_000));
+    // Skips oracle requirement
+    skip(60);
     _title('GENERATING FEE');
     _spacer();
   }
@@ -160,8 +170,6 @@ contract System is Test, ABaseExit10Test {
   function _generateClaimAndDistributeFees() internal {
     _generateFees();
     exit10.claimAndDistributeFees();
-    // Allow oracle to update
-    skip(60);
 
     _title('FEE DISTRIBUTION');
     console.log('Fee Splitter Balance of USDC: ', ERC20(usdc).balanceOf(feeSplitter));
@@ -173,6 +181,24 @@ contract System is Test, ABaseExit10Test {
     _displayBalance('Masterchef0', address(masterchef0), weth);
     _displayBalance('Masterchef1', address(masterchef1), weth);
     _displayBalance('Masterchef2', address(masterchef2), address(exit));
+  }
+
+  function _lpExit(address _user) internal returns (uint exitAmountAdded, uint usdcAmountAdded, uint liquidity) {
+    uint balanceExit = ERC20(exit).balanceOf(_user);
+    uint usdcAmount = _tokenAmount(usdc, balanceExit / 1e18);
+    deal(usdc, _user, usdcAmount);
+    vm.startPrank(_user);
+    (exitAmountAdded, usdcAmountAdded, liquidity) = _addLP(balanceExit, usdcAmount);
+    vm.stopPrank();
+
+    string memory log0 = string.concat('User: ', userName[_user]);
+    string memory log1 = string.concat('EXIT added: ', Strings.toString(balanceExit));
+    string memory log2 = string.concat('USDC added: ', Strings.toString(usdcAmountAdded));
+    _title('PROVIDING EXIT/USDC LIQUIDITY');
+    console.log(log0);
+    console.log(log1);
+    console.log(log2);
+    _spacer();
   }
 
   function _lockBootstrap(
@@ -198,7 +224,7 @@ contract System is Test, ABaseExit10Test {
     );
     vm.stopPrank();
 
-    string memory log0 = string.concat('User: ', Strings.toHexString(_user));
+    string memory log0 = string.concat('User: ', userName[_user]);
     string memory log1 = string.concat('USDC Value: ', Strings.toString(_usdcAmount));
     string memory log2 = string.concat('WETH Value: ', Strings.toString(_wethAmount));
     _title('ENTERING BOOTSTRAP PHASE');
@@ -208,14 +234,14 @@ contract System is Test, ABaseExit10Test {
     _spacer();
   }
 
-  function _createBond(address _user, uint256 _usdcAmount, uint256 _wethAmount) internal {
+  function _createBond(address _user, uint256 _usdcAmount, uint256 _wethAmount) internal returns (uint _bondId) {
     deal(usdc, _user, _usdcAmount);
     deal(weth, _user, _wethAmount);
 
     vm.startPrank(_user);
     ERC20(weth).approve(address(exit10), _wethAmount);
     ERC20(usdc).approve(address(exit10), _usdcAmount);
-    exit10.createBond(
+    (_bondId, , , ) = exit10.createBond(
       IUniswapBase.AddLiquidity({
         depositor: _user,
         amount0Desired: _usdcAmount,
@@ -227,7 +253,7 @@ contract System is Test, ABaseExit10Test {
     );
     vm.stopPrank();
 
-    string memory log0 = string.concat('User: ', Strings.toHexString(_user));
+    string memory log0 = string.concat('User: ', userName[_user]);
     string memory log1 = string.concat('Amount USDC: ', Strings.toString(_usdcAmount));
     string memory log2 = string.concat('Amount WETH: ', Strings.toString(_wethAmount));
     _title('CREATING BOND');
@@ -237,9 +263,57 @@ contract System is Test, ABaseExit10Test {
     _spacer();
   }
 
-  function _cancelBond() internal {}
+  function _cancelBond(uint _bondId, address _user) internal {
+    (uint bondAmount, , , , ) = exit10.getBondData(_bondId);
+    vm.startPrank(_user);
+    (uint usdcAmount, uint wethAmount) = exit10.cancelBond(
+      _bondId,
+      IUniswapBase.RemoveLiquidity({
+        liquidity: uint128(bondAmount),
+        amount0Min: 0,
+        amount1Min: 0,
+        deadline: block.timestamp
+      })
+    );
+    vm.stopPrank();
 
-  function _convertBond() internal {}
+    string memory log0 = string.concat('User: ', userName[_user]);
+    string memory log1 = string.concat('Bond amount: ', Strings.toString(bondAmount));
+    string memory log2 = string.concat('Amount USDC: ', Strings.toString(usdcAmount));
+    string memory log3 = string.concat('Amount WETH: ', Strings.toString(wethAmount));
+    _title('CANCELLED BOND');
+    console.log(log0);
+    console.log(log1);
+    console.log(log2);
+    console.log(log3);
+    _spacer();
+  }
+
+  function _convertBond(uint _bondId, address _user) internal {
+    (uint bondAmount, , , , ) = exit10.getBondData(_bondId);
+    vm.startPrank(_user);
+    (uint boostTokenAmount, uint exitTokenAmount) = exit10.convertBond(
+      _bondId,
+      IUniswapBase.RemoveLiquidity({
+        liquidity: uint128(bondAmount),
+        amount0Min: 0,
+        amount1Min: 0,
+        deadline: block.timestamp
+      })
+    );
+    vm.stopPrank();
+
+    string memory log0 = string.concat('User: ', userName[_user]);
+    string memory log1 = string.concat('Bond amount: ', Strings.toString(bondAmount));
+    string memory log2 = string.concat('Amount BLP: ', Strings.toString(boostTokenAmount));
+    string memory log3 = string.concat('Amount EXIT: ', Strings.toString(exitTokenAmount));
+    _title('BOND CONVERTED');
+    console.log(log0);
+    console.log(log1);
+    console.log(log2);
+    console.log(log3);
+    _spacer();
+  }
 
   function _stake(address _user, address _mc, uint256 _pid, address _token) internal {
     vm.startPrank(_user);
@@ -248,7 +322,7 @@ contract System is Test, ABaseExit10Test {
     AMasterchefBase(_mc).deposit(_pid, balance);
     vm.stopPrank();
 
-    string memory log0 = string.concat('User: ', Strings.toHexString(_user));
+    string memory log0 = string.concat('User: ', userName[_user]);
     string memory log1 = string.concat('Amount: ', Strings.toString(balance));
     _title('STAKING IN MASTERCHEF');
     console.log(log0);
@@ -302,10 +376,32 @@ contract System is Test, ABaseExit10Test {
     console.log('----------------------------------');
   }
 
-  function _setUpExitLiquidity(uint256 _amountExit, uint256 _amountUSDC) internal returns (address exit_usdc_lp) {
-    exit_usdc_lp = UNISWAP_V2_FACTORY.createPair(address(exit), usdc);
+  function _setupNames() internal {
+    userName[alice] = 'Alice';
+    userName[bob] = 'Bob';
+    userName[charlie] = 'Charlie';
+  }
+
+  function _addLP(
+    uint256 _amountExit,
+    uint256 _amountUSDC
+  ) internal returns (uint usdcAmountAdded, uint exitAmountAdded, uint lpAmount) {
     ERC20(usdc).approve(address(UNISWAP_V2_ROUTER), _amountUSDC);
     exit.approve(address(UNISWAP_V2_ROUTER), _amountExit);
-    UNISWAP_V2_ROUTER.addLiquidity(address(exit), usdc, _amountExit, _amountUSDC, 0, 0, address(this), block.timestamp);
+    (exitAmountAdded, usdcAmountAdded, lpAmount) = UNISWAP_V2_ROUTER.addLiquidity(
+      address(exit),
+      usdc,
+      _amountExit,
+      _amountUSDC,
+      0,
+      0,
+      address(this),
+      block.timestamp
+    );
+  }
+
+  function _setUpExitLiquidity(uint256 _amountExit, uint256 _amountUSDC) internal returns (address exit_usdc_lp) {
+    exit_usdc_lp = UNISWAP_V2_FACTORY.createPair(address(exit), usdc);
+    _addLP(_amountExit, _amountUSDC);
   }
 }

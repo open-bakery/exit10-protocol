@@ -120,8 +120,7 @@ contract SystemTest is Test, ABaseExit10Test {
     _maxApprove(weth, address(UNISWAP_V3_ROUTER));
     _maxApprove(usdc, address(UNISWAP_V3_ROUTER));
     _setMasterchefs(feeSplitter);
-
-    // _setupNames();
+    _setupNames();
   }
 
   function testScenario_0() public {

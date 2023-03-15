@@ -12,7 +12,8 @@ import '../src/interfaces/INonfungiblePositionManager.sol';
 import '../src/FeeSplitter.sol';
 import '../src/BaseToken.sol';
 
-import './ABaseExit10.t.sol';
+import { MasterchefExit } from './ABaseExit10.t.sol';
+import { ABaseExit10Test } from './ABaseExit10.t.sol';
 
 contract Exit10Test is Test, ABaseExit10Test {
   Exit10 exit10;
@@ -36,7 +37,7 @@ contract Exit10Test is Test, ABaseExit10Test {
   address feeSplitter;
   address masterchef0 = address(0x0a);
   address masterchef1 = address(0x0b);
-  address masterchef2 = address(0x0c);
+  address masterchef2;
 
   IUniswapBase.BaseDeployParams baseParams =
     IUniswapBase.BaseDeployParams({
@@ -57,6 +58,7 @@ contract Exit10Test is Test, ABaseExit10Test {
     exitToken = new BaseToken('Exit Liquidity', 'EXIT');
 
     feeSplitter = address(new FeeSplitter(masterchef0, masterchef1, vm.envAddress('SWAPPER')));
+    masterchef2 = address(new MasterchefExit(address(exitToken), 2 weeks));
 
     IExit10.DeployParams memory params = IExit10.DeployParams({
       NFT: address(nft),
@@ -75,6 +77,7 @@ contract Exit10Test is Test, ABaseExit10Test {
     sto.setExit10(address(exit10));
     nft.setExit10(address(exit10));
     FeeSplitter(feeSplitter).setExit10(address(exit10));
+    _setUpExitPool(exit10, address(0x0c));
 
     boot.transferOwnership(address(exit10));
     blp.transferOwnership(address(exit10));
@@ -487,11 +490,18 @@ contract Exit10Test is Test, ABaseExit10Test {
 
     _eth10k(exit10);
     exit10.exit10();
-    uint256 currentBalanceUSDC = ERC20(token0).balanceOf(address(this));
+    uint256 initialBalanceUSDC = ERC20(token0).balanceOf(address(this));
+    uint256 exitBalance = ERC20(exitToken).balanceOf(address(this));
+    uint256 precision = 1e18;
+    uint256 exitTokenShare = (exitBalance * precision) / ERC20(exitToken).totalSupply();
     exit10.exitClaim();
 
     assertTrue(ERC20(exit10.EXIT()).balanceOf(address(this)) == 0, 'Check exit burn');
-    assertTrue(ERC20(token0).balanceOf(address(this)) == currentBalanceUSDC + exit10.exitLiquidity());
+    assertTrue(
+      ERC20(token0).balanceOf(address(this)) - initialBalanceUSDC ==
+        (exit10.exitLiquidity() * exitTokenShare) / precision,
+      'Check USD balance'
+    );
   }
 
   function testExitClaimRevert() public {

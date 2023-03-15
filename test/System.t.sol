@@ -68,6 +68,8 @@ contract SystemTest is Test, ABaseExit10Test {
     });
 
   function setUp() public {
+    deployTime = block.timestamp;
+
     // Deploy tokens
     sto = new STO(bytes32('merkle_root'));
     boot = new BaseToken('Bootstap', 'BOOT');
@@ -107,19 +109,14 @@ contract SystemTest is Test, ABaseExit10Test {
     sto.setExit10(address(exit10));
     nft.setExit10(address(exit10));
     FeeSplitter(feeSplitter).setExit10(address(exit10));
+    _setMasterchefs(feeSplitter);
+
     boot.transferOwnership(address(exit10));
     blp.transferOwnership(address(exit10));
     exit.transferOwnership(address(exit10));
-
-    deployTime = block.timestamp;
-
-    uint256 initialBalanceWeth = _tokenAmount(weth, 10);
-    uint256 initialBalanceUsdc = _tokenAmount(usdc, 10_000);
-    _mintAndApprove(weth, initialBalanceWeth, address(exit10));
-    _mintAndApprove(usdc, initialBalanceUsdc, address(exit10));
     _maxApprove(weth, address(UNISWAP_V3_ROUTER));
     _maxApprove(usdc, address(UNISWAP_V3_ROUTER));
-    _setMasterchefs(feeSplitter);
+
     _setupNames();
   }
 
@@ -149,13 +146,11 @@ contract SystemTest is Test, ABaseExit10Test {
     masterchef0.add(50, address(sto));
     masterchef0.add(50, address(boot));
     masterchef1.add(100, address(blp));
-
-    masterchef2.add(100, lp);
     masterchef0.setRewardDistributor(_rewardDistributor);
     masterchef1.setRewardDistributor(_rewardDistributor);
     masterchef0.renounceOwnership();
     masterchef1.renounceOwnership();
-    masterchef2.renounceOwnership();
+    _setUpExitPool(exit10, lp);
   }
 
   function _generateFees() internal {

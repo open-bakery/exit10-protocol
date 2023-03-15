@@ -46,7 +46,9 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
   // --- Constants ---
   uint256 private constant DEADLINE = 1e10;
   uint256 public constant TOKEN_MULTIPLIER = 1e8;
-  uint256 public constant INITIAL_EXIT_REWARD = 20_000_000 ether;
+  uint256 public constant LP_EXIT_REWARD = 3_000_000 ether;
+  uint256 public constant BONDERS_EXIT_REWARD = 7_000_000 ether;
+  uint256 constant MAX_EXIT_SUPPLY = LP_EXIT_REWARD + BONDERS_EXIT_REWARD;
   uint256 constant MAX_UINT_256 = type(uint256).max;
   uint128 constant MAX_UINT_128 = type(uint128).max;
 
@@ -63,7 +65,6 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
   address public immutable STO;
   address public immutable FEE_SPLITTER;
 
-  uint256 public immutable MAX_SUPPLY = 10_000_000 ether;
   uint256 public immutable DEPLOYMENT_TIMESTAMP;
   uint256 public immutable BOOTSTRAP_PERIOD;
   uint256 public immutable ACCRUAL_PARAMETER; // The number of seconds it takes to accrue 50% of the cap, represented as an 18 digit fixed-point number.
@@ -98,8 +99,6 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
     BOOTSTRAP_PERIOD = params.bootstrapPeriod;
     ACCRUAL_PARAMETER = params.accrualParameter * DECIMAL_PRECISION;
     LP_PER_USD = params.lpPerUSD;
-
-    // _distributeInitialExitRewards();
 
     ERC20(IUniswapV3Pool(POOL).token0()).approve(NPM, MAX_UINT_256);
     ERC20(IUniswapV3Pool(POOL).token1()).approve(NPM, MAX_UINT_256);
@@ -225,6 +224,7 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
     // The modification would required to send all tokens to be distributed at once
     // (spread over total distribution time) but hard stop at exit10 blocktime.
     // This would allow users to claim up to that blocktime.
+    _stopExitRewards();
     exitTotalSupply = EXIT.totalSupply();
     finalExitAmount = uint128(_liquidityAmount() - (pendingAmount + reserveAmount));
     uint256 exitBucket;
@@ -349,12 +349,7 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
     MasterchefExit mc = MasterchefExit(MASTERCHEF);
     uint256 distributedRewards = (mc.rewardRate() * (block.timestamp - (mc.periodFinish() - mc.REWARDS_DURATION()))) /
       mc.PRECISION();
-    EXIT.burn(MASTERCHEF, INITIAL_EXIT_REWARD - distributedRewards);
-  }
-
-  function _distributeInitialExitRewards() internal {
-    EXIT.mint(MASTERCHEF, INITIAL_EXIT_REWARD);
-    MasterchefExit(MASTERCHEF).updateRewards(INITIAL_EXIT_REWARD);
+    EXIT.burn(MASTERCHEF, LP_EXIT_REWARD - distributedRewards);
   }
 
   function _safeTokenClaim(
@@ -388,7 +383,7 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
 
   function _mintExitCapped(address recipient, uint256 amount) internal {
     uint256 newSupply = EXIT.totalSupply() + amount;
-    uint256 mintAmount = newSupply > MAX_SUPPLY ? MAX_SUPPLY - amount : amount;
+    uint256 mintAmount = newSupply > MAX_EXIT_SUPPLY ? MAX_EXIT_SUPPLY - amount : amount;
     if (mintAmount != 0) EXIT.mint(recipient, mintAmount);
 
     emit MintExit(recipient, mintAmount);

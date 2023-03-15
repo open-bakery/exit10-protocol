@@ -6,6 +6,7 @@ import 'forge-std/Test.sol';
 
 import './ABase.t.sol';
 import '../src/Exit10.sol';
+import { MasterchefExit } from '../src/Exit10.sol';
 
 abstract contract ABaseExit10Test is Test, ABaseTest {
   function _skipBootAndCreateBond(Exit10 _exit10) internal returns (uint256 _bondId) {
@@ -24,6 +25,17 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
         deadline: block.timestamp
       })
     );
+  }
+
+  function _setUpExitPool(Exit10 _exit10, address _lp) internal {
+    MasterchefExit(_exit10.MASTERCHEF()).add(100, _lp);
+    _distributeInitialExitRewards(_exit10);
+    MasterchefExit(_exit10.MASTERCHEF()).renounceOwnership();
+  }
+
+  function _distributeInitialExitRewards(Exit10 _exit10) internal {
+    _exit10.EXIT().mint(_exit10.MASTERCHEF(), _exit10.LP_EXIT_REWARD());
+    MasterchefExit(_exit10.MASTERCHEF()).updateRewards(_exit10.LP_EXIT_REWARD());
   }
 
   function _liquidity(uint256 _positionId, Exit10 _exit10) internal view returns (uint128 _liq) {
@@ -46,10 +58,10 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
     uint256 _bootstrap
   ) internal {
     (uint256 pending, uint256 reserve, uint256 exit, uint256 bootstrap) = _exit10.getTreasury();
-    assertTrue(pending == _pending, 'Pending bucket check');
-    assertTrue(reserve == _reserve, 'Reserve bucket check');
-    assertTrue(exit == _exit, 'Exit bucket check');
-    assertTrue(bootstrap == _bootstrap, 'Bootstrap bucket check');
+    assertTrue(pending == _pending, 'Treasury: Pending bucket check');
+    assertTrue(reserve == _reserve, 'Treasury: Reserve bucket check');
+    assertTrue(exit == _exit, 'Treasury: Exit bucket check');
+    assertTrue(bootstrap == _bootstrap, 'Treasury: Bootstrap bucket check');
   }
 
   function _checkBondData(

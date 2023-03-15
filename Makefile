@@ -56,5 +56,5 @@ trace:
 	forge test -vvv --fork-url $(RPC_URL)
 
 trace1:
-	forge test -vvv --mc Exit10 --fork-url $(RPC_URL)
+	forge test -vv --mc Exit10 --fork-url $(RPC_URL)
 

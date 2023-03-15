@@ -53,6 +53,7 @@ contract FeeSplitterTest is Test {
     _dealTokens(amountTokenOut, amountTokenIn);
     ERC20(USDC).approve(swapper, type(uint256).max);
     ERC20(WETH).approve(swapper, type(uint256).max);
+    skip(60);
     ISwapper(swapper).swap(
       ISwapper.SwapParameters({
         recipient: address(this),
@@ -75,6 +76,7 @@ contract FeeSplitterTest is Test {
     uint256 exchangeAmount = 20_000_000000;
     _dealTokens(amountTokenOut, amountTokenIn);
     _simulateCollectFees(pendingShare, remainingShare, amountTokenOut, amountTokenIn);
+    skip(60);
     uint256 exchanged = feeSplitter.updateFees(exchangeAmount);
 
     uint256 pendingTokenOut = ((amountTokenOut / 10) * pendingShare) - ((exchangeAmount / 10) * pendingShare);
@@ -111,6 +113,7 @@ contract FeeSplitterTest is Test {
     uint256 amountTokenOut = 100_000_000000;
     uint256 amountTokenIn = 10_000 ether;
     _dealTokens(amountTokenOut, amountTokenIn);
+    skip(60);
     _simulateCollectFees(pendingShare, remainingShare, amountTokenOut, amountTokenIn);
     uint256 exchanged = feeSplitter.updateFees(100_000_000_000000);
     _checkBuckets(0, 0, 0, 0);

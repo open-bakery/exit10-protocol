@@ -7,8 +7,6 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 
-import 'forge-std/Test.sol';
-
 abstract contract AMasterchefBase is Ownable {
   using SafeERC20 for IERC20;
 
@@ -191,11 +189,10 @@ abstract contract AMasterchefBase is Ownable {
   }
 
   // @notice Returns the total rewards allocated to a pool since last update.
-  function _getPoolRewardsSinceLastUpdate(uint256 _poolLastUpdateTime, uint256 _poolAllocPoint)
-    internal
-    view
-    returns (uint256 _poolRewards)
-  {
+  function _getPoolRewardsSinceLastUpdate(
+    uint256 _poolLastUpdateTime,
+    uint256 _poolAllocPoint
+  ) internal view returns (uint256 _poolRewards) {
     // If _updatePool has not been called since periodFinish
     if (_poolLastUpdateTime > periodFinish) return 0;
 

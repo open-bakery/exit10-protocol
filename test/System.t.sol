@@ -27,7 +27,8 @@ contract SystemTest is Test, ABaseExit10Test {
   BaseToken exit;
   address lp; // EXIT/USDC LP Uniswap v2
 
-  uint256 REWARDS_DURATION = 2 weeks;
+  uint256 constant REWARDS_DURATION = 2 weeks;
+  uint256 constant ORACLE_DELAY = 60;
 
   // Params Exit10
   address uniswapV3Factory = vm.envAddress('UNISWAP_V3_FACTORY');
@@ -84,7 +85,7 @@ contract SystemTest is Test, ABaseExit10Test {
     deal(usdc, address(this), amountUSDC);
     lp = _setUpExitLiquidity(amountExit, amountUSDC);
 
-    // // Deploy dependency contracts
+    // Deploy dependency contracts
     masterchef0 = new Masterchef(weth, REWARDS_DURATION);
     masterchef1 = new Masterchef(weth, REWARDS_DURATION);
     masterchef2 = new MasterchefExit(address(exit), REWARDS_DURATION);
@@ -118,6 +119,10 @@ contract SystemTest is Test, ABaseExit10Test {
     _maxApprove(usdc, address(UNISWAP_V3_ROUTER));
 
     _setupNames();
+  }
+
+  function testOne() public {
+    assertTrue(true);
   }
 
   function testScenario_0() public {
@@ -156,7 +161,7 @@ contract SystemTest is Test, ABaseExit10Test {
   function _generateFees() internal {
     _generateFees(usdc, weth, _tokenAmount(usdc, 100_000_000));
     // Skips oracle requirement
-    skip(60);
+    skip(ORACLE_DELAY);
     _title('GENERATING FEE');
     _spacer();
   }

@@ -219,11 +219,6 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
 
     inExitMode = true;
 
-    // TODO This might be an issue since Exit is continuously minted for EXIT/USDC providers.
-    // Either users will NOT receive Exit if they are late claimers or we must modify Masterchef
-    // The modification would required to send all tokens to be distributed at once
-    // (spread over total distribution time) but hard stop at exit10 blocktime.
-    // This would allow users to claim up to that blocktime.
     _stopExitRewards();
     exitTotalSupply = EXIT.totalSupply();
     finalExitAmount = uint128(_liquidityAmount() - (pendingAmount + reserveAmount));

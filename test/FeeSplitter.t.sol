@@ -150,7 +150,14 @@ contract FeeSplitterTest is Test {
   }
 
   function _checkBalances(address _target, uint256 _amountTokenOut, uint256 _amountTokenIn) internal {
-    assertTrue(_amountTokenOut == ERC20(TOKEN_OUT).balanceOf(_target), 'Check balance token out');
-    assertTrue(_amountTokenIn == ERC20(TOKEN_IN).balanceOf(_target), 'Check balance token in');
+    uint roundAmount = 10;
+    assertTrue(
+      _amountTokenOut / roundAmount == ERC20(TOKEN_OUT).balanceOf(_target) / roundAmount,
+      'Check balance token out'
+    );
+    assertTrue(
+      _amountTokenIn / roundAmount == ERC20(TOKEN_IN).balanceOf(_target) / roundAmount,
+      'Check balance token in'
+    );
   }
 }

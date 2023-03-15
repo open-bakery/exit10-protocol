@@ -4,4 +4,3 @@ out = 'out'
 libs = ['lib']
 auto_detect_solc = true
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
-sender = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"

@@ -23,6 +23,7 @@ USDC_ADDRESS=$(cast send --create "$USDC_BYTECODE" | extract_contract_address)
 
 WETH_BYTECODE=$(cat "$BYTECODES/WETH")
 WETH_ADDRESS=$(cast send --create "$WETH_BYTECODE" | extract_contract_address)
+cast balance $ETH_FROM 
 cast send --value 200000000000000000000000 "0x$WETH_ADDRESS" "deposit()" > /dev/null
 
 # Uniswap V2
@@ -32,7 +33,6 @@ V2_FACTORY_ADDRESS=$(cast send --create "$V2_FACTORY_BYTECODE" | extract_contrac
 
 V2_ROUTER_BYTECODE=$(sed < "$BYTECODES/UniswapV2Router" "s/$V2_FACTORY_ADDRESS_/$V2_FACTORY_ADDRESS/;s/$WETH_ADDRESS_/$WETH_ADDRESS/")
 V2_ROUTER_ADDRESS=$(cast send --create "$V2_ROUTER_BYTECODE" | extract_contract_address)
-
 # Uniswap V3
 
 V3_FACTORY_BYTECODE=$(cat "$BYTECODES/UniswapV3Factory")
@@ -77,5 +77,5 @@ SWAPPER=0x$SWAPPER_ADDRESS
 POOL=0x$POOL_ADDRESS
 UNISWAP_V2_FACTORY=0x$V2_FACTORY_ADDRESS
 UNISWAP_V2_ROUTER=0x$V2_ROUTER_ADDRESS
-" > "$SD/../config/local.ini"
+" > "$SD/../config/local.ini" 
 

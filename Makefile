@@ -5,16 +5,16 @@ SHELL := /bin/bash
 SED_REPLACE="s/{{WETH}}/$$WETH/;s/{{USDC}}/$$USDC/;s/{{UNISWAP_V3_FACTORY}}/$$UNISWAP_V3_FACTORY/;s/{{UNISWAP_V3_ROUTER}}/$$UNISWAP_V3_ROUTER/;s/{{UNISWAP_V3_NPM}}/$$UNISWAP_V3_NPM/;s/{{SWAPPER}}/$$SWAPPER/;s/{{UNISWAP_V2_ROUTER}}/$$UNISWAP_V2_ROUTER/;s/{{UNISWAP_V2_FACTORY}}/$$UNISWAP_V2_FACTORY/;s/{{POOL}}/$$POOL/"
 
 kill-anvil:
-	@if lsof -i :8545 > /dev/null 2>&1; then \
+	@if pidof anvil > /dev/null 2>&1; then \
 		echo "Anvil is already running, killing it..."; \
-		kill $$(lsof -t -i:8545); \
+		kill $$(pidof anvil); \
 	fi
 
 wait-for-anvil:
 	@echo "Waiting for anvil to be online...";
 	@while ! curl -s http://127.0.0.1:8545 > /dev/null; do sleep 1; done
 	@echo "Anvil online and outputting to anvil.log";
-	@echo 'Kill it with: kill $(lsof -t -i:8545)'
+	@echo 'Kill it with: kill $(pidof anvil)'
 
 start-anvil-local:
 	$(MAKE) kill-anvil
@@ -25,7 +25,7 @@ start-anvil-local:
 start-anvil-mainnet-fork:
 	$(MAKE) kill-anvil
 	@echo "Starting anvil mainnet fork...";
-	@anvil --fork-url $(MAINNET_RPC)
+	@anvil --fork-url $(RPC_URL)
 	$(MAKE) wait-for-anvil
 
 deploy-infrastructure:
@@ -47,14 +47,14 @@ dev-mainnet-fork:
 	@source ./config/mainnet.ini ; sed < .env.template > .env $(SED_REPLACE)
 
 gas-report:
-	forge test -vv --mc Exit10 --gas-report --fork-url $(MAINNET_RPC)
+	forge test -vv --mc Exit10 --gas-report --fork-url $(RPC_URL)
 
-test:
-	forge test -vv --fork-url $(MAINNET_RPC)
+tests:
+	forge test -vv --fork-url $(RPC_URL)
 
 trace:
-	forge test -vvv --fork-url $(MAINNET_RPC)
+	forge test -vvv --fork-url $(RPC_URL)
 
 trace1:
-	forge test -vvv --mc Exit10 --fork-url $(MAINNET_RPC)
+	forge test -vvv --mc Exit10 --fork-url $(RPC_URL)
 

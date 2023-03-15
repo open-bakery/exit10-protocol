@@ -5,7 +5,6 @@ import { Math } from '@openzeppelin/contracts/utils/math/Math.sol';
 import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import { Ownable } from '@openzeppelin/contracts/access/Ownable.sol';
-
 import { MerkleDistributor, MerkleProof, AlreadyClaimed, InvalidProof } from './MerkleDistributor.sol';
 import { BaseToken } from './BaseToken.sol';
 import { Exit10 } from './Exit10.sol';

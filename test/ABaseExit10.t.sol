@@ -50,14 +50,14 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
     _swap(_exit10.TOKEN_OUT(), _exit10.TOKEN_IN(), 200_000_000_000000);
   }
 
-  function _checkTreasury(
+  function _checkBuckets(
     Exit10 _exit10,
     uint256 _pending,
     uint256 _reserve,
     uint256 _exit,
     uint256 _bootstrap
   ) internal {
-    (uint256 pending, uint256 reserve, uint256 exit, uint256 bootstrap) = _exit10.getTreasury();
+    (uint256 pending, uint256 reserve, uint256 exit, uint256 bootstrap) = _exit10.getBuckets();
     assertTrue(pending == _pending, 'Treasury: Pending bucket check');
     assertTrue(reserve == _reserve, 'Treasury: Reserve bucket check');
     assertTrue(exit == _exit, 'Treasury: Exit bucket check');

@@ -8,10 +8,10 @@ interface IExit10 {
     address BOOT;
     address BLP;
     address EXIT;
-    address masterchef; // For EXIT/USDC
-    address feeSplitter;
+    address masterchef; // EXIT/USDC Stakers
+    address feeSplitter; // Distribution to STO + BOOT and BLP stakers
     uint256 bootstrapPeriod; // Min duration of first chicken-in
-    uint256 accrualParameter; // Initial value for `accrualParameter`
+    uint256 accrualParameter; // The number of seconds it takes to accrue 50% of the cap, represented as an 18 digit fixed-point number.
     uint256 lpPerUSD; // Amount of LP per USD that is minted on the 500 - 10000 Range Pool
   }
 

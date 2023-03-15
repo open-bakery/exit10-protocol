@@ -23,6 +23,10 @@ contract Exit10Test is Test, ABaseExit10Test {
   BaseToken blp;
   BaseToken exitToken;
 
+  // On Ethereum Mainnet:
+  // Token0 is USDC
+  // Token1 is WETH
+
   ERC20 token0;
   ERC20 token1;
 
@@ -121,7 +125,24 @@ contract Exit10Test is Test, ABaseExit10Test {
     );
 
     _checkBalances(address(exit10), address(token0), address(token1), 0, 0);
-    _checkTreasury(exit10, 0, 0, 0, liquidityAdded);
+    _checkBuckets(exit10, 0, 0, 0, liquidityAdded);
+  }
+
+  function testBootstrapWithMinimumAmount() public {
+    uint256 minToken0 = 1e0;
+    uint256 minToken1 = 1e5;
+
+    exit10.bootstrapLock(
+      IUniswapBase.AddLiquidity({
+        depositor: address(this),
+        amount0Desired: minToken0,
+        amount1Desired: minToken1,
+        amount0Min: 0,
+        amount1Min: 0,
+        deadline: block.timestamp
+      })
+    );
+    assertTrue(true);
   }
 
   function testBootstrapRevert() public {
@@ -169,7 +190,7 @@ contract Exit10Test is Test, ABaseExit10Test {
     assertTrue(nft.ownerOf(bondId) == address(this), 'Check NFT owner');
 
     _checkBalances(address(exit10), address(token0), address(token1), 0, 0);
-    _checkTreasury(exit10, uint256(_liquidity(exit10.positionId(), exit10)), 0, 0, 0);
+    _checkBuckets(exit10, uint256(_liquidity(exit10.positionId(), exit10)), 0, 0, 0);
   }
 
   function testCreateBondOnBehalfOfUser() public {
@@ -213,7 +234,7 @@ contract Exit10Test is Test, ABaseExit10Test {
     assertTrue(nft.ownerOf(bondId) == address(this), 'Check NFT owner');
 
     _checkBalances(address(exit10), address(token0), address(token1), 0, 0);
-    _checkTreasury(exit10, uint256(_liquidity(exit10.positionId(), exit10)) - liquidityAdded, 0, 0, liquidityAdded);
+    _checkBuckets(exit10, uint256(_liquidity(exit10.positionId(), exit10)) - liquidityAdded, 0, 0, liquidityAdded);
   }
 
   function testCancelBond() public {
@@ -239,7 +260,7 @@ contract Exit10Test is Test, ABaseExit10Test {
 
     _checkBalances(address(exit10), address(token0), address(token1), 0, 0);
     _checkBondData(exit10, bondId, liquidity, 0, startTime, endTime, uint8(IExit10.BondStatus.cancelled));
-    _checkTreasury(exit10, 0, 0, 0, 0);
+    _checkBuckets(exit10, 0, 0, 0, 0);
   }
 
   function testCancelBondNoBondsRevert() public {
@@ -307,7 +328,7 @@ contract Exit10Test is Test, ABaseExit10Test {
 
     _checkBalances(address(exit10), address(token0), address(token1), 0, 0);
     _checkBondData(exit10, bondId, liquidity, liquidity / 2, startTime, endTime, uint8(IExit10.BondStatus.converted));
-    _checkTreasury(exit10, 0, liquidity / 2, exitBucket, 0);
+    _checkBuckets(exit10, 0, liquidity / 2, exitBucket, 0);
   }
 
   function testRedeem() public {
@@ -339,7 +360,7 @@ contract Exit10Test is Test, ABaseExit10Test {
     assertTrue(exit10.BLP().balanceOf(address(this)) == 0, 'Check balance BLP');
 
     _checkBalances(address(exit10), address(token0), address(token1), 0, 0);
-    _checkTreasury(exit10, 0, 0, _liquidity(exit10.positionId(), exit10), 0);
+    _checkBuckets(exit10, 0, 0, _liquidity(exit10.positionId(), exit10), 0);
   }
 
   function testClaimAndDistributeFees() public {
@@ -356,7 +377,7 @@ contract Exit10Test is Test, ABaseExit10Test {
     );
     _generateFees(address(token0), address(token1), 100_000_000_000000);
 
-    _checkTreasury(exit10, _liquidity(exit10.positionId(), exit10), 0, 0, 0);
+    _checkBuckets(exit10, _liquidity(exit10.positionId(), exit10), 0, 0, 0);
 
     exit10.claimAndDistributeFees();
     uint256 feesClaimed0 = token0.balanceOf(feeSplitter);
@@ -397,7 +418,7 @@ contract Exit10Test is Test, ABaseExit10Test {
         deadline: block.timestamp
       })
     );
-    (uint256 pending, uint256 reserve, uint256 exit, uint256 bootstrap) = exit10.getTreasury();
+    (uint256 pending, uint256 reserve, uint256 exit, uint256 bootstrap) = exit10.getBuckets();
     _checkBalances(address(exit10), address(token0), address(token1), 0, 0);
 
     _eth10k(exit10);
@@ -417,9 +438,9 @@ contract Exit10Test is Test, ABaseExit10Test {
     uint256 exitLiquidityUSD = (AcquiredUSD - exitBootstrapUSD);
     uint256 share = exitLiquidityUSD / 10;
 
-    assertTrue(exit10.exitBootstrap() == exitBootstrapUSD + share, 'Check Bootstrap USD share amount');
-    assertTrue(exit10.exitTeamPlusBackers() == share * 2, 'Check team plus backers'); // 20%
-    assertTrue(AcquiredUSD - (exitBootstrapUSD + share * 3) == exit10.exitLiquidity(), 'Check exit liquidity');
+    assertTrue(exit10.bootstrapRewardsPlusRefund() == exitBootstrapUSD + share, 'Check Bootstrap USD share amount');
+    assertTrue(exit10.teamPlusBackersRewards() == share * 2, 'Check team plus backers'); // 20%
+    assertTrue(AcquiredUSD - (exitBootstrapUSD + share * 3) == exit10.exitTokenRewardsFinal(), 'Check exit liquidity');
     assertTrue(ERC20(token1).balanceOf(address(exit10)) == 0, 'Check balance token1 == 0');
   }
 
@@ -448,14 +469,15 @@ contract Exit10Test is Test, ABaseExit10Test {
     );
     _eth10k(exit10);
     exit10.exit10();
-    (uint256 pending, uint256 reserve, , uint256 bootstrap) = exit10.getTreasury();
+    (uint256 pending, uint256 reserve, , uint256 bootstrap) = exit10.getBuckets();
 
     assertTrue(_liquidity(exit10.positionId(), exit10) == pending + reserve, 'Check liquidity position');
 
     uint256 currentBalanceUSDC = ERC20(token0).balanceOf(address(this));
     uint256 bootBalance = ERC20(exit10.BOOT()).balanceOf(address(this));
     exit10.bootstrapClaim();
-    uint256 claimableAmount = ((bootBalance / exit10.TOKEN_MULTIPLIER()) * exit10.exitBootstrap()) / bootstrap;
+    uint256 claimableAmount = ((bootBalance / exit10.TOKEN_MULTIPLIER()) * exit10.bootstrapRewardsPlusRefund()) /
+      bootstrap;
 
     assertTrue(ERC20(exit10.BOOT()).balanceOf(address(this)) == 0, 'Check BOOT burned');
     assertTrue(
@@ -499,7 +521,7 @@ contract Exit10Test is Test, ABaseExit10Test {
     assertTrue(ERC20(exit10.EXIT()).balanceOf(address(this)) == 0, 'Check exit burn');
     assertTrue(
       ERC20(token0).balanceOf(address(this)) - initialBalanceUSDC ==
-        (exit10.exitLiquidity() * exitTokenShare) / precision,
+        (exit10.exitTokenRewardsFinal() * exitTokenShare) / precision,
       'Check USD balance'
     );
   }

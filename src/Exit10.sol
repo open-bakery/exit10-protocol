@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import { IERC20, SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import { Math } from '@openzeppelin/contracts/utils/math/Math.sol';
-
 import { INPM } from './interfaces/INonfungiblePositionManager.sol';
 import { IUniswapV3Pool } from './interfaces/IUniswapV3Pool.sol';
 import { INFT } from './interfaces/INFT.sol';
@@ -13,27 +12,27 @@ import { FeeSplitter } from './FeeSplitter.sol';
 import { IUniswapBase, UniswapBase } from './UniswapBase.sol';
 import { MasterchefExit } from './MasterchefExit.sol';
 
-// import 'forge-std/Test.sol';
+//import 'forge-std/Test.sol';
 
-contract Exit10 is IExit10, UniswapBase {
+contract Exit10 is IExit10, IUniswapBase, UniswapBase {
   using SafeERC20 for IERC20;
 
-  uint256 private pendingAmount;
-  uint256 private reserveAmount;
-  uint256 private bootstrapAmount;
-  uint256 private finalExitAmount;
+  uint256 private pendingBucket;
+  uint256 private reserveBucket;
+  uint256 private bootstrapBucket;
+  uint256 private exitBucketFinal;
 
-  // EXIT
-  uint256 public exitTotalSupply;
-  uint256 public exitLiquidity; // 70% of Exit Bucket
-  uint256 public exitLiquidityClaimed;
+  // EXIT TOKEN
+  uint256 public exitTokenSupplyFinal;
+  uint256 public exitTokenRewardsFinal;
+  uint256 public exitTokenRewardsClaimed;
 
-  // BOOT
-  uint256 public exitBootstrap;
-  uint256 public exitBootstrapClaimed;
+  // BOOT TOKEN
+  uint256 public bootstrapRewardsPlusRefund;
+  uint256 public bootstrapRewardsPlusRefundClaimed;
 
-  // STO
-  uint256 public exitTeamPlusBackers;
+  // STO TOKEN
+  uint256 public teamPlusBackersRewards;
 
   bool public inExitMode;
 
@@ -50,25 +49,20 @@ contract Exit10 is IExit10, UniswapBase {
   uint256 private constant DECIMAL_PRECISION = 1e18;
   uint256 private constant DEADLINE = 1e10;
 
-  // On Ethereum Mainnet:
-  // Token0 is USDC
-  // Token1 is WETH
-
   BaseToken public immutable EXIT;
   BaseToken public immutable BLP;
   BaseToken public immutable BOOT;
   INFT public immutable NFT;
 
-  address public immutable MASTERCHEF; // EXIT/USDC Stakers
   address public immutable STO;
+  address public immutable MASTERCHEF;
   address public immutable FEE_SPLITTER;
 
   uint256 public immutable DEPLOYMENT_TIMESTAMP;
   uint256 public immutable BOOTSTRAP_PERIOD;
-  uint256 public immutable ACCRUAL_PARAMETER; // The number of seconds it takes to accrue 50% of the cap, represented as an 18 digit fixed-point number.
+  uint256 public immutable ACCRUAL_PARAMETER;
   uint256 public immutable LP_PER_USD;
 
-  // --- Events ---
   event CreateBond(address indexed bonder, uint256 bondID, uint256 amount);
   event CancelBond(address indexed bonder, uint256 bondID, uint256 amountReturned0, uint256 amountReturned1);
   event ConvertBond(
@@ -81,22 +75,22 @@ contract Exit10 is IExit10, UniswapBase {
   event Redeem(address indexed redeemer, uint256 amount0, uint256 amount1);
   event MintExit(address indexed recipient, uint256 amount);
 
-  constructor(IUniswapBase.BaseDeployParams memory baseParams_, DeployParams memory params) UniswapBase(baseParams_) {
+  constructor(BaseDeployParams memory baseParams_, DeployParams memory params_) UniswapBase(baseParams_) {
     DEPLOYMENT_TIMESTAMP = block.timestamp;
 
-    STO = params.STO;
-    NFT = INFT(params.NFT);
+    STO = params_.STO;
+    NFT = INFT(params_.NFT);
 
-    BOOT = BaseToken(params.BOOT);
-    BLP = BaseToken(params.BLP);
-    EXIT = BaseToken(params.EXIT);
+    BOOT = BaseToken(params_.BOOT);
+    BLP = BaseToken(params_.BLP);
+    EXIT = BaseToken(params_.EXIT);
 
-    MASTERCHEF = params.masterchef;
-    FEE_SPLITTER = params.feeSplitter;
+    MASTERCHEF = params_.masterchef;
+    FEE_SPLITTER = params_.feeSplitter;
 
-    BOOTSTRAP_PERIOD = params.bootstrapPeriod;
-    ACCRUAL_PARAMETER = params.accrualParameter * DECIMAL_PRECISION;
-    LP_PER_USD = params.lpPerUSD;
+    BOOTSTRAP_PERIOD = params_.bootstrapPeriod;
+    ACCRUAL_PARAMETER = params_.accrualParameter * DECIMAL_PRECISION;
+    LP_PER_USD = params_.lpPerUSD;
 
     IERC20(IUniswapV3Pool(POOL).token0()).approve(NPM, MAX_UINT_256);
     IERC20(IUniswapV3Pool(POOL).token1()).approve(NPM, MAX_UINT_256);
@@ -113,7 +107,7 @@ contract Exit10 is IExit10, UniswapBase {
 
     (tokenId, liquidityAdded, amountAdded0, amountAdded1) = _addLiquidity(params);
 
-    bootstrapAmount += liquidityAdded;
+    bootstrapBucket += liquidityAdded;
     BOOT.mint(params.depositor, liquidityAdded * TOKEN_MULTIPLIER);
 
     _safeTransferTokens(params.depositor, params.amount0Desired - amountAdded0, params.amount1Desired - amountAdded1);
@@ -124,6 +118,7 @@ contract Exit10 is IExit10, UniswapBase {
   ) external returns (uint256 bondID, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
     _requireNoExitMode();
     require(!_isBootstrapOngoing(), 'EXIT10: Bootstrap ongoing');
+
     claimAndDistributeFees();
 
     _depositTokens(params.amount0Desired, params.amount1Desired);
@@ -138,7 +133,7 @@ contract Exit10 is IExit10, UniswapBase {
     bondData.status = BondStatus.active;
     idToBondData[bondID] = bondData;
 
-    pendingAmount += liquidityAdded;
+    pendingBucket += liquidityAdded;
 
     _safeTransferTokens(params.depositor, params.amount0Desired - amountAdded0, params.amount1Desired - amountAdded1);
     emit CreateBond(params.depositor, bondID, liquidityAdded);
@@ -160,7 +155,7 @@ contract Exit10 is IExit10, UniswapBase {
     (amountRemoved0, amountRemoved1) = _decreaseLiquidity(params);
     _collect(msg.sender, uint128(amountRemoved0), uint128(amountRemoved1));
 
-    pendingAmount -= params.liquidity;
+    pendingBucket -= params.liquidity;
 
     emit CancelBond(msg.sender, bondID, amountRemoved0, amountRemoved1);
   }
@@ -180,12 +175,12 @@ contract Exit10 is IExit10, UniswapBase {
     idToBondData[bondID].status = BondStatus.converted;
     idToBondData[bondID].endTime = uint64(block.timestamp);
 
-    pendingAmount -= params.liquidity;
+    pendingBucket -= params.liquidity;
 
     uint256 accruedBoostLiquidity = _getAccruedAmount(bond);
 
     idToBondData[bondID].claimedBoostAmount = accruedBoostLiquidity;
-    reserveAmount += accruedBoostLiquidity; // Increase the amount of the reserve
+    reserveBucket += accruedBoostLiquidity; // Increase the amount of the reserve
 
     boostTokenAmount = accruedBoostLiquidity * TOKEN_MULTIPLIER;
     BLP.mint(msg.sender, boostTokenAmount);
@@ -202,7 +197,7 @@ contract Exit10 is IExit10, UniswapBase {
     _requireValidAmount(amount);
     claimAndDistributeFees();
 
-    reserveAmount -= amount;
+    reserveBucket -= amount;
     BLP.burn(msg.sender, amount * TOKEN_MULTIPLIER);
 
     (amountRemoved0, amountRemoved1) = _decreaseLiquidity(params);
@@ -218,47 +213,47 @@ contract Exit10 is IExit10, UniswapBase {
     inExitMode = true;
 
     _stopExitRewards();
-    exitTotalSupply = EXIT.totalSupply();
-    finalExitAmount = uint128(_liquidityAmount() - (pendingAmount + reserveAmount));
-    uint256 exitBucket;
+    exitTokenSupplyFinal = EXIT.totalSupply();
+    exitBucketFinal = uint128(_liquidityAmount() - (pendingBucket + reserveBucket));
+    uint256 exitBucketRewards;
 
     if (POOL.token1() == TOKEN_IN) {
-      (exitBucket, ) = _decreaseLiquidity(
-        RemoveLiquidity({ liquidity: uint128(finalExitAmount), amount0Min: 0, amount1Min: 0, deadline: DEADLINE })
+      (exitBucketRewards, ) = _decreaseLiquidity(
+        RemoveLiquidity({ liquidity: uint128(exitBucketFinal), amount0Min: 0, amount1Min: 0, deadline: DEADLINE })
       );
-      _collect(address(this), uint128(exitBucket), 0);
+      _collect(address(this), uint128(exitBucketRewards), 0);
     } else {
-      (, exitBucket) = _decreaseLiquidity(
-        RemoveLiquidity({ liquidity: uint128(finalExitAmount), amount0Min: 0, amount1Min: 0, deadline: DEADLINE })
+      (, exitBucketRewards) = _decreaseLiquidity(
+        RemoveLiquidity({ liquidity: uint128(exitBucketFinal), amount0Min: 0, amount1Min: 0, deadline: DEADLINE })
       );
-      _collect(address(this), 0, uint128(exitBucket));
+      _collect(address(this), 0, uint128(exitBucketRewards));
     }
 
     // Total initial deposits that needs to be returned to bootsrappers
-    exitBootstrap = (bootstrapAmount * exitBucket) / finalExitAmount;
-    exitLiquidity = exitBucket - exitBootstrap;
-    // 30% of the exitLiquidity goes to Bootstrappers+Team+EarlyBackers.
-    uint256 share = exitLiquidity / 10;
+    uint256 bootstrapRefund = (bootstrapBucket * exitBucketRewards) / exitBucketFinal;
+    exitTokenRewardsFinal = exitBucketRewards - bootstrapRefund;
+    // 30% of the exitTokenRewardsFinal goes to Bootstrappers+Team+EarlyBackers.
+    uint256 tenPercent = exitTokenRewardsFinal / 10;
     // Initial deposit plus 10% of the Exit Bucket
-    exitBootstrap += share;
+    bootstrapRewardsPlusRefund = bootstrapRefund + tenPercent;
     // 20% of the ExitLiquidity
-    exitTeamPlusBackers = share * 2;
+    teamPlusBackersRewards = tenPercent * 2;
     // 70% Exit Token holders
-    exitLiquidity -= share * 3;
+    exitTokenRewardsFinal -= tenPercent * 3;
 
-    _safeTransferToken(TOKEN_OUT, STO, exitTeamPlusBackers);
+    _safeTransferToken(TOKEN_OUT, STO, teamPlusBackersRewards);
   }
 
   function bootstrapClaim() external {
     uint256 claim = _safeTokenClaim(
       BOOT,
       IERC20(BOOT).balanceOf(msg.sender) / TOKEN_MULTIPLIER,
-      exitBootstrap,
-      bootstrapAmount,
-      exitBootstrapClaimed
+      bootstrapRewardsPlusRefund,
+      bootstrapBucket,
+      bootstrapRewardsPlusRefundClaimed
     );
 
-    exitBootstrapClaimed += claim;
+    bootstrapRewardsPlusRefundClaimed += claim;
 
     _safeTransferToken(TOKEN_OUT, msg.sender, claim);
   }
@@ -267,12 +262,12 @@ contract Exit10 is IExit10, UniswapBase {
     uint256 claim = _safeTokenClaim(
       EXIT,
       IERC20(EXIT).balanceOf(msg.sender),
-      exitLiquidity,
-      exitTotalSupply,
-      exitLiquidityClaimed
+      exitTokenRewardsFinal,
+      exitTokenSupplyFinal,
+      exitTokenRewardsClaimed
     );
 
-    exitLiquidityClaimed += claim;
+    exitTokenRewardsClaimed += claim;
 
     _safeTransferToken(TOKEN_OUT, msg.sender, claim);
   }
@@ -288,11 +283,11 @@ contract Exit10 is IExit10, UniswapBase {
     return (bond.bondAmount, bond.claimedBoostAmount, bond.startTime, bond.endTime, uint8(bond.status));
   }
 
-  function getTreasury() external view returns (uint256 pending, uint256 reserve, uint256 exit, uint256 bootstrap) {
-    pending = pendingAmount;
-    reserve = reserveAmount;
-    bootstrap = bootstrapAmount;
-    exit = _exitAmount();
+  function getBuckets() external view returns (uint256 pending, uint256 reserve, uint256 exit, uint256 bootstrap) {
+    pending = pendingBucket;
+    reserve = reserveBucket;
+    bootstrap = bootstrapBucket;
+    exit = _exitBucket();
   }
 
   function getAccruedAmount(uint256 bondID) external view returns (uint256) {
@@ -308,34 +303,39 @@ contract Exit10 is IExit10, UniswapBase {
   function claimAndDistributeFees() public {
     (uint256 amountCollected0, uint256 amountCollected1) = _collect(address(this), MAX_UINT_128, MAX_UINT_128);
 
-    if (_liquidityAmount() != 0) {
-      uint256 bootstrapFees0 = (bootstrapAmount * amountCollected0) / _liquidityAmount();
-      uint256 bootstrapFees1 = (bootstrapAmount * amountCollected1) / _liquidityAmount();
+    if (amountCollected0 + amountCollected1 != 0) {
+      if (_liquidityAmount() != 0) {
+        uint256 bootstrapFees0 = (bootstrapBucket * amountCollected0) / _liquidityAmount();
+        uint256 bootstrapFees1 = (bootstrapBucket * amountCollected1) / _liquidityAmount();
 
-      if (bootstrapFees0 != 0 && bootstrapFees1 != 0) {
-        (, uint256 amountAdded0, uint256 amountAdded1) = INPM(NPM).increaseLiquidity(
-          INPM.IncreaseLiquidityParams({
-            tokenId: positionId,
-            amount0Desired: bootstrapFees0,
-            amount1Desired: bootstrapFees1,
-            amount0Min: 0,
-            amount1Min: 0,
-            deadline: DEADLINE
-          })
-        );
+        //@TODO There could be an issue if the amount desired is not enough for liquidity to be added
+        // Need to check on the Uniswap code what is the limit.
+        // From running tests it seems that it the minimum is 1e0 USDC and 1e5 ETHER
+        // Values below that will revert
+        if (bootstrapFees0 != 0 && bootstrapFees1 != 0) {
+          (, uint256 amountAdded0, uint256 amountAdded1) = INPM(NPM).increaseLiquidity(
+            INPM.IncreaseLiquidityParams({
+              tokenId: positionId,
+              amount0Desired: bootstrapFees0,
+              amount1Desired: bootstrapFees1,
+              amount0Min: 0,
+              amount1Min: 0,
+              deadline: DEADLINE
+            })
+          );
 
-        amountCollected0 -= amountAdded0;
-        amountCollected1 -= amountAdded1;
+          amountCollected0 -= amountAdded0;
+          amountCollected1 -= amountAdded1;
+        }
       }
-    }
 
-    if (amountCollected0 + amountCollected1 != 0)
       FeeSplitter(FEE_SPLITTER).collectFees(
-        pendingAmount,
-        bootstrapAmount + reserveAmount + _exitAmount(),
+        pendingBucket,
+        bootstrapBucket + reserveBucket + _exitBucket(),
         amountCollected0,
         amountCollected1
       );
+    }
   }
 
   function _stopExitRewards() internal {
@@ -382,9 +382,9 @@ contract Exit10 is IExit10, UniswapBase {
     emit MintExit(recipient, mintAmount);
   }
 
-  function _exitAmount() internal view returns (uint256 _exitBucket) {
+  function _exitBucket() internal view returns (uint256 _exitAmount) {
     if (positionId == 0) return 0;
-    _exitBucket = inExitMode ? finalExitAmount : _liquidityAmount() - (pendingAmount + reserveAmount + bootstrapAmount);
+    _exitAmount = inExitMode ? exitBucketFinal : _liquidityAmount() - (pendingBucket + reserveBucket + bootstrapBucket);
   }
 
   function _liquidityAmount() internal view returns (uint128 _liquidity) {

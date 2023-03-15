@@ -56,7 +56,7 @@ trace:
 	forge test -vvv --nmc SystemTest --fork-url $(RPC_URL)
 
 trace1:
-	forge test -vvv --nmc SystemTest --fork-url $(RPC_URL)
+	forge test -vvv --mc Exit10 --mt testBootstrapWithMinimumAmount --fork-url $(RPC_URL)
 
 system:
 	forge test -vv --mc SystemTest --fork-url $(RPC_URL)

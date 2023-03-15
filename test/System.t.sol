@@ -330,7 +330,7 @@ contract SystemTest is Test, ABaseExit10Test {
   }
 
   function _displayTreasury() internal view {
-    (uint256 pending, uint256 reserve, uint256 exitBucket, uint256 bootstrap) = exit10.getTreasury();
+    (uint256 pending, uint256 reserve, uint256 exitBucket, uint256 bootstrap) = exit10.getBuckets();
     _title('TREASURY BREAKDOWN');
     console.log('Pending Bucket: ', pending);
     console.log('Reserve Bucket: ', reserve);

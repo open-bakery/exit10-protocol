@@ -19,38 +19,14 @@ interface IExit10 {
     uint256 bondAmount;
     uint256 claimedBoostAmount;
     uint64 startTime;
-    uint64 endTime; // Timestamp of chicken in/out event
+    uint64 endTime;
     BondStatus status;
   }
 
-  // Valid values for `status` returned by `getBondData()`
   enum BondStatus {
     nonExistent,
     active,
     cancelled,
     converted
   }
-
-  function getBondData(uint256 _bondID)
-    external
-    view
-    returns (
-      uint256 bondAmount,
-      uint256 claimedBoostAmount,
-      uint64 startTime,
-      uint64 endTime,
-      uint8 status
-    );
-
-  function getTreasury()
-    external
-    view
-    returns (
-      uint256 pending,
-      uint256 reserve,
-      uint256 exit,
-      uint256 bootstrap
-    );
-
-  function inExitMode() external view returns (bool);
 }

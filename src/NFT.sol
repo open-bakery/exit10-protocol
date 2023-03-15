@@ -4,10 +4,12 @@ pragma solidity ^0.8.0;
 import { ERC721, ERC721Enumerable } from '@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol';
 import { Ownable } from '@openzeppelin/contracts/access/Ownable.sol';
 
-import { IExit10 } from './interfaces/IExit10.sol';
+import { Exit10, IExit10 } from './Exit10.sol';
+
+//import { IExit10 } from './interfaces/IExit10.sol';
 
 contract NFT is ERC721Enumerable, Ownable {
-  IExit10 public exit10;
+  Exit10 public exit10;
   uint256 public immutable TRANSFER_LOCKOUT_PERIOD_SECONDS;
 
   modifier onlyAuthorized() {
@@ -25,7 +27,7 @@ contract NFT is ERC721Enumerable, Ownable {
 
   function setExit10(address _exit10) external onlyOwner {
     require(_exit10 != address(0), 'NFT: _exit10 must be non-zero');
-    exit10 = IExit10(_exit10);
+    exit10 = Exit10(_exit10);
     renounceOwnership();
   }
 

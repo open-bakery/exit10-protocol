@@ -1,25 +1,22 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/utils/math/Math.sol';
-import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
-import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import { IERC20, SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import { Math } from '@openzeppelin/contracts/utils/math/Math.sol';
 
-import './interfaces/INonfungiblePositionManager.sol';
-import './interfaces/IUniswapV3Pool.sol';
-import './interfaces/INFT.sol';
-import './interfaces/IExit10.sol';
-import './utils/BaseMath.sol';
-import './BaseToken.sol';
-import './FeeSplitter.sol';
-import './UniswapBase.sol';
+import { INPM } from './interfaces/INonfungiblePositionManager.sol';
+import { IUniswapV3Pool } from './interfaces/IUniswapV3Pool.sol';
+import { INFT } from './interfaces/INFT.sol';
+import { IExit10 } from './interfaces/IExit10.sol';
+import { BaseToken } from './BaseToken.sol';
+import { FeeSplitter } from './FeeSplitter.sol';
+import { IUniswapBase, UniswapBase } from './UniswapBase.sol';
+import { MasterchefExit } from './MasterchefExit.sol';
 
-import './MasterchefExit.sol';
+// import 'forge-std/Test.sol';
 
-import 'forge-std/Test.sol';
-
-contract Exit10 is IExit10, BaseMath, UniswapBase {
-  using SafeERC20 for ERC20;
+contract Exit10 is IExit10, UniswapBase {
+  using SafeERC20 for IERC20;
 
   uint256 private pendingAmount;
   uint256 private reserveAmount;
@@ -44,13 +41,14 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
   mapping(address => uint256) public bootstrapDeposit;
 
   // --- Constants ---
-  uint256 private constant DEADLINE = 1e10;
   uint256 public constant TOKEN_MULTIPLIER = 1e8;
   uint256 public constant LP_EXIT_REWARD = 3_000_000 ether;
   uint256 public constant BONDERS_EXIT_REWARD = 7_000_000 ether;
-  uint256 constant MAX_EXIT_SUPPLY = LP_EXIT_REWARD + BONDERS_EXIT_REWARD;
-  uint256 constant MAX_UINT_256 = type(uint256).max;
-  uint128 constant MAX_UINT_128 = type(uint128).max;
+  uint256 public constant MAX_EXIT_SUPPLY = LP_EXIT_REWARD + BONDERS_EXIT_REWARD;
+  uint256 private constant MAX_UINT_256 = type(uint256).max;
+  uint128 private constant MAX_UINT_128 = type(uint128).max;
+  uint256 private constant DECIMAL_PRECISION = 1e18;
+  uint256 private constant DEADLINE = 1e10;
 
   // On Ethereum Mainnet:
   // Token0 is USDC
@@ -100,10 +98,10 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
     ACCRUAL_PARAMETER = params.accrualParameter * DECIMAL_PRECISION;
     LP_PER_USD = params.lpPerUSD;
 
-    ERC20(IUniswapV3Pool(POOL).token0()).approve(NPM, MAX_UINT_256);
-    ERC20(IUniswapV3Pool(POOL).token1()).approve(NPM, MAX_UINT_256);
-    ERC20(IUniswapV3Pool(POOL).token0()).approve(FEE_SPLITTER, MAX_UINT_256);
-    ERC20(IUniswapV3Pool(POOL).token1()).approve(FEE_SPLITTER, MAX_UINT_256);
+    IERC20(IUniswapV3Pool(POOL).token0()).approve(NPM, MAX_UINT_256);
+    IERC20(IUniswapV3Pool(POOL).token1()).approve(NPM, MAX_UINT_256);
+    IERC20(IUniswapV3Pool(POOL).token0()).approve(FEE_SPLITTER, MAX_UINT_256);
+    IERC20(IUniswapV3Pool(POOL).token1()).approve(FEE_SPLITTER, MAX_UINT_256);
   }
 
   function bootstrapLock(
@@ -254,7 +252,7 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
   function bootstrapClaim() external {
     uint256 claim = _safeTokenClaim(
       BOOT,
-      ERC20(BOOT).balanceOf(msg.sender) / TOKEN_MULTIPLIER,
+      IERC20(BOOT).balanceOf(msg.sender) / TOKEN_MULTIPLIER,
       exitBootstrap,
       bootstrapAmount,
       exitBootstrapClaimed
@@ -268,7 +266,7 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
   function exitClaim() external {
     uint256 claim = _safeTokenClaim(
       EXIT,
-      ERC20(EXIT).balanceOf(msg.sender),
+      IERC20(EXIT).balanceOf(msg.sender),
       exitLiquidity,
       exitTotalSupply,
       exitLiquidityClaimed
@@ -357,14 +355,14 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
     _requireExitMode();
     _requireValidAmount(_amount);
 
-    _token.burn(msg.sender, ERC20(_token).balanceOf(msg.sender));
+    _token.burn(msg.sender, IERC20(_token).balanceOf(msg.sender));
     _claim = (_amount * _externalSum) / _supply;
     _claim = (_claimed + _claim <= _supply) ? _claim : _supply - _claimed;
   }
 
   function _depositTokens(uint256 _amount0, uint256 _amount1) internal {
-    ERC20(POOL.token0()).safeTransferFrom(msg.sender, address(this), _amount0);
-    ERC20(POOL.token1()).safeTransferFrom(msg.sender, address(this), _amount1);
+    IERC20(POOL.token0()).safeTransferFrom(msg.sender, address(this), _amount0);
+    IERC20(POOL.token1()).safeTransferFrom(msg.sender, address(this), _amount1);
   }
 
   function _safeTransferTokens(address _recipient, uint256 _amount0, uint256 _amount1) internal {
@@ -373,7 +371,7 @@ contract Exit10 is IExit10, BaseMath, UniswapBase {
   }
 
   function _safeTransferToken(address _token, address _recipient, uint256 _amount) internal {
-    if (_amount != 0) ERC20(_token).safeTransfer(_recipient, _amount);
+    if (_amount != 0) IERC20(_token).safeTransfer(_recipient, _amount);
   }
 
   function _mintExitCapped(address recipient, uint256 amount) internal {

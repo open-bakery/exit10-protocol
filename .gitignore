@@ -10,3 +10,4 @@ broadcast/
 .idea
 .reinitSubmodules.sh
 anvil.log
+.vscode

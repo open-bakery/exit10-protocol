@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/utils/math/Math.sol';
-import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
-import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import { Math } from '@openzeppelin/contracts/utils/math/Math.sol';
+import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
+import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
-import './interfaces/IUniswapV3Factory.sol';
-import './interfaces/IUniswapV3Pool.sol';
-import './interfaces/INonfungiblePositionManager.sol';
-import './interfaces/IUniswapBase.sol';
+import { IUniswapV3Factory } from './interfaces/IUniswapV3Factory.sol';
+import { IUniswapV3Pool } from './interfaces/IUniswapV3Pool.sol';
+import { INPM } from './interfaces/INonfungiblePositionManager.sol';
+import { IUniswapBase } from './interfaces/IUniswapBase.sol';
 
 contract UniswapBase is IUniswapBase {
   IUniswapV3Factory public immutable FACTORY;
@@ -24,13 +24,13 @@ contract UniswapBase is IUniswapBase {
 
   constructor(BaseDeployParams memory params) {
     FACTORY = IUniswapV3Factory(params.uniswapFactory);
+    NPM = params.nonfungiblePositionManager;
     TOKEN_IN = params.tokenIn;
     TOKEN_OUT = params.tokenOut;
     FEE = params.fee;
-    NPM = params.nonfungiblePositionManager;
-    POOL = IUniswapV3Pool(FACTORY.getPool(params.tokenIn, params.tokenOut, params.fee));
     TICK_LOWER = params.tickLower;
     TICK_UPPER = params.tickUpper;
+    POOL = IUniswapV3Pool(FACTORY.getPool(params.tokenIn, params.tokenOut, params.fee));
   }
 
   function _addLiquidity(
@@ -66,6 +66,7 @@ contract UniswapBase is IUniswapBase {
           deadline: _params.deadline
         })
       );
+      _tokenId = positionId;
     }
   }
 

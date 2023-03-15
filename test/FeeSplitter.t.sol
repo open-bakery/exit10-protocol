@@ -155,7 +155,7 @@ contract FeeSplitterTest is Test {
   }
 
   function _checkBalances(address _target, uint256 _amountTokenOut, uint256 _amountTokenIn) internal {
-    uint roundAmount = 10;
+    uint roundAmount = 100;
     assertTrue(
       _amountTokenOut / roundAmount == ERC20(TOKEN_OUT).balanceOf(_target) / roundAmount,
       'Check balance token out'

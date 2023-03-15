@@ -3,7 +3,7 @@ pragma solidity >0.8.0;
 
 import { IERC20, SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import { MerkleProof } from '@openzeppelin/contracts/utils/cryptography/MerkleProof.sol';
-import './interfaces/IMerkleDistributor.sol';
+import { IMerkleDistributor } from './interfaces/IMerkleDistributor.sol';
 
 error AlreadyClaimed();
 error InvalidProof();

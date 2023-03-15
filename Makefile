@@ -50,11 +50,14 @@ gas-report:
 	forge test -vv --mc Exit10 --gas-report --fork-url $(RPC_URL)
 
 tests:
-	forge test -vv --fork-url $(RPC_URL)
+	forge test -vv  --nmc SystemTest --fork-url $(RPC_URL)
 
 trace:
-	forge test -vvv --fork-url $(RPC_URL)
+	forge test -vvv --nmc SystemTest --fork-url $(RPC_URL)
 
 trace1:
-	forge test -vvv --mc SystemTest --mt testOne --fork-url $(RPC_URL)
+	forge test -vvv --nmc SystemTest --fork-url $(RPC_URL)
+
+system:
+	forge test -vv --mc SystemTest --fork-url $(RPC_URL)
 

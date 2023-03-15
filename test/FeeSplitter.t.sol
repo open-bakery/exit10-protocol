@@ -25,7 +25,7 @@ contract FeeSplitterTest is Test {
   address masterchef1 = address(new Masterchef(WETH, 2 weeks));
   FeeSplitter feeSplitter;
 
-  uint32 constant ORACLE_DELAY = 60;
+  uint32 constant ORACLE_SECONDS = 60;
 
   function setUp() public {
     feeSplitter = new FeeSplitter(masterchef0, masterchef1, swapper);
@@ -55,7 +55,7 @@ contract FeeSplitterTest is Test {
     _dealTokens(amountTokenOut, amountTokenIn);
     ERC20(USDC).approve(swapper, type(uint256).max);
     ERC20(WETH).approve(swapper, type(uint256).max);
-    skip(ORACLE_DELAY);
+    skip(ORACLE_SECONDS);
     ISwapper(swapper).swap(
       ISwapper.SwapParameters({
         recipient: address(this),
@@ -64,7 +64,7 @@ contract FeeSplitterTest is Test {
         fee: 500,
         amountIn: 10_000_000000,
         slippage: 100,
-        oracleSeconds: ORACLE_DELAY
+        oracleSeconds: ORACLE_SECONDS
       })
     );
     assertTrue(ERC20(WETH).balanceOf(address(this)) > amountTokenIn);
@@ -78,7 +78,7 @@ contract FeeSplitterTest is Test {
     uint256 exchangeAmount = 20_000_000000;
     _dealTokens(amountTokenOut, amountTokenIn);
     _simulateCollectFees(pendingShare, remainingShare, amountTokenOut, amountTokenIn);
-    skip(ORACLE_DELAY);
+    skip(ORACLE_SECONDS);
     uint256 exchanged = feeSplitter.updateFees(exchangeAmount);
 
     uint256 pendingTokenOut = ((amountTokenOut / 10) * pendingShare) - ((exchangeAmount / 10) * pendingShare);
@@ -115,7 +115,7 @@ contract FeeSplitterTest is Test {
     uint256 amountTokenOut = 100_000_000000;
     uint256 amountTokenIn = 10_000 ether;
     _dealTokens(amountTokenOut, amountTokenIn);
-    skip(ORACLE_DELAY);
+    skip(ORACLE_SECONDS);
     _simulateCollectFees(pendingShare, remainingShare, amountTokenOut, amountTokenIn);
     uint256 exchanged = feeSplitter.updateFees(100_000_000_000000);
     _checkBuckets(0, 0, 0, 0);

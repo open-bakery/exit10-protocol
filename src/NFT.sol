@@ -10,7 +10,7 @@ contract NFT is ERC721Enumerable, Ownable {
   IExit10 public exit10;
   uint256 public immutable TRANSFER_LOCKOUT_PERIOD_SECONDS;
 
-  modifier onlyExit10() {
+  modifier onlyAuthorized() {
     require(msg.sender == address(exit10), 'NFT: Caller must be Exit10');
     _;
   }
@@ -29,7 +29,7 @@ contract NFT is ERC721Enumerable, Ownable {
     renounceOwnership();
   }
 
-  function mint(address _bonder) external onlyExit10 returns (uint256 tokenID) {
+  function mint(address _bonder) external onlyAuthorized returns (uint256 tokenID) {
     // We actually increase totalSupply in `ERC721Enumerable._beforeTokenTransfer` when we `_mint`.
     tokenID = totalSupply() + 1;
     _mint(_bonder, tokenID);

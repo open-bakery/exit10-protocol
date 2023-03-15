@@ -2,12 +2,11 @@
 
 pragma solidity ^0.8.0;
 
-import './AMasterchefBase.sol';
-import './interfaces/IRewardDistributor.sol';
+import { IERC20, SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
-/// @title Masterchef External Rewards
-/// @notice Modified masterchef contract (https://etherscan.io/address/0xc2edad668740f1aa35e4d8f227fb8e17dca888cd#code)
-/// to support external rewards
+import { AMasterchefBase } from './AMasterchefBase.sol';
+import { IRewardDistributor } from './interfaces/IRewardDistributor.sol';
+
 contract Masterchef is AMasterchefBase {
   using SafeERC20 for IERC20;
 
@@ -26,12 +25,7 @@ contract Masterchef is AMasterchefBase {
     rewardDistributor = rd;
   }
 
-  function withdraw(
-    uint256 _pid,
-    uint256 _amount,
-    bool _shouldUpdateRewards,
-    uint256 _amountOut
-  ) public {
+  function withdraw(uint256 _pid, uint256 _amount, bool _shouldUpdateRewards, uint256 _amountOut) public {
     withdraw(_pid, _amount);
     if (_shouldUpdateRewards) IRewardDistributor(rewardDistributor).updateFees(_amountOut);
   }

@@ -2,10 +2,9 @@
 
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import '@openzeppelin/contracts/utils/math/Math.sol';
-import '@openzeppelin/contracts/access/Ownable.sol';
+import { IERC20, SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import { Math } from '@openzeppelin/contracts/utils/math/Math.sol';
+import { Ownable } from '@openzeppelin/contracts/access/Ownable.sol';
 
 abstract contract AMasterchefBase is Ownable {
   using SafeERC20 for IERC20;
@@ -46,25 +45,6 @@ abstract contract AMasterchefBase is Ownable {
     REWARD_TOKEN = rewardToken_;
     REWARDS_DURATION = rewardsDuration_;
     periodFinish = block.timestamp + rewardsDuration_;
-  }
-
-  function poolLength() external view returns (uint256) {
-    return poolInfo.length;
-  }
-
-  function pendingReward(uint256 _pid, address _user) external view returns (uint256) {
-    PoolInfo storage pool = poolInfo[_pid];
-    UserInfo storage user = userInfo[_pid][_user];
-
-    uint256 accRewardPerShare = pool.accRewardPerShare;
-
-    if (pool.totalStaked != 0 && totalAllocPoint != 0) {
-      accRewardPerShare +=
-        (_getPoolRewardsSinceLastUpdate(pool.lastUpdateTime, pool.allocPoint) * PRECISION) /
-        pool.totalStaked;
-    }
-
-    return (user.amount * accRewardPerShare) / PRECISION - user.rewardDebt;
   }
 
   function add(uint256 _allocPoint, address _token) external onlyOwner {
@@ -156,6 +136,25 @@ abstract contract AMasterchefBase is Ownable {
     _updateUndistributedRewards(amount);
   }
 
+  function poolLength() external view returns (uint256) {
+    return poolInfo.length;
+  }
+
+  function pendingReward(uint256 _pid, address _user) external view returns (uint256) {
+    PoolInfo storage pool = poolInfo[_pid];
+    UserInfo storage user = userInfo[_pid][_user];
+
+    uint256 accRewardPerShare = pool.accRewardPerShare;
+
+    if (pool.totalStaked != 0 && totalAllocPoint != 0) {
+      accRewardPerShare +=
+        (_getPoolRewardsSinceLastUpdate(pool.lastUpdateTime, pool.allocPoint) * PRECISION) /
+        pool.totalStaked;
+    }
+
+    return (user.amount * accRewardPerShare) / PRECISION - user.rewardDebt;
+  }
+
   function _updateUndistributedRewards(uint256 _amount) internal virtual {
     //Updates pool to account for the previous rewardRate.
     _massUpdatePools();
@@ -188,21 +187,6 @@ abstract contract AMasterchefBase is Ownable {
     pool.lastUpdateTime = block.timestamp;
   }
 
-  // @notice Returns the total rewards allocated to a pool since last update.
-  function _getPoolRewardsSinceLastUpdate(
-    uint256 _poolLastUpdateTime,
-    uint256 _poolAllocPoint
-  ) internal view returns (uint256 _poolRewards) {
-    // If _updatePool has not been called since periodFinish
-    if (_poolLastUpdateTime > periodFinish) return 0;
-
-    //If reward is not updated for longer than rewardsDuration periodFinish will be < than block.timestamp
-    uint256 lastTimeRewardApplicable = Math.min(block.timestamp, periodFinish);
-
-    return
-      ((lastTimeRewardApplicable - _poolLastUpdateTime) * rewardRate * _poolAllocPoint) / totalAllocPoint / PRECISION;
-  }
-
   /// @notice Increases accRewardPerShare and accUndistributedReward for all pools since last update up to block.timestamp.
   /// Every time there is an update on *rewardRate* or *totalAllocPoint* we should update ALL pools.
   function _massUpdatePools() internal {
@@ -227,6 +211,21 @@ abstract contract AMasterchefBase is Ownable {
 
   function _transferAmountOut(address _token, uint256 _amount) internal {
     if (_amount != 0) IERC20(_token).safeTransfer(msg.sender, _amount);
+  }
+
+  // @notice Returns the total rewards allocated to a pool since last update.
+  function _getPoolRewardsSinceLastUpdate(
+    uint256 _poolLastUpdateTime,
+    uint256 _poolAllocPoint
+  ) internal view returns (uint256 _poolRewards) {
+    // If _updatePool has not been called since periodFinish
+    if (_poolLastUpdateTime > periodFinish) return 0;
+
+    //If reward is not updated for longer than rewardsDuration periodFinish will be < than block.timestamp
+    uint256 lastTimeRewardApplicable = Math.min(block.timestamp, periodFinish);
+
+    return
+      ((lastTimeRewardApplicable - _poolLastUpdateTime) * rewardRate * _poolAllocPoint) / totalAllocPoint / PRECISION;
   }
 
   function _getUserPendingReward(

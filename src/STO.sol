@@ -1,8 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
+import { Math } from '@openzeppelin/contracts/utils/math/Math.sol';
+import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
+import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import { Ownable } from '@openzeppelin/contracts/access/Ownable.sol';
+
 import { MerkleDistributor, MerkleProof, AlreadyClaimed, InvalidProof } from './MerkleDistributor.sol';
-import { Math, ERC20, SafeERC20, BaseToken, Exit10 } from './Exit10.sol';
+import { BaseToken } from './BaseToken.sol';
+import { Exit10 } from './Exit10.sol';
 
 contract STO is BaseToken, MerkleDistributor {
   using SafeERC20 for ERC20;

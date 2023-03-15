@@ -28,7 +28,7 @@ contract SystemTest is Test, ABaseExit10Test {
   address lp; // EXIT/USDC LP Uniswap v2
 
   uint256 constant REWARDS_DURATION = 2 weeks;
-  uint256 constant ORACLE_DELAY = 60;
+  uint256 constant ORACLE_SECONDS = 60;
 
   // Params Exit10
   address uniswapV3Factory = vm.envAddress('UNISWAP_V3_FACTORY');
@@ -161,7 +161,7 @@ contract SystemTest is Test, ABaseExit10Test {
   function _generateFees() internal {
     _generateFees(usdc, weth, _tokenAmount(usdc, 100_000_000));
     // Skips oracle requirement
-    skip(ORACLE_DELAY);
+    skip(ORACLE_SECONDS);
     _title('GENERATING FEE');
     _spacer();
   }

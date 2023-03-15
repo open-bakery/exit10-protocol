@@ -2,7 +2,9 @@
 
 pragma solidity ^0.8.0;
 
-import './AMasterchefBase.sol';
+import { IERC20, SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+
+import { AMasterchefBase } from './AMasterchefBase.sol';
 
 contract MasterchefExit is AMasterchefBase {
   using SafeERC20 for IERC20;
@@ -22,7 +24,7 @@ contract MasterchefExit is AMasterchefBase {
     isRewardDeposited = true;
   }
 
-  function _updateUndistributedRewards(uint256 _amount) internal virtual override {
+  function _updateUndistributedRewards(uint256 _amount) internal override {
     //Updates pool to account for the previous rewardRate.
     _massUpdatePools();
 

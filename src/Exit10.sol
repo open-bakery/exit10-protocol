@@ -308,27 +308,26 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
         uint256 bootstrapFees0 = (bootstrapBucket * amountCollected0) / _liquidityAmount();
         uint256 bootstrapFees1 = (bootstrapBucket * amountCollected1) / _liquidityAmount();
 
-        //@TODO There could be an issue if the amount desired is not enough for liquidity to be added
-        // Need to check on the Uniswap code what is the limit.
-        // From running tests it seems that it the minimum is 1e0 USDC and 1e5 ETHER
-        // Values below that will revert
         if (bootstrapFees0 != 0 && bootstrapFees1 != 0) {
-          (, uint256 amountAdded0, uint256 amountAdded1) = INPM(NPM).increaseLiquidity(
-            INPM.IncreaseLiquidityParams({
-              tokenId: positionId,
-              amount0Desired: bootstrapFees0,
-              amount1Desired: bootstrapFees1,
-              amount0Min: 0,
-              amount1Min: 0,
-              deadline: DEADLINE
-            })
-          );
-
-          amountCollected0 -= amountAdded0;
-          amountCollected1 -= amountAdded1;
+          try
+            INPM(NPM).increaseLiquidity(
+              INPM.IncreaseLiquidityParams({
+                tokenId: positionId,
+                amount0Desired: bootstrapFees0,
+                amount1Desired: bootstrapFees1,
+                amount0Min: 0,
+                amount1Min: 0,
+                deadline: DEADLINE
+              })
+            )
+          returns (uint128, uint256 amountAdded0, uint256 amountAdded1) {
+            amountCollected0 -= amountAdded0;
+            amountCollected1 -= amountAdded1;
+          } catch {
+            return;
+          }
         }
       }
-
       FeeSplitter(FEE_SPLITTER).collectFees(
         pendingBucket,
         bootstrapBucket + reserveBucket + _exitBucket(),

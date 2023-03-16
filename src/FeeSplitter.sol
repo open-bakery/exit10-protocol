@@ -12,9 +12,9 @@ import { Exit10 } from './Exit10.sol';
 contract FeeSplitter is Ownable {
   using SafeERC20 for IERC20;
 
-  uint256 constant MAX_UINT_256 = type(uint256).max;
   uint16 constant SLIPPAGE = 100;
   uint32 constant ORACLE_SECONDS = 60;
+  uint256 constant MAX_UINT_256 = type(uint256).max;
 
   address immutable MASTERCHEF_0; // STO - BOOT Stakers
   address immutable MASTERCHEF_1; // BLP Stakers

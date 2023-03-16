@@ -30,7 +30,7 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
   function _setUpExitPool(Exit10 _exit10, address _lp) internal {
     MasterchefExit(_exit10.MASTERCHEF()).add(100, _lp);
     _distributeInitialExitRewards(_exit10);
-    MasterchefExit(_exit10.MASTERCHEF()).renounceOwnership();
+    MasterchefExit(_exit10.MASTERCHEF()).transferOwnership(address(_exit10));
   }
 
   function _distributeInitialExitRewards(Exit10 _exit10) internal {

@@ -177,28 +177,27 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
 
     pendingBucket -= params.liquidity;
 
-    uint256 accruedBoostLiquidity = _getAccruedAmount(bond);
+    uint256 accruedLiquidity = _getAccruedLiquidity(bond);
+    boostTokenAmount = accruedLiquidity * TOKEN_MULTIPLIER;
 
-    idToBondData[bondID].claimedBoostAmount = accruedBoostLiquidity;
-    reserveBucket += accruedBoostLiquidity; // Increase the amount of the reserve
+    idToBondData[bondID].claimedBoostAmount = boostTokenAmount;
+    reserveBucket += accruedLiquidity;
 
-    boostTokenAmount = accruedBoostLiquidity * TOKEN_MULTIPLIER;
-    BLP.mint(msg.sender, boostTokenAmount);
-
-    uint256 remainingLiquidity = bond.bondAmount - accruedBoostLiquidity;
+    uint256 remainingLiquidity = bond.bondAmount - accruedLiquidity;
     exitTokenAmount = (remainingLiquidity * TOKEN_MULTIPLIER) / LP_PER_USD;
+
+    BLP.mint(msg.sender, boostTokenAmount);
     _mintExitCapped(msg.sender, exitTokenAmount);
 
     emit ConvertBond(msg.sender, bondID, bond.bondAmount, boostTokenAmount, exitTokenAmount);
   }
 
   function redeem(RemoveLiquidity memory params) external returns (uint256 amountRemoved0, uint256 amountRemoved1) {
-    uint256 amount = params.liquidity;
-    _requireValidAmount(amount);
+    _requireValidAmount(params.liquidity);
     claimAndDistributeFees();
 
-    reserveBucket -= amount;
-    BLP.burn(msg.sender, amount * TOKEN_MULTIPLIER);
+    reserveBucket -= params.liquidity;
+    BLP.burn(msg.sender, params.liquidity * TOKEN_MULTIPLIER);
 
     (amountRemoved0, amountRemoved1) = _decreaseLiquidity(params);
     _collect(msg.sender, uint128(amountRemoved0), uint128(amountRemoved1));
@@ -212,7 +211,8 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
 
     inExitMode = true;
 
-    _stopExitRewards();
+    // Stop and burn Exit rewards.
+    EXIT.burn(MASTERCHEF, LP_EXIT_REWARD - MasterchefExit(MASTERCHEF).stopRewards());
     exitTokenSupplyFinal = EXIT.totalSupply();
     exitBucketFinal = uint128(_liquidityAmount() - (pendingBucket + reserveBucket));
     uint256 exitBucketRewards;
@@ -297,7 +297,7 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
       return 0;
     }
 
-    return _getAccruedAmount(bond);
+    return _getAccruedLiquidity(bond);
   }
 
   function claimAndDistributeFees() public {
@@ -335,13 +335,6 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
         amountCollected1
       );
     }
-  }
-
-  function _stopExitRewards() internal {
-    MasterchefExit mc = MasterchefExit(MASTERCHEF);
-    uint256 distributedRewards = (mc.rewardRate() * (block.timestamp - (mc.periodFinish() - mc.REWARDS_DURATION()))) /
-      mc.PRECISION();
-    EXIT.burn(MASTERCHEF, LP_EXIT_REWARD - distributedRewards);
   }
 
   function _safeTokenClaim(
@@ -394,7 +387,7 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
     (, _tick, , , , , ) = POOL.slot0();
   }
 
-  function _getAccruedAmount(BondData memory _params) internal view returns (uint256 accruedAmount) {
+  function _getAccruedLiquidity(BondData memory _params) internal view returns (uint256 accruedAmount) {
     if (_params.startTime != 0) {
       uint256 bondDuration = 1e18 * (block.timestamp - _params.startTime);
       accruedAmount = (_params.bondAmount * bondDuration) / (bondDuration + ACCRUAL_PARAMETER);

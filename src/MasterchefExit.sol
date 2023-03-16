@@ -38,7 +38,8 @@ contract MasterchefExit is AMasterchefBase {
     }
   }
 
-  function stopRewards() external onlyOwner {
+  function stopRewards() external onlyOwner returns (uint256 distributedRewards) {
+    distributedRewards = ((block.timestamp - (periodFinish - REWARDS_DURATION)) * rewardRate) / PRECISION;
     periodFinish = block.timestamp;
   }
 }

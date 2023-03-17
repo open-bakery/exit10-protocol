@@ -1,45 +1,30 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
-
+import 'forge-std/Test.sol';
 import { IERC20, SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import { AMasterchefBase } from './AMasterchefBase.sol';
 
 contract MasterchefExit is AMasterchefBase {
   using SafeERC20 for IERC20;
 
-  bool isRewardDeposited;
-
   constructor(address rewardToken_, uint256 rewardsDuration_) AMasterchefBase(rewardToken_, rewardsDuration_) {}
 
   /// @notice Updates rewardRate.
   /// Adds and evenly distributes rewards through the rewardsDuration.
   function updateRewards(uint256 amount) external override onlyOwner {
+    require(amount != 0, 'MasterchefExit: Amount must not be zero');
     require(totalAllocPoint != 0, 'MasterchefExit: Must add a pool prior to adding rewards');
-    require(!isRewardDeposited, 'MasterchefExit: Can only deposit rewards once');
+    require(rewardRate == 0, 'MasterchefExit: Can only deposit rewards once');
     require(IERC20(REWARD_TOKEN).balanceOf(address(this)) >= amount, 'MasterchefExit: Token balance not sufficient');
-
-    _updateUndistributedRewards(amount);
-    isRewardDeposited = true;
+    rewardRate = (amount * PRECISION) / REWARDS_DURATION;
+    periodFinish = block.timestamp + REWARDS_DURATION;
   }
 
-  function _updateUndistributedRewards(uint256 _amount) internal override {
-    //Updates pool to account for the previous rewardRate.
-    _massUpdatePools();
-
-    if (!isRewardDeposited) {
-      rewardRate = (_amount * PRECISION) / REWARDS_DURATION;
-      periodFinish = block.timestamp + REWARDS_DURATION;
-    } else {
-      if (block.timestamp < periodFinish) {
-        uint256 remainingTime = periodFinish - block.timestamp;
-        uint256 undistributedRewards = rewardRate * remainingTime;
-        rewardRate = (undistributedRewards + _amount) / remainingTime;
-      }
+  function stopRewards(uint256 allocatedRewards) external onlyOwner returns (uint256 remainingRewards) {
+    if (block.timestamp < periodFinish) {
+      uint256 undistributedRewards = ((block.timestamp - (periodFinish - REWARDS_DURATION)) * rewardRate) / PRECISION;
+      remainingRewards = allocatedRewards - undistributedRewards;
+      periodFinish = block.timestamp;
     }
-  }
-
-  function stopRewards() external onlyOwner returns (uint256 distributedRewards) {
-    distributedRewards = ((block.timestamp - (periodFinish - REWARDS_DURATION)) * rewardRate) / PRECISION;
-    periodFinish = block.timestamp;
   }
 }

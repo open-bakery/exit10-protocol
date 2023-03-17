@@ -41,6 +41,7 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
 
   // --- Constants ---
   uint256 public constant TOKEN_MULTIPLIER = 1e8;
+  // TODO Check the implications of adding the Multiplier to EXIT10 while using 18 decimals for supply.
   uint256 public constant LP_EXIT_REWARD = 3_000_000 ether;
   uint256 public constant BONDERS_EXIT_REWARD = 7_000_000 ether;
   uint256 public constant MAX_EXIT_SUPPLY = LP_EXIT_REWARD + BONDERS_EXIT_REWARD;
@@ -212,7 +213,7 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
     inExitMode = true;
 
     // Stop and burn Exit rewards.
-    EXIT.burn(MASTERCHEF, LP_EXIT_REWARD - MasterchefExit(MASTERCHEF).stopRewards());
+    EXIT.burn(MASTERCHEF, MasterchefExit(MASTERCHEF).stopRewards(LP_EXIT_REWARD));
     exitTokenSupplyFinal = EXIT.totalSupply();
     exitBucketFinal = uint128(_liquidityAmount() - (pendingBucket + reserveBucket));
     uint256 exitBucketRewards;

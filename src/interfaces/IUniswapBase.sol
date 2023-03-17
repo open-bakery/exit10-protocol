@@ -3,6 +3,7 @@ pragma solidity >=0.8.0;
 
 interface IUniswapBase {
   struct BaseDeployParams {
+    address weth;
     address uniswapFactory;
     address nonfungiblePositionManager;
     address tokenIn;

@@ -101,7 +101,7 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
 
   function bootstrapLock(
     AddLiquidity memory params
-  ) external returns (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
+  ) external payable returns (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
     require(_isBootstrapOngoing(), 'EXIT10: Bootstrap ended');
 
     _depositTokens(params.amount0Desired, params.amount1Desired);
@@ -116,7 +116,7 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
 
   function createBond(
     AddLiquidity memory params
-  ) external returns (uint256 bondID, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
+  ) external payable returns (uint256 bondID, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
     _requireNoExitMode();
     require(!_isBootstrapOngoing(), 'EXIT10: Bootstrap ongoing');
 

@@ -8,10 +8,12 @@ import { IUniswapV3Factory } from './interfaces/IUniswapV3Factory.sol';
 import { IUniswapV3Pool } from './interfaces/IUniswapV3Pool.sol';
 import { INPM } from './interfaces/INonfungiblePositionManager.sol';
 import { IUniswapBase } from './interfaces/IUniswapBase.sol';
+import { IWETH9 } from './interfaces/IWETH9.sol';
 
 contract UniswapBase is IUniswapBase {
   IUniswapV3Factory public immutable FACTORY;
   IUniswapV3Pool public immutable POOL;
+  address public immutable WETH;
   address public immutable NPM;
   address public immutable TOKEN_IN;
   address public immutable TOKEN_OUT;
@@ -29,6 +31,7 @@ contract UniswapBase is IUniswapBase {
     FEE = params.fee;
     TICK_LOWER = params.tickLower;
     TICK_UPPER = params.tickUpper;
+    WETH = params.weth;
     POOL = IUniswapV3Pool(FACTORY.getPool(params.tokenIn, params.tokenOut, params.fee));
   }
 
@@ -36,6 +39,10 @@ contract UniswapBase is IUniswapBase {
     AddLiquidity memory _params
   ) internal returns (uint256 _tokenId, uint128 _liquidityAdded, uint256 _amountAdded0, uint256 _amountAdded1) {
     (address token0, address token1) = TOKEN_IN < TOKEN_OUT ? (TOKEN_IN, TOKEN_OUT) : (TOKEN_OUT, TOKEN_IN);
+
+    (uint amount0, uint amount1) = (msg.value != 0)
+      ? _processEth(token0, token1, _params.amount0Desired, _params.amount1Desired, msg.value)
+      : (_params.amount0Desired, _params.amount1Desired);
 
     if (positionId == 0) {
       (_tokenId, _liquidityAdded, _amountAdded0, _amountAdded1) = INPM(NPM).mint(
@@ -45,8 +52,8 @@ contract UniswapBase is IUniswapBase {
           fee: FEE,
           tickLower: TICK_LOWER, //Tick needs to exist (right spacing)
           tickUpper: TICK_UPPER, //Tick needs to exist (right spacing)
-          amount0Desired: _params.amount0Desired,
-          amount1Desired: _params.amount1Desired,
+          amount0Desired: amount0,
+          amount1Desired: amount1,
           amount0Min: _params.amount0Min, // slippage check
           amount1Min: _params.amount1Min, // slippage check
           recipient: address(this), // receiver of ERC721
@@ -58,8 +65,8 @@ contract UniswapBase is IUniswapBase {
       (_liquidityAdded, _amountAdded0, _amountAdded1) = INPM(NPM).increaseLiquidity(
         INPM.IncreaseLiquidityParams({
           tokenId: positionId,
-          amount0Desired: _params.amount0Desired,
-          amount1Desired: _params.amount1Desired,
+          amount0Desired: amount0,
+          amount1Desired: amount1,
           amount0Min: _params.amount0Min,
           amount1Min: _params.amount1Min,
           deadline: _params.deadline
@@ -97,5 +104,23 @@ contract UniswapBase is IUniswapBase {
         amount1Max: _amount1Max
       })
     );
+  }
+
+  function _processEth(
+    address _token0,
+    address _token1,
+    uint256 _initialAmount0,
+    uint256 _initialAmount1,
+    uint256 _msgValue
+  ) internal returns (uint _amount0, uint _amount1) {
+    _amount0 = _initialAmount0;
+    _amount1 = _initialAmount1;
+
+    IWETH9(WETH).deposit{ value: _msgValue }();
+    if (_token0 == WETH) {
+      _amount0 += _msgValue;
+    } else if (_token1 == WETH) {
+      _amount1 += _msgValue;
+    }
   }
 }

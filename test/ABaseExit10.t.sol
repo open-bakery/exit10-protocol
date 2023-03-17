@@ -47,6 +47,7 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
 
   IUniswapBase.BaseDeployParams baseParams =
     IUniswapBase.BaseDeployParams({
+      weth: weth,
       uniswapFactory: vm.envAddress('UNISWAP_V3_FACTORY'),
       nonfungiblePositionManager: vm.envAddress('UNISWAP_V3_NPM'),
       tokenIn: weth,

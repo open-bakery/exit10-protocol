@@ -25,29 +25,29 @@ contract DepositHelper {
   function swapAndBootstrapLock(
     uint256 initialAmount0,
     uint256 initialAmount1,
-    IUniswapV3Router.ExactInputSingleParams memory _swapParams
+    IUniswapV3Router.ExactInputSingleParams memory swapParams
   ) external payable {
     (address token0, address token1) = _sortAndDeposit(
-      _swapParams.tokenIn,
-      _swapParams.tokenOut,
+      swapParams.tokenIn,
+      swapParams.tokenOut,
       initialAmount0,
       initialAmount1
     );
-    Exit10(EXIT_10).bootstrapLock(_swap(token0, token1, initialAmount0, initialAmount1, _swapParams));
+    Exit10(EXIT_10).bootstrapLock(_swap(token0, token1, initialAmount0, initialAmount1, swapParams));
   }
 
   function swapAndCreateBond(
     uint256 initialAmount0,
     uint256 initialAmount1,
-    IUniswapV3Router.ExactInputSingleParams memory _swapParams
+    IUniswapV3Router.ExactInputSingleParams memory swapParams
   ) external payable {
     (address token0, address token1) = _sortAndDeposit(
-      _swapParams.tokenIn,
-      _swapParams.tokenOut,
+      swapParams.tokenIn,
+      swapParams.tokenOut,
       initialAmount0,
       initialAmount1
     );
-    Exit10(EXIT_10).createBond(_swap(token0, token1, initialAmount0, initialAmount1, _swapParams));
+    Exit10(EXIT_10).createBond(_swap(token0, token1, initialAmount0, initialAmount1, swapParams));
   }
 
   function _processEth(

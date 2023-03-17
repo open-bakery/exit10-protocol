@@ -1,100 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-
-import 'forge-std/Test.sol';
-import '../src/Exit10.sol';
-import '../src/NFT.sol';
-import '../src/STO.sol';
-import '../src/interfaces/IExit10.sol';
-import '../src/interfaces/IUniswapBase.sol';
-import '../src/interfaces/IUniswapV3Router.sol';
-import '../src/interfaces/INonfungiblePositionManager.sol';
-import '../src/FeeSplitter.sol';
-import '../src/BaseToken.sol';
-
-import { MasterchefExit } from './ABaseExit10.t.sol';
+import { Test } from 'forge-std/Test.sol';
+import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import { ABaseExit10Test } from './ABaseExit10.t.sol';
+import { IExit10, IUniswapBase } from '../src/Exit10.sol';
 
 contract Exit10Test is Test, ABaseExit10Test {
-  Exit10 exit10;
-  NFT nft;
-  STO sto;
-  BaseToken boot;
-  BaseToken blp;
-  BaseToken exitToken;
-
-  // On Ethereum Mainnet:
-  // Token0 is USDC
-  // Token1 is WETH
-
-  ERC20 token0;
-  ERC20 token1;
-
-  uint256 bootstrapPeriod = 1 hours;
-  uint256 accrualParameter = 1 days;
-  uint256 lpPerUSD = 1; // made up number
-
-  uint256 initialBalance = 1_000_000_000 ether;
-  uint256 deployTime;
-  uint256 constant MX = type(uint256).max;
-
-  address feeSplitter;
-  address masterchef0 = address(0x0a);
-  address masterchef1 = address(0x0b);
-  address masterchef2;
-
-  IUniswapBase.BaseDeployParams baseParams =
-    IUniswapBase.BaseDeployParams({
-      uniswapFactory: vm.envAddress('UNISWAP_V3_FACTORY'),
-      nonfungiblePositionManager: vm.envAddress('UNISWAP_V3_NPM'),
-      tokenIn: vm.envAddress('WETH'),
-      tokenOut: vm.envAddress('USDC'),
-      fee: uint24(vm.envUint('FEE')),
-      tickLower: int24(vm.envInt('LOWER_TICK')),
-      tickUpper: int24(vm.envInt('UPPER_TICK'))
-    });
-
-  function setUp() public {
-    nft = new NFT('Bond Data', 'BND', 0);
-    sto = new STO(bytes32('merkle_root'));
-    boot = new BaseToken('Exit10 Bootstrap', 'BOOT');
-    blp = new BaseToken('Boost Liquidity', 'BLP');
-    exitToken = new BaseToken('Exit Liquidity', 'EXIT');
-
-    feeSplitter = address(new FeeSplitter(masterchef0, masterchef1, vm.envAddress('SWAPPER')));
-    masterchef2 = address(new MasterchefExit(address(exitToken), 2 weeks));
-
-    IExit10.DeployParams memory params = IExit10.DeployParams({
-      NFT: address(nft),
-      STO: address(sto),
-      BOOT: address(boot),
-      BLP: address(blp),
-      EXIT: address(exitToken),
-      masterchef: masterchef2,
-      feeSplitter: feeSplitter,
-      bootstrapPeriod: bootstrapPeriod,
-      accrualParameter: accrualParameter,
-      lpPerUSD: lpPerUSD
-    });
-
-    exit10 = new Exit10(baseParams, params);
-    sto.setExit10(address(exit10));
-    nft.setExit10(address(exit10));
-    FeeSplitter(feeSplitter).setExit10(address(exit10));
-    _setUpExitPool(exit10, address(0x0c));
-
-    boot.transferOwnership(address(exit10));
-    blp.transferOwnership(address(exit10));
-    exitToken.transferOwnership(address(exit10));
-
-    deployTime = block.timestamp;
-    token0 = ERC20(exit10.POOL().token0());
-    token1 = ERC20(exit10.POOL().token1());
-
-    _mintAndApprove(address(token0), initialBalance, address(exit10));
-    _mintAndApprove(address(token1), initialBalance, address(exit10));
-    _maxApprove(address(token0), address(UNISWAP_V3_ROUTER));
-    _maxApprove(address(token1), address(UNISWAP_V3_ROUTER));
+  function setUp() public override {
+    super.setUp();
   }
 
   function testSetup() public {
@@ -525,9 +438,9 @@ contract Exit10Test is Test, ABaseExit10Test {
     _eth10k(exit10);
     exit10.exit10();
     uint256 initialBalanceUSDC = ERC20(token0).balanceOf(address(this));
-    uint256 exitBalance = ERC20(exitToken).balanceOf(address(this));
+    uint256 exitBalance = ERC20(exit).balanceOf(address(this));
     uint256 precision = 1e18;
-    uint256 exitTokenShare = (exitBalance * precision) / ERC20(exitToken).totalSupply();
+    uint256 exitTokenShare = (exitBalance * precision) / ERC20(exit).totalSupply();
     exit10.exitClaim();
 
     assertTrue(ERC20(exit10.EXIT()).balanceOf(address(this)) == 0, 'Check exit burn');

@@ -19,110 +19,15 @@ import '../src/STO.sol';
 import './ABaseExit10.t.sol';
 
 contract SystemTest is Test, ABaseExit10Test {
-  Exit10 exit10;
-  NFT nft;
-  STO sto;
-  BaseToken boot;
-  BaseToken blp;
-  BaseToken exit;
-  address lp; // EXIT/USDC LP Uniswap v2
-
-  uint256 constant REWARDS_DURATION = 2 weeks;
-  uint256 constant ORACLE_SECONDS = 60;
-
-  // Params Exit10
-  address uniswapV3Factory = vm.envAddress('UNISWAP_V3_FACTORY');
-  address nonfungiblePositionManager = vm.envAddress('UNISWAP_V3_NPM');
-  address weth = vm.envAddress('WETH');
-  address usdc = vm.envAddress('USDC');
-  uint24 fee = uint24(vm.envUint('FEE'));
-  int24 tickLower = int24(vm.envInt('LOWER_TICK'));
-  int24 tickUpper = int24(vm.envInt('UPPER_TICK'));
-
-  address alice = address(0xa);
-  address bob = address(0xb);
-  address charlie = address(0xc);
+  address alice = address(0xa0);
+  address bob = address(0xb0);
+  address charlie = address(0xc0);
 
   mapping(address => string) userName;
 
-  uint256 bootstrapPeriod = 2 weeks;
-  uint256 accrualParameter = 1 weeks;
-  uint256 lpPerUSD = 1; // made up number
-
-  uint256 deployTime;
-  uint256 constant MX = type(uint256).max;
-
-  address feeSplitter;
-  Masterchef masterchef0; // 50% BOOT 50% STO
-  Masterchef masterchef1; // BLP
-  MasterchefExit masterchef2; // EXIT/USDC LP Uniswap v2
-
-  IUniswapBase.BaseDeployParams baseParams =
-    IUniswapBase.BaseDeployParams({
-      uniswapFactory: uniswapV3Factory,
-      nonfungiblePositionManager: nonfungiblePositionManager,
-      tokenIn: weth,
-      tokenOut: usdc,
-      fee: fee,
-      tickLower: tickLower,
-      tickUpper: tickUpper
-    });
-
-  function setUp() public {
-    deployTime = block.timestamp;
-
-    // Deploy tokens
-    sto = new STO(bytes32('merkle_root'));
-    boot = new BaseToken('Bootstap', 'BOOT');
-    blp = new BaseToken('Boost LP', 'BLP');
-    exit = new BaseToken('Exit Liquidity', 'EXIT');
-    nft = new NFT('Bond Data', 'BND', 0);
-
-    // Setup Exit Liquidity
-    uint256 amountExit = _tokenAmount(address(exit), 10);
-    uint256 amountUSDC = _tokenAmount(usdc, 10);
-    exit.mint(address(this), amountExit);
-    deal(usdc, address(this), amountUSDC);
-    lp = _setUpExitLiquidity(amountExit, amountUSDC);
-
-    // Deploy dependency contracts
-    masterchef0 = new Masterchef(weth, REWARDS_DURATION);
-    masterchef1 = new Masterchef(weth, REWARDS_DURATION);
-    masterchef2 = new MasterchefExit(address(exit), REWARDS_DURATION);
-
-    feeSplitter = address(new FeeSplitter(address(masterchef0), address(masterchef1), vm.envAddress('SWAPPER')));
-
-    IExit10.DeployParams memory params = IExit10.DeployParams({
-      NFT: address(nft),
-      STO: address(sto),
-      BOOT: address(boot),
-      BLP: address(blp),
-      EXIT: address(exit),
-      masterchef: address(masterchef2),
-      feeSplitter: feeSplitter,
-      bootstrapPeriod: bootstrapPeriod,
-      accrualParameter: accrualParameter,
-      lpPerUSD: lpPerUSD
-    });
-
-    exit10 = new Exit10(baseParams, params);
-
-    sto.setExit10(address(exit10));
-    nft.setExit10(address(exit10));
-    FeeSplitter(feeSplitter).setExit10(address(exit10));
-    _setMasterchefs(feeSplitter);
-
-    boot.transferOwnership(address(exit10));
-    blp.transferOwnership(address(exit10));
-    exit.transferOwnership(address(exit10));
-    _maxApprove(weth, address(UNISWAP_V3_ROUTER));
-    _maxApprove(usdc, address(UNISWAP_V3_ROUTER));
-
+  function setUp() public override {
+    super.setUp();
     _setupNames();
-  }
-
-  function testOne() public {
-    assertTrue(true);
   }
 
   function testScenario_0() public {
@@ -145,17 +50,6 @@ contract SystemTest is Test, ABaseExit10Test {
     _displayTreasury();
     _lpExit(alice);
     _stake(alice, address(masterchef2), 0, lp);
-  }
-
-  function _setMasterchefs(address _rewardDistributor) internal {
-    masterchef0.add(50, address(sto));
-    masterchef0.add(50, address(boot));
-    masterchef1.add(100, address(blp));
-    masterchef0.setRewardDistributor(_rewardDistributor);
-    masterchef1.setRewardDistributor(_rewardDistributor);
-    masterchef0.renounceOwnership();
-    masterchef1.renounceOwnership();
-    _setUpExitPool(exit10, lp);
   }
 
   function _generateFees() internal {
@@ -182,21 +76,24 @@ contract SystemTest is Test, ABaseExit10Test {
     _displayBalance('Masterchef2', address(masterchef2), address(exit));
   }
 
-  function _lpExit(address _user) internal returns (uint exitAmountAdded, uint usdcAmountAdded, uint liquidity) {
-    uint balanceExit = ERC20(exit).balanceOf(_user);
-    uint usdcAmount = _tokenAmount(usdc, balanceExit / 1e18);
-    deal(usdc, _user, usdcAmount);
+  function _lpExit(address _user) internal returns (uint _amountAddedExit, uint _amountAddedUsdc, uint _liquidity) {
+    uint balanceExit = exit.balanceOf(_user);
+    uint amountUsdc = _tokenAmount(usdc, balanceExit / 1e18);
+    deal(usdc, _user, amountUsdc);
     vm.startPrank(_user);
-    (exitAmountAdded, usdcAmountAdded, liquidity) = _addLP(balanceExit, usdcAmount);
+    (_amountAddedExit, _amountAddedUsdc, _liquidity) = _addLiquidity(address(exit), usdc, balanceExit, amountUsdc);
     vm.stopPrank();
+    ERC20(lp).transfer(_user, _liquidity);
 
     string memory log0 = string.concat('User: ', userName[_user]);
-    string memory log1 = string.concat('EXIT added: ', Strings.toString(balanceExit));
-    string memory log2 = string.concat('USDC added: ', Strings.toString(usdcAmountAdded));
+    string memory log1 = string.concat('EXIT added: ', Strings.toString(_amountAddedExit));
+    string memory log2 = string.concat('USDC added: ', Strings.toString(_amountAddedUsdc));
+    string memory log3 = string.concat('Liquidity added: ', Strings.toString(_liquidity));
     _title('PROVIDING EXIT/USDC LIQUIDITY');
     console.log(log0);
     console.log(log1);
     console.log(log2);
+    console.log(log3);
     _spacer();
   }
 
@@ -379,28 +276,5 @@ contract SystemTest is Test, ABaseExit10Test {
     userName[alice] = 'Alice';
     userName[bob] = 'Bob';
     userName[charlie] = 'Charlie';
-  }
-
-  function _addLP(
-    uint256 _amountExit,
-    uint256 _amountUSDC
-  ) internal returns (uint usdcAmountAdded, uint exitAmountAdded, uint lpAmount) {
-    ERC20(usdc).approve(address(UNISWAP_V2_ROUTER), _amountUSDC);
-    exit.approve(address(UNISWAP_V2_ROUTER), _amountExit);
-    (exitAmountAdded, usdcAmountAdded, lpAmount) = UNISWAP_V2_ROUTER.addLiquidity(
-      address(exit),
-      usdc,
-      _amountExit,
-      _amountUSDC,
-      0,
-      0,
-      address(this),
-      block.timestamp
-    );
-  }
-
-  function _setUpExitLiquidity(uint256 _amountExit, uint256 _amountUSDC) internal returns (address exit_usdc_lp) {
-    exit_usdc_lp = UNISWAP_V2_FACTORY.createPair(address(exit), usdc);
-    _addLP(_amountExit, _amountUSDC);
   }
 }

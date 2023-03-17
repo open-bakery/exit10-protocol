@@ -47,7 +47,7 @@ contract MasterchefExitTest is Test {
     skip(interval);
     uint256 expectedReward = (mc.rewardRate() * interval) / mc.PRECISION();
     rewardToken.burn(address(mc), rewardAmount - expectedReward);
-    mc.stopRewards();
+    mc.stopRewards(rewardAmount);
     skip(7 days);
     mc.withdraw(0, 0);
     _assertWithin(rewardToken.balanceOf(address(this)), expectedReward, 10);
@@ -65,7 +65,7 @@ contract MasterchefExitTest is Test {
     _depositAs(alice, stakeAmount);
     skip(interval);
     rewardToken.burn(address(mc), rewardAmount - expectedIntervalReward * 2);
-    mc.stopRewards();
+    mc.stopRewards(rewardAmount);
     skip(7 days);
     mc.withdraw(0, 0);
     _assertWithin(rewardToken.balanceOf(address(this)), expectedIntervalReward + expectedIntervalReward / 2, 10);

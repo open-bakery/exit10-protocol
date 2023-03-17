@@ -2,6 +2,11 @@
 # (-include to ignore error if it does not exist)
 SHELL := /bin/bash
 -include .env
+
+reinit:
+	git submodule deinit --force .
+	git submodule update --init --recursive
+
 SED_REPLACE="s/{{WETH}}/$$WETH/;s/{{USDC}}/$$USDC/;s/{{UNISWAP_V3_FACTORY}}/$$UNISWAP_V3_FACTORY/;s/{{UNISWAP_V3_ROUTER}}/$$UNISWAP_V3_ROUTER/;s/{{UNISWAP_V3_NPM}}/$$UNISWAP_V3_NPM/;s/{{SWAPPER}}/$$SWAPPER/;s/{{UNISWAP_V2_ROUTER}}/$$UNISWAP_V2_ROUTER/;s/{{UNISWAP_V2_FACTORY}}/$$UNISWAP_V2_FACTORY/;s/{{POOL}}/$$POOL/"
 
 kill-anvil:
@@ -56,7 +61,7 @@ trace:
 	forge test -vvv --nmc SystemTest --fork-url $(RPC_URL)
 
 trace1:
-	forge test -vvv --mc Exit10 --mt testBootstrapWithMinimumAmount --fork-url $(RPC_URL)
+	forge test -vvv --mc Exit10 --fork-url $(RPC_URL)
 
 system:
 	forge test -vv --mc SystemTest --fork-url $(RPC_URL)

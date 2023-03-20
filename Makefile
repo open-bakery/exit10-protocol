@@ -58,11 +58,14 @@ tests:
 	forge test -vv  --nmc SystemTest --fork-url $(RPC_URL)
 
 trace:
-	forge test -vvv --nmc SystemTest --fork-url $(RPC_URL)
+	forge test -vvv --mc DepositHelperTest --fork-url $(RPC_URL)
 
 trace1:
 	forge test -vvv --mc Exit10 --fork-url $(RPC_URL)
 
 system:
 	forge test -vv --mc SystemTest --fork-url $(RPC_URL)
+
+fuzz:
+	forge test --mc UnitTest --fork-url $(RPC_URL)
 

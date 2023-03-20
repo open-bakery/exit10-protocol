@@ -26,6 +26,16 @@ contract FeeSplitter is Ownable {
   uint256 public remainingBucketsTokenOut; // USDC
   uint256 public remainingBucketsTokenIn; // WETH
 
+  event SetExit10(address indexed caller, address indexed exit10);
+  event CollectFees(uint256 pendingBucket, uint256 remainingBuckets, uint256 amountTokenOut, uint256 amountTokenIn);
+  event UpdateFees(
+    address indexed caller,
+    uint256 exchangedAmount,
+    uint256 rewardsMasterchef0,
+    uint256 rewardsMasterchef1
+  );
+  event Swap(uint256 amountIn, uint256 amountOut);
+
   constructor(address masterchef0_, address masterchef1_, address swapper_) {
     MASTERCHEF_0 = masterchef0_;
     MASTERCHEF_1 = masterchef1_;
@@ -43,6 +53,8 @@ contract FeeSplitter is Ownable {
     IERC20(Exit10(exit10).TOKEN_IN()).approve(MASTERCHEF_0, MAX_UINT_256);
     IERC20(Exit10(exit10).TOKEN_IN()).approve(MASTERCHEF_1, MAX_UINT_256);
     renounceOwnership();
+
+    emit SetExit10(msg.sender, exit10);
   }
 
   function collectFees(
@@ -62,6 +74,8 @@ contract FeeSplitter is Ownable {
       pendingBucketTokenIn += _calcShare(pendingBucket, pendingBucket + remainingBuckets, amountTokenIn);
       remainingBucketsTokenIn += (amountTokenIn - pendingBucketTokenIn);
     }
+
+    emit CollectFees(pendingBucket, remainingBuckets, amountTokenOut, amountTokenIn);
   }
 
   function updateFees(uint256 amount) external returns (uint256 totalExchanged) {
@@ -105,6 +119,8 @@ contract FeeSplitter is Ownable {
 
     Masterchef(MASTERCHEF_0).updateRewards(mc0TokenIn);
     Masterchef(MASTERCHEF_1).updateRewards(mc1TokenIn);
+
+    emit UpdateFees(msg.sender, totalExchanged, mc0TokenIn, mc1TokenIn);
   }
 
   function _swap(uint256 _amount) internal returns (uint256 _amountAcquired) {
@@ -119,6 +135,8 @@ contract FeeSplitter is Ownable {
     });
 
     _amountAcquired = ISwapper(SWAPPER).swap(params);
+
+    emit Swap(_amount, _amountAcquired);
   }
 
   function _safeTransferToken(address _token, address _recipient, uint256 _amount) internal {

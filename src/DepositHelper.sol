@@ -16,6 +16,22 @@ contract DepositHelper {
 
   uint256 private constant DEADLINE = 1e10;
 
+  event SwapAndBootstrapLock(
+    address indexed caller,
+    uint128 liquidityAdded,
+    uint256 amountAdded0,
+    uint256 amountAdded1
+  );
+  event SwapAndCreateBond(
+    address indexed caller,
+    uint256 bondId,
+    uint128 liquidityAdded,
+    uint256 amountAdded0,
+    uint256 amountAdded1
+  );
+  event ProcessEth(address indexed caller, uint256 amount);
+  event Swap(address indexed caller, uint256 amountIn, uint256 amountOut);
+
   constructor(address uniswapV3Router_, address exit10_, address weth_) {
     UNISWAP_V3_ROUTER = uniswapV3Router_;
     EXIT_10 = exit10_;
@@ -36,6 +52,8 @@ contract DepositHelper {
     (tokenId, liquidityAdded, amountAdded0, amountAdded1) = Exit10(EXIT_10).bootstrapLock(
       _swap(token0, token1, initialAmount0, initialAmount1, swapParams)
     );
+
+    emit SwapAndBootstrapLock(msg.sender, liquidityAdded, amountAdded0, amountAdded1);
   }
 
   function swapAndCreateBond(
@@ -52,6 +70,8 @@ contract DepositHelper {
     (bondId, liquidityAdded, amountAdded0, amountAdded1) = Exit10(EXIT_10).createBond(
       _swap(token0, token1, initialAmount0, initialAmount1, swapParams)
     );
+
+    emit SwapAndCreateBond(msg.sender, bondId, liquidityAdded, amountAdded0, amountAdded1);
   }
 
   function _processEth(
@@ -70,6 +90,8 @@ contract DepositHelper {
     } else if (_token1 == WETH) {
       _amount1 += _msgValue;
     }
+
+    emit ProcessEth(msg.sender, _msgValue);
   }
 
   function _swap(
@@ -105,6 +127,8 @@ contract DepositHelper {
       amount1Min: 0,
       deadline: DEADLINE
     });
+
+    emit Swap(msg.sender, _swapParams.amountIn, amountOut);
   }
 
   function _sortAndDeposit(

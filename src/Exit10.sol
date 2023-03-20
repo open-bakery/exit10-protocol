@@ -64,7 +64,13 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
   uint256 public immutable ACCRUAL_PARAMETER;
   uint256 public immutable LP_PER_USD;
 
-  event BootstrapLock(address indexed recipient, uint256 lockAmount, uint256 amountAdded0, uint256 amountAdded1);
+  event BootstrapLock(
+    address indexed recipient,
+    uint256 lockAmount,
+    uint256 amountAdded0,
+    uint256 amountAdded1,
+    uint256 bootTokensMinted
+  );
   event CreateBond(
     address indexed recipient,
     uint256 bondID,
@@ -77,8 +83,8 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
     address indexed caller,
     uint256 bondID,
     uint256 bondAmount,
-    uint256 boostTokenClaimed,
-    uint256 exitTokenClaimed
+    uint256 blpClaimed,
+    uint256 exitClaimed
   );
   event Redeem(address indexed caller, uint256 burnedBLP, uint256 amountReturned0, uint256 amountReturned1);
   event Exit(
@@ -127,11 +133,12 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
     (tokenId, liquidityAdded, amountAdded0, amountAdded1) = _addLiquidity(params);
 
     bootstrapBucket += liquidityAdded;
-    BOOT.mint(params.depositor, liquidityAdded * TOKEN_MULTIPLIER);
+    uint256 mintAmount = liquidityAdded * TOKEN_MULTIPLIER;
+    BOOT.mint(params.depositor, mintAmount);
 
     _safeTransferTokens(params.depositor, params.amount0Desired - amountAdded0, params.amount1Desired - amountAdded1);
 
-    emit BootstrapLock(params.depositor, liquidityAdded, amountAdded0, amountAdded1);
+    emit BootstrapLock(params.depositor, liquidityAdded, amountAdded0, amountAdded1, mintAmount);
   }
 
   function createBond(

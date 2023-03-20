@@ -27,14 +27,13 @@ cast balance $ETH_FROM
 cast send --value 200000000000000000000000 "0x$WETH_ADDRESS" "deposit()" > /dev/null
 
 # Uniswap V2
-
 V2_FACTORY_BYTECODE=$(cat "$BYTECODES/UniswapV2Factory")
 V2_FACTORY_ADDRESS=$(cast send --create "$V2_FACTORY_BYTECODE" | extract_contract_address)
 
 V2_ROUTER_BYTECODE=$(sed < "$BYTECODES/UniswapV2Router" "s/$V2_FACTORY_ADDRESS_/$V2_FACTORY_ADDRESS/;s/$WETH_ADDRESS_/$WETH_ADDRESS/")
 V2_ROUTER_ADDRESS=$(cast send --create "$V2_ROUTER_BYTECODE" | extract_contract_address)
-# Uniswap V3
 
+# Uniswap V3
 V3_FACTORY_BYTECODE=$(cat "$BYTECODES/UniswapV3Factory")
 V3_FACTORY_ADDRESS=$(cast send --create "$V3_FACTORY_BYTECODE" | extract_contract_address)
 

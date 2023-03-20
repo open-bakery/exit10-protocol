@@ -43,7 +43,9 @@ dev:
 	$(MAKE) start-anvil-local
 	$(MAKE) deploy-infrastructure
 	@source ./config/local.ini ; sed < .env.template > .env $(SED_REPLACE)
-	@./deploy/deploy-dev-data.sh
+	./deploy/deploy-exit10.sh
+	./deploy/deploy-dev-data.sh
+	./deploy/export-local-ini-to-ui.sh
 
 dev-mainnet-fork:
 	#trap "kill $(jobs -p)" SIGINT SIGTERM EXIT

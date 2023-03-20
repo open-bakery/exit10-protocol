@@ -9,6 +9,9 @@ contract MasterchefExit is AMasterchefBase {
 
   constructor(address rewardToken_, uint256 rewardsDuration_) AMasterchefBase(rewardToken_, rewardsDuration_) {}
 
+  event UpdateRewards(address indexed caller, uint256 amount);
+  event StopRewards(uint256 undistributedRewards);
+
   /// @notice Updates rewardRate.
   /// Adds and evenly distributes rewards through the rewardsDuration.
   function updateRewards(uint256 amount) external override onlyOwner {
@@ -18,6 +21,7 @@ contract MasterchefExit is AMasterchefBase {
     require(IERC20(REWARD_TOKEN).balanceOf(address(this)) >= amount, 'MasterchefExit: Token balance not sufficient');
     rewardRate = (amount * PRECISION) / REWARDS_DURATION;
     periodFinish = block.timestamp + REWARDS_DURATION;
+    emit UpdateRewards(msg.sender, amount);
   }
 
   function stopRewards(uint256 allocatedRewards) external onlyOwner returns (uint256 remainingRewards) {
@@ -25,6 +29,7 @@ contract MasterchefExit is AMasterchefBase {
       uint256 undistributedRewards = ((block.timestamp - (periodFinish - REWARDS_DURATION)) * rewardRate) / PRECISION;
       remainingRewards = allocatedRewards - undistributedRewards;
       periodFinish = block.timestamp;
-    }
+      emit StopRewards(undistributedRewards);
+    } else emit StopRewards(0);
   }
 }

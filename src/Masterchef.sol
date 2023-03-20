@@ -11,6 +11,8 @@ contract Masterchef is AMasterchefBase {
   /// @notice Address authorized to distribute the rewards.
   address public rewardDistributor;
 
+  event SetRewardDistributor(address indexed caller, address indexed rewardDistributor);
+
   modifier onlyAuthorized() {
     require(msg.sender == rewardDistributor, 'Masterchef: Caller not authorized');
     _;
@@ -21,6 +23,7 @@ contract Masterchef is AMasterchefBase {
   function setRewardDistributor(address rd) external onlyOwner {
     require(rewardDistributor == address(0), 'Masterchef: Reward distributor already set');
     rewardDistributor = rd;
+    emit SetRewardDistributor(msg.sender, rd);
   }
 
   function withdraw(uint256 _pid, uint256 _amount, bool _shouldUpdateRewards, uint256 _amountOut) public {

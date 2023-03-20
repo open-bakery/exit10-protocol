@@ -12,6 +12,7 @@ abstract contract AMasterchefBase is Ownable {
   event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
   event Claim(address indexed user, uint256 indexed pid, uint256 amount);
   event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
+  event UpdateRewards(address indexed caller, uint256 amount, uint256 newRewardRate, uint256 newPeriodFinish);
 
   struct UserInfo {
     uint256 amount;
@@ -165,6 +166,8 @@ abstract contract AMasterchefBase is Ownable {
     }
 
     periodFinish = block.timestamp + REWARDS_DURATION;
+
+    emit UpdateRewards(msg.sender, _amount, rewardRate, periodFinish);
   }
 
   /// @notice Increases accRewardPerShare and accUndistributedReward since last update.

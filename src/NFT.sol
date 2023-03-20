@@ -9,6 +9,8 @@ contract NFT is ERC721Enumerable, Ownable {
   Exit10 public exit10;
   uint256 public immutable TRANSFER_LOCKOUT_PERIOD_SECONDS;
 
+  event SetExit10(address indexed caller, address exit10);
+
   modifier onlyAuthorized() {
     require(msg.sender == address(exit10), 'NFT: Caller must be Exit10');
     _;
@@ -22,41 +24,42 @@ contract NFT is ERC721Enumerable, Ownable {
     TRANSFER_LOCKOUT_PERIOD_SECONDS = transferLockoutPeriodSeconds_;
   }
 
-  function setExit10(address _exit10) external onlyOwner {
-    require(_exit10 != address(0), 'NFT: _exit10 must be non-zero');
-    exit10 = Exit10(_exit10);
+  function setExit10(address exit10_) external onlyOwner {
+    require(exit10_ != address(0), 'NFT: _exit10 must be non-zero');
+    exit10 = Exit10(exit10_);
     renounceOwnership();
+    emit SetExit10(msg.sender, exit10_);
   }
 
-  function mint(address _bonder) external onlyAuthorized returns (uint256 tokenID) {
+  function mint(address recipient) external onlyAuthorized returns (uint256 tokenID) {
     // We actually increase totalSupply in `ERC721Enumerable._beforeTokenTransfer` when we `_mint`.
     tokenID = totalSupply() + 1;
-    _mint(_bonder, tokenID);
+    _mint(recipient, tokenID);
   }
 
-  function tokenURI(uint256 _tokenID) public view override returns (string memory) {
-    require(_exists(_tokenID), 'NFT: URI query for nonexistent token');
+  function tokenURI(uint256 tokenID) public view override returns (string memory) {
+    require(_exists(tokenID), 'NFT: URI query for nonexistent token');
     return ('uri');
   }
 
-  function getBondAmount(uint256 _tokenID) external view returns (uint256 tokenAmount) {
-    (tokenAmount, , , , ) = exit10.getBondData(_tokenID);
+  function getBondAmount(uint256 tokenID) external view returns (uint256 tokenAmount) {
+    (tokenAmount, , , , ) = exit10.getBondData(tokenID);
   }
 
-  function getBondClaimed(uint256 _tokenID) external view returns (uint256 claimedBoostedToken) {
-    (, claimedBoostedToken, , , ) = exit10.getBondData(_tokenID);
+  function getBondClaimed(uint256 tokenID) external view returns (uint256 claimedBoostedToken) {
+    (, claimedBoostedToken, , , ) = exit10.getBondData(tokenID);
   }
 
-  function getBondStartTime(uint256 _tokenID) external view returns (uint256 startTime) {
-    (, , startTime, , ) = exit10.getBondData(_tokenID);
+  function getBondStartTime(uint256 tokenID) external view returns (uint256 startTime) {
+    (, , startTime, , ) = exit10.getBondData(tokenID);
   }
 
-  function getBondEndTime(uint256 _tokenID) external view returns (uint256 endTime) {
-    (, , , endTime, ) = exit10.getBondData(_tokenID);
+  function getBondEndTime(uint256 tokenID) external view returns (uint256 endTime) {
+    (, , , endTime, ) = exit10.getBondData(tokenID);
   }
 
-  function getBondStatus(uint256 _tokenID) external view returns (uint8 status) {
-    (, , , , status) = exit10.getBondData(_tokenID);
+  function getBondStatus(uint256 tokenID) external view returns (uint8 status) {
+    (, , , , status) = exit10.getBondData(tokenID);
   }
 
   // Prevent transfers for a period of time after chickening in or out

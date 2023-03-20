@@ -25,7 +25,7 @@ contract NFT is ERC721Enumerable, Ownable {
   }
 
   function setExit10(address exit10_) external onlyOwner {
-    require(exit10_ != address(0), 'NFT: _exit10 must be non-zero');
+    require(exit10_ != address(0), 'NFT: exit10_ must be non-zero');
     exit10 = Exit10(exit10_);
     renounceOwnership();
     emit SetExit10(msg.sender, exit10_);

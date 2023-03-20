@@ -16,11 +16,14 @@ contract STO is BaseToken, MerkleDistributor {
   Exit10 public exit10;
   uint256 public totalAcquired;
 
+  event SetExit10(address indexed caller, address exit10);
+
   constructor(bytes32 merkleRoot_) BaseToken('Share Token', 'STO') MerkleDistributor(address(this), merkleRoot_) {}
 
-  function setExit10(address instance) external onlyOwner {
+  function setExit10(address exit10_) external onlyOwner {
     require(address(exit10) == address(0), 'STO: Instance already set');
-    exit10 = Exit10(instance);
+    exit10 = Exit10(exit10_);
+    emit SetExit10(msg.sender, exit10_);
   }
 
   function claimExitLiquidity(uint256 amount) external {

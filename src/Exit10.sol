@@ -64,16 +64,34 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
   uint256 public immutable ACCRUAL_PARAMETER;
   uint256 public immutable LP_PER_USD;
 
-  event CreateBond(address indexed bonder, uint256 bondID, uint256 amount);
-  event CancelBond(address indexed bonder, uint256 bondID, uint256 amountReturned0, uint256 amountReturned1);
+  event BootstrapLock(address indexed recipient, uint256 lockAmount, uint256 amountAdded0, uint256 amountAdded1);
+  event CreateBond(
+    address indexed recipient,
+    uint256 bondID,
+    uint256 bondAmount,
+    uint256 amountAdded0,
+    uint256 amountAdded1
+  );
+  event CancelBond(address indexed caller, uint256 bondID, uint256 amountReturned0, uint256 amountReturned1);
   event ConvertBond(
-    address indexed bonder,
+    address indexed caller,
     uint256 bondID,
     uint256 bondAmount,
     uint256 boostTokenClaimed,
-    uint256 exitLiquidityAmount
+    uint256 exitTokenClaimed
   );
-  event Redeem(address indexed redeemer, uint256 amount0, uint256 amount1);
+  event Redeem(address indexed caller, uint256 burnedBLP, uint256 amountReturned0, uint256 amountReturned1);
+  event Exit(
+    address indexed caller,
+    uint256 time,
+    uint256 bootstrapRefund,
+    uint256 bootstrapRewards,
+    uint256 teamPlusBackersRewards,
+    uint256 exitTokenRewards
+  );
+  event BootstrapClaim(address indexed caller, uint256 amountBurned, uint256 amountClaimed);
+  event ExitClaim(address indexed caller, uint256 amountBurned, uint256 amountClaimed);
+  event ClaimAndDistributeFees(address indexed caller, uint256 amountClaimed0, uint256 amountClaimed1);
   event MintExit(address indexed recipient, uint256 amount);
 
   constructor(BaseDeployParams memory baseParams_, DeployParams memory params_) UniswapBase(baseParams_) {
@@ -112,6 +130,8 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
     BOOT.mint(params.depositor, liquidityAdded * TOKEN_MULTIPLIER);
 
     _safeTransferTokens(params.depositor, params.amount0Desired - amountAdded0, params.amount1Desired - amountAdded1);
+
+    emit BootstrapLock(params.depositor, liquidityAdded, amountAdded0, amountAdded1);
   }
 
   function createBond(
@@ -137,7 +157,7 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
     pendingBucket += liquidityAdded;
 
     _safeTransferTokens(params.depositor, params.amount0Desired - amountAdded0, params.amount1Desired - amountAdded1);
-    emit CreateBond(params.depositor, bondID, liquidityAdded);
+    emit CreateBond(params.depositor, bondID, liquidityAdded, amountAdded0, amountAdded1);
   }
 
   function cancelBond(
@@ -198,12 +218,14 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
     claimAndDistributeFees();
 
     reserveBucket -= params.liquidity;
-    BLP.burn(msg.sender, params.liquidity * TOKEN_MULTIPLIER);
+
+    uint256 amountToBurn = params.liquidity * TOKEN_MULTIPLIER;
+    BLP.burn(msg.sender, amountToBurn);
 
     (amountRemoved0, amountRemoved1) = _decreaseLiquidity(params);
     _collect(msg.sender, uint128(amountRemoved0), uint128(amountRemoved1));
 
-    emit Redeem(msg.sender, amountRemoved0, amountRemoved1);
+    emit Redeem(msg.sender, amountToBurn, amountRemoved0, amountRemoved1);
   }
 
   function exit10() external {
@@ -243,12 +265,15 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
     exitTokenRewardsFinal -= tenPercent * 3;
 
     _safeTransferToken(TOKEN_OUT, STO, teamPlusBackersRewards);
+
+    emit Exit(msg.sender, block.timestamp, bootstrapRefund, tenPercent, teamPlusBackersRewards, exitTokenRewardsFinal);
   }
 
   function bootstrapClaim() external {
+    uint256 bootBalance = IERC20(BOOT).balanceOf(msg.sender);
     uint256 claim = _safeTokenClaim(
       BOOT,
-      IERC20(BOOT).balanceOf(msg.sender) / TOKEN_MULTIPLIER,
+      bootBalance / TOKEN_MULTIPLIER,
       bootstrapRewardsPlusRefund,
       bootstrapBucket,
       bootstrapRewardsPlusRefundClaimed
@@ -257,12 +282,15 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
     bootstrapRewardsPlusRefundClaimed += claim;
 
     _safeTransferToken(TOKEN_OUT, msg.sender, claim);
+
+    emit BootstrapClaim(msg.sender, bootBalance, claim);
   }
 
   function exitClaim() external {
+    uint256 exitBalance = IERC20(EXIT).balanceOf(msg.sender);
     uint256 claim = _safeTokenClaim(
       EXIT,
-      IERC20(EXIT).balanceOf(msg.sender),
+      exitBalance,
       exitTokenRewardsFinal,
       exitTokenSupplyFinal,
       exitTokenRewardsClaimed
@@ -271,6 +299,8 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
     exitTokenRewardsClaimed += claim;
 
     _safeTransferToken(TOKEN_OUT, msg.sender, claim);
+
+    emit ExitClaim(msg.sender, exitBalance, claim);
   }
 
   function getBondData(
@@ -336,6 +366,8 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
         amountCollected1
       );
     }
+
+    emit ClaimAndDistributeFees(msg.sender, amountCollected0, amountCollected1);
   }
 
   function _safeTokenClaim(

@@ -393,8 +393,8 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
   }
 
   function _depositTokens(uint256 _amount0, uint256 _amount1) internal {
-    IERC20(POOL.token0()).safeTransferFrom(msg.sender, address(this), _amount0);
-    IERC20(POOL.token1()).safeTransferFrom(msg.sender, address(this), _amount1);
+    if (_amount0 != 0) IERC20(POOL.token0()).safeTransferFrom(msg.sender, address(this), _amount0);
+    if (_amount1 != 0) IERC20(POOL.token1()).safeTransferFrom(msg.sender, address(this), _amount1);
   }
 
   function _safeTransferTokens(address _recipient, uint256 _amount0, uint256 _amount1) internal {

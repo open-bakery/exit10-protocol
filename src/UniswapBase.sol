@@ -40,7 +40,7 @@ contract UniswapBase is IUniswapBase {
   ) internal returns (uint256 _tokenId, uint128 _liquidityAdded, uint256 _amountAdded0, uint256 _amountAdded1) {
     (address token0, address token1) = TOKEN_IN < TOKEN_OUT ? (TOKEN_IN, TOKEN_OUT) : (TOKEN_OUT, TOKEN_IN);
 
-    (uint amount0, uint amount1) = (msg.value != 0)
+    (_params.amount0Desired, _params.amount1Desired) = (msg.value != 0)
       ? _processEth(token0, token1, _params.amount0Desired, _params.amount1Desired, msg.value)
       : (_params.amount0Desired, _params.amount1Desired);
 
@@ -52,8 +52,8 @@ contract UniswapBase is IUniswapBase {
           fee: FEE,
           tickLower: TICK_LOWER, //Tick needs to exist (right spacing)
           tickUpper: TICK_UPPER, //Tick needs to exist (right spacing)
-          amount0Desired: amount0,
-          amount1Desired: amount1,
+          amount0Desired: _params.amount0Desired,
+          amount1Desired: _params.amount1Desired,
           amount0Min: _params.amount0Min, // slippage check
           amount1Min: _params.amount1Min, // slippage check
           recipient: address(this), // receiver of ERC721
@@ -65,8 +65,8 @@ contract UniswapBase is IUniswapBase {
       (_liquidityAdded, _amountAdded0, _amountAdded1) = INPM(NPM).increaseLiquidity(
         INPM.IncreaseLiquidityParams({
           tokenId: positionId,
-          amount0Desired: amount0,
-          amount1Desired: amount1,
+          amount0Desired: _params.amount0Desired,
+          amount1Desired: _params.amount1Desired,
           amount0Min: _params.amount0Min,
           amount1Min: _params.amount1Min,
           deadline: _params.deadline

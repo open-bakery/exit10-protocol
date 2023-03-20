@@ -41,6 +41,37 @@ contract Exit10Test is Test, ABaseExit10Test {
     _checkBuckets(exit10, 0, 0, 0, liquidityAdded);
   }
 
+  function testBootstrapLockWithEther() public {
+    uint256 depositToken0 = _tokenAmount(address(token0), 10_000);
+    uint256 depositToken1 = 10 ether;
+    (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) = exit10.bootstrapLock{
+      value: depositToken1
+    }(
+      IUniswapBase.AddLiquidity({
+        depositor: address(this),
+        amount0Desired: depositToken0,
+        amount1Desired: 0,
+        amount0Min: 0,
+        amount1Min: 0,
+        deadline: block.timestamp
+      })
+    );
+    assertTrue(amountAdded0 == initialBalance - token0.balanceOf(address(this)), 'Check amountAdded0');
+    assertTrue(
+      amountAdded1 == depositToken1 - (token1.balanceOf(address(this)) - initialBalance),
+      'Check amountAdded1'
+    );
+    assertTrue(tokenId == exit10.positionId(), 'Check positionId');
+    assertTrue(liquidityAdded != 0, 'Check liquidityAdded');
+    assertTrue(
+      ERC20(exit10.BOOT()).balanceOf(address(this)) == liquidityAdded * exit10.TOKEN_MULTIPLIER(),
+      'Check BOOT balance'
+    );
+
+    _checkBalances(address(exit10), address(token0), address(token1), 0, 0);
+    _checkBuckets(exit10, 0, 0, 0, liquidityAdded);
+  }
+
   function testBootstrapWithMinimumAmount() public {
     uint256 minToken0 = 1e0;
     uint256 minToken1 = 1e0;
@@ -108,6 +139,57 @@ contract Exit10Test is Test, ABaseExit10Test {
 
     _checkBalances(address(exit10), address(token0), address(token1), 0, 0);
     _checkBuckets(exit10, uint256(_liquidity(exit10.positionId(), exit10)), 0, 0, 0);
+  }
+
+  function testCreateBondWithEther() public {
+    skip(exit10.BOOTSTRAP_PERIOD());
+    uint256 depositToken0 = _tokenAmount(address(token0), 10_000);
+    uint256 depositToken1 = 10 ether;
+    (uint256 bondId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) = exit10.createBond{
+      value: depositToken1
+    }(
+      IUniswapBase.AddLiquidity({
+        depositor: address(this),
+        amount0Desired: depositToken0,
+        amount1Desired: 0,
+        amount0Min: 0,
+        amount1Min: 0,
+        deadline: block.timestamp
+      })
+    );
+    assertTrue(nft.ownerOf(bondId) == address(this), 'Check NFT owner');
+    assertTrue(amountAdded0 == initialBalance - token0.balanceOf(address(this)), 'Check amountAdded0');
+    assertTrue(
+      amountAdded1 == depositToken1 - (token1.balanceOf(address(this)) - initialBalance),
+      'Check amountAdded1'
+    );
+
+    _checkBondData(exit10, bondId, liquidityAdded, 0, uint64(block.timestamp), 0, uint8(IExit10.BondStatus.active));
+    _checkBalances(address(exit10), address(token0), address(token1), 0, 0);
+    _checkBuckets(exit10, liquidityAdded, 0, 0, 0);
+  }
+
+  function testCreateBondWithEtherAndWeth() public {
+    skip(exit10.BOOTSTRAP_PERIOD());
+    uint256 depositToken0 = _tokenAmount(address(token0), 10_000);
+    uint256 depositToken1 = 5 ether;
+    uint256 depositEther = 10 ether;
+    (, , uint256 amountAdded0, uint256 amountAdded1) = exit10.createBond{ value: depositToken1 }(
+      IUniswapBase.AddLiquidity({
+        depositor: address(this),
+        amount0Desired: depositToken0,
+        amount1Desired: depositToken1,
+        amount0Min: 0,
+        amount1Min: 0,
+        deadline: block.timestamp
+      })
+    );
+    assertTrue(amountAdded0 == initialBalance - token0.balanceOf(address(this)), 'Check amountAdded0');
+    assertTrue(
+      amountAdded1 ==
+        (depositEther + depositToken1) - (token1.balanceOf(address(this)) + depositEther - initialBalance),
+      'Check amountAdded1'
+    );
   }
 
   function testCreateBondOnBehalfOfUser() public {

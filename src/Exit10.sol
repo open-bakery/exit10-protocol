@@ -41,7 +41,6 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
 
   // --- Constants ---
   uint256 public constant TOKEN_MULTIPLIER = 1e8;
-  // TODO Check the implications of adding the Multiplier to EXIT10 while using 18 decimals for supply.
   uint256 public constant LP_EXIT_REWARD = 3_000_000 ether;
   uint256 public constant BONDERS_EXIT_REWARD = 7_000_000 ether;
   uint256 public constant MAX_EXIT_SUPPLY = LP_EXIT_REWARD + BONDERS_EXIT_REWARD;
@@ -259,6 +258,8 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
       _collect(address(this), 0, uint128(exitBucketRewards));
     }
 
+    //TODO Figure out how to deal with the extreme case of exitBucketFinal being 0
+    if (exitBucketFinal == 0) exitBucketFinal = 1;
     // Total initial deposits that needs to be returned to bootsrappers
     uint256 bootstrapRefund = (bootstrapBucket * exitBucketRewards) / exitBucketFinal;
     exitTokenRewardsFinal = exitBucketRewards - bootstrapRefund;
@@ -431,7 +432,6 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
     if (_params.startTime != 0) {
       uint256 bondDuration = 1e18 * (block.timestamp - _params.startTime);
       accruedAmount = (_params.bondAmount * bondDuration) / (bondDuration + ACCRUAL_PARAMETER);
-      //assert(accruedAmount < _params.bondAmount); // we leave it as a comment so we can uncomment it for automated testing tools
     }
   }
 

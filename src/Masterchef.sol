@@ -36,6 +36,7 @@ contract Masterchef is AMasterchefBase {
     require(totalAllocPoint != 0, 'Masterchef: Must initiate a pool before updating rewards');
 
     IERC20(REWARD_TOKEN).safeTransferFrom(rewardDistributor, address(this), amount);
+
     _updateUndistributedRewards(amount);
   }
 }

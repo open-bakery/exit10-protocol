@@ -262,19 +262,22 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
     if (exitBucketFinal == 0) exitBucketFinal = 1;
     // Total initial deposits that needs to be returned to bootsrappers
     uint256 bootstrapRefund = (bootstrapBucket * exitBucketRewards) / exitBucketFinal;
-    exitTokenRewardsFinal = exitBucketRewards - bootstrapRefund;
-    // 30% of the exitTokenRewardsFinal goes to Bootstrappers+Team+EarlyBackers.
-    uint256 tenPercent = exitTokenRewardsFinal / 10;
-    // Initial deposit plus 10% of the Exit Bucket
-    bootstrapRewardsPlusRefund = bootstrapRefund + tenPercent;
-    // 20% of the ExitLiquidity
-    teamPlusBackersRewards = tenPercent * 2;
-    // 70% Exit Token holders
-    exitTokenRewardsFinal -= tenPercent * 3;
+
+    (bootstrapRewardsPlusRefund, teamPlusBackersRewards, exitTokenRewardsFinal) = _calculateFinalShares(
+      bootstrapRefund,
+      exitBucketRewards
+    );
 
     _safeTransferToken(TOKEN_OUT, STO, teamPlusBackersRewards);
 
-    emit Exit(msg.sender, block.timestamp, bootstrapRefund, tenPercent, teamPlusBackersRewards, exitTokenRewardsFinal);
+    emit Exit(
+      msg.sender,
+      block.timestamp,
+      bootstrapRefund,
+      bootstrapRewardsPlusRefund - bootstrapRefund,
+      teamPlusBackersRewards,
+      exitTokenRewardsFinal
+    );
   }
 
   function bootstrapClaim() external {
@@ -459,6 +462,20 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
 
   function _requireCallerOwnsBond(uint256 _bondID) internal view {
     require(msg.sender == NFT.ownerOf(_bondID), 'EXIT10: Caller must own the bond');
+  }
+
+  function _calculateFinalShares(
+    uint256 _refund,
+    uint256 _totalRewards
+  ) internal pure returns (uint256 _bootRewards, uint256 _stoRewards, uint256 _exitRewards) {
+    uint256 exitBucketMinusRefund = _totalRewards - _refund;
+    uint256 tenPercent = exitBucketMinusRefund / 10;
+    // Initial deposit plus 10% of the Exit Bucket
+    _bootRewards = _refund + tenPercent;
+    // 20% of the ExitLiquidity
+    _stoRewards = tenPercent * 2;
+    // 70% Exit Token holders
+    _exitRewards = exitBucketMinusRefund - tenPercent * 3;
   }
 
   function _requireValidAmount(uint256 _amount) internal pure {

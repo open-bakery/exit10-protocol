@@ -10,6 +10,7 @@ import { BaseToken } from './BaseToken.sol';
 import { FeeSplitter } from './FeeSplitter.sol';
 import { UniswapBase } from './UniswapBase.sol';
 import { MasterchefExit } from './MasterchefExit.sol';
+import { STOToken } from './STOToken.sol';
 
 //import 'forge-std/Test.sol';
 
@@ -60,6 +61,7 @@ contract Exit10 is UniswapBase {
 
   // STO TOKEN
   uint256 public teamPlusBackersRewards;
+  uint256 public teamPlusBackersRewardsClaimed;
 
   bool public inExitMode;
 
@@ -79,9 +81,9 @@ contract Exit10 is UniswapBase {
   BaseToken public immutable EXIT;
   BaseToken public immutable BLP;
   BaseToken public immutable BOOT;
+  BaseToken public immutable STO;
   INFT public immutable NFT;
 
-  address public immutable STO;
   address public immutable MASTERCHEF;
   address public immutable FEE_SPLITTER;
 
@@ -129,9 +131,9 @@ contract Exit10 is UniswapBase {
   constructor(BaseDeployParams memory baseParams_, DeployParams memory params_) UniswapBase(baseParams_) {
     DEPLOYMENT_TIMESTAMP = block.timestamp;
 
-    STO = params_.STO;
     NFT = INFT(params_.NFT);
 
+    STO = STOToken(params_.STO);
     BOOT = BaseToken(params_.BOOT);
     BLP = BaseToken(params_.BLP);
     EXIT = BaseToken(params_.EXIT);
@@ -294,8 +296,6 @@ contract Exit10 is UniswapBase {
       exitBucketRewards
     );
 
-    _safeTransferToken(TOKEN_OUT, STO, teamPlusBackersRewards);
-
     emit Exit(
       msg.sender,
       block.timestamp,
@@ -311,8 +311,8 @@ contract Exit10 is UniswapBase {
     uint256 claim = _safeTokenClaim(
       BOOT,
       bootBalance / TOKEN_MULTIPLIER,
-      bootstrapRewardsPlusRefund,
       bootstrapBucket,
+      bootstrapRewardsPlusRefund,
       bootstrapRewardsPlusRefundClaimed
     );
 
@@ -323,13 +323,30 @@ contract Exit10 is UniswapBase {
     emit BootstrapClaim(msg.sender, bootBalance, claim);
   }
 
+  function stoClaim() external {
+    uint256 stoBalance = IERC20(STO).balanceOf(msg.sender);
+    uint256 claim = _safeTokenClaim(
+      STO,
+      stoBalance,
+      STOToken(address(STO)).MAX_SUPPLY(),
+      teamPlusBackersRewards,
+      teamPlusBackersRewardsClaimed
+    );
+
+    teamPlusBackersRewardsClaimed += claim;
+
+    _safeTransferToken(TOKEN_OUT, msg.sender, claim);
+
+    emit ExitClaim(msg.sender, stoBalance, claim);
+  }
+
   function exitClaim() external {
     uint256 exitBalance = IERC20(EXIT).balanceOf(msg.sender);
     uint256 claim = _safeTokenClaim(
       EXIT,
       exitBalance,
-      exitTokenRewardsFinal,
       exitTokenSupplyFinal,
+      exitTokenRewardsFinal,
       exitTokenRewardsClaimed
     );
 
@@ -410,8 +427,8 @@ contract Exit10 is UniswapBase {
   function _safeTokenClaim(
     BaseToken _token,
     uint256 _amount,
-    uint256 _externalSum,
     uint256 _supply,
+    uint256 _externalSum,
     uint256 _claimed
   ) internal returns (uint256 _claim) {
     _requireExitMode();

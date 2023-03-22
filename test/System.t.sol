@@ -14,7 +14,6 @@ import '../src/MasterchefExit.sol';
 
 import '../src/NFT.sol';
 import '../src/BaseToken.sol';
-import '../src/STO.sol';
 
 import './ABaseExit10.t.sol';
 

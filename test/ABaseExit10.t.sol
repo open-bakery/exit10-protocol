@@ -6,7 +6,7 @@ import { INPM } from '../src/interfaces/INonfungiblePositionManager.sol';
 import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import { ABaseTest } from './ABase.t.sol';
 import { BaseToken } from '../src/BaseToken.sol';
-import { STO } from '../src/STO.sol';
+import { STOToken } from '../src/STOToken.sol';
 import { NFT } from '../src/NFT.sol';
 import { FeeSplitter } from '../src/FeeSplitter.sol';
 import { MasterchefExit } from '../src/Exit10.sol';
@@ -16,7 +16,7 @@ import { Exit10 } from '../src/Exit10.sol';
 abstract contract ABaseExit10Test is Test, ABaseTest {
   Exit10 exit10;
   NFT nft;
-  STO sto;
+  STOToken sto;
   BaseToken boot;
   BaseToken blp;
   BaseToken exit;
@@ -60,7 +60,7 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
   function setUp() public virtual {
     deployTime = block.timestamp;
     // Deploy tokens
-    sto = new STO(bytes32('merkle_root'));
+    sto = new STOToken(bytes32('merkle_root'));
     boot = new BaseToken('Bootstap', 'BOOT');
     blp = new BaseToken('Boost LP', 'BLP');
     exit = new BaseToken('Exit Liquidity', 'EXIT');
@@ -86,7 +86,6 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
     });
 
     exit10 = new Exit10(baseParams, params);
-    sto.setExit10(address(exit10));
     nft.setExit10(address(exit10));
     FeeSplitter(feeSplitter).setExit10(address(exit10));
     exit.mint(address(this), 1000 ether);

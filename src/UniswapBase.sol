@@ -7,10 +7,36 @@ import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IUniswapV3Factory } from './interfaces/IUniswapV3Factory.sol';
 import { IUniswapV3Pool } from './interfaces/IUniswapV3Pool.sol';
 import { INPM } from './interfaces/INonfungiblePositionManager.sol';
-import { IUniswapBase } from './interfaces/IUniswapBase.sol';
 import { IWETH9 } from './interfaces/IWETH9.sol';
 
-contract UniswapBase is IUniswapBase {
+contract UniswapBase {
+  struct BaseDeployParams {
+    address weth;
+    address uniswapFactory;
+    address nonfungiblePositionManager;
+    address tokenIn;
+    address tokenOut;
+    uint24 fee;
+    int24 tickLower;
+    int24 tickUpper;
+  }
+
+  struct AddLiquidity {
+    address depositor; /// @dev depositor The address which the position will be credited to.
+    uint256 amount0Desired;
+    uint256 amount1Desired;
+    uint256 amount0Min;
+    uint256 amount1Min;
+    uint256 deadline;
+  }
+
+  struct RemoveLiquidity {
+    uint128 liquidity;
+    uint256 amount0Min;
+    uint256 amount1Min;
+    uint256 deadline;
+  }
+
   IUniswapV3Factory public immutable FACTORY;
   IUniswapV3Pool public immutable POOL;
   address public immutable WETH;
@@ -35,6 +61,7 @@ contract UniswapBase is IUniswapBase {
     POOL = IUniswapV3Pool(FACTORY.getPool(params.tokenIn, params.tokenOut, params.fee));
   }
 
+  // jiri: don't return tokenId, it's never really used
   function _addLiquidity(
     AddLiquidity memory _params
   ) internal returns (uint256 _tokenId, uint128 _liquidityAdded, uint256 _amountAdded0, uint256 _amountAdded1) {

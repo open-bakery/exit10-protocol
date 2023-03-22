@@ -133,6 +133,7 @@ abstract contract AMasterchefBase is Ownable {
     IERC20(REWARD_TOKEN).safeTransferFrom(msg.sender, address(this), amount);
 
     _updateUndistributedRewards(amount);
+    emit UpdateRewards(msg.sender, amount, rewardRate, periodFinish);
   }
 
   function poolLength() external view returns (uint256) {
@@ -158,16 +159,14 @@ abstract contract AMasterchefBase is Ownable {
     //Updates pool to account for the previous rewardRate.
     _massUpdatePools();
 
+    uint256 amount = _amount * PRECISION;
     if (block.timestamp < periodFinish) {
       uint256 undistributedRewards = rewardRate * (periodFinish - block.timestamp);
-      rewardRate = (undistributedRewards + _amount * PRECISION) / REWARDS_DURATION;
-    } else {
-      rewardRate = (_amount * PRECISION) / REWARDS_DURATION;
+      amount += undistributedRewards;
     }
+    rewardRate = amount / REWARDS_DURATION;
 
     periodFinish = block.timestamp + REWARDS_DURATION;
-
-    emit UpdateRewards(msg.sender, _amount, rewardRate, periodFinish);
   }
 
   /// @notice Increases accRewardPerShare and accUndistributedReward since last update.
@@ -198,12 +197,12 @@ abstract contract AMasterchefBase is Ownable {
   }
 
   function _safeClaimRewards(uint256 _pid, uint256 _amount) internal {
-    if (_amount != 0) {
-      uint256 _claimable = Math.min(_amount, IERC20(REWARD_TOKEN).balanceOf(address(this)));
-      totalClaimedRewards += _claimable;
-      IERC20(REWARD_TOKEN).safeTransfer(msg.sender, _claimable);
-      emit Claim(msg.sender, _pid, _claimable);
-    }
+    if (_amount == 0) return;
+
+    uint256 _claimable = Math.min(_amount, IERC20(REWARD_TOKEN).balanceOf(address(this)));
+    totalClaimedRewards += _claimable;
+    IERC20(REWARD_TOKEN).safeTransfer(msg.sender, _claimable);
+    emit Claim(msg.sender, _pid, _claimable);
   }
 
   function _transferAmountIn(address _token, uint256 _amount) internal {

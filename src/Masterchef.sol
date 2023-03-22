@@ -26,9 +26,9 @@ contract Masterchef is AMasterchefBase {
     emit SetRewardDistributor(msg.sender, rd);
   }
 
-  function withdraw(uint256 _pid, uint256 _amount, bool _shouldUpdateRewards, uint256 _amountOut) public {
+  function withdraw(uint256 _pid, uint256 _amount, uint256 _swapAmountOut) public {
     withdraw(_pid, _amount);
-    if (_shouldUpdateRewards) IRewardDistributor(rewardDistributor).updateFees(_amountOut);
+    IRewardDistributor(rewardDistributor).updateFees(_swapAmountOut);
   }
 
   /// Adds and evenly distributes rewards through the rewardsDuration.
@@ -38,5 +38,6 @@ contract Masterchef is AMasterchefBase {
     IERC20(REWARD_TOKEN).safeTransferFrom(rewardDistributor, address(this), amount);
 
     _updateUndistributedRewards(amount);
+    emit UpdateRewards(msg.sender, amount, rewardRate, periodFinish);
   }
 }

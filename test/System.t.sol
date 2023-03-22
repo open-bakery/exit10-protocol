@@ -39,7 +39,7 @@ contract SystemTest is Test, ABaseExit10Test {
     _stake(bob, address(masterchef0), 1, address(boot));
     _stake(charlie, address(masterchef0), 1, address(boot));
     _generateClaimAndDistributeFees();
-    masterchef0.withdraw(0, 0, true, ERC20(usdc).balanceOf(feeSplitter));
+    masterchef0.withdraw(0, 0, ERC20(usdc).balanceOf(feeSplitter));
     _displayRewardBalanceMasterchefs();
     _displayTreasury();
     skip(bootstrapPeriod);
@@ -109,7 +109,7 @@ contract SystemTest is Test, ABaseExit10Test {
     ERC20(weth).approve(address(exit10), _wethAmount);
     ERC20(usdc).approve(address(exit10), _usdcAmount);
     (tokenId, liquidityAdded, amountAdded0, amountAdded1) = exit10.bootstrapLock(
-      IUniswapBase.AddLiquidity({
+      UniswapBase.AddLiquidity({
         depositor: _user,
         amount0Desired: _usdcAmount,
         amount1Desired: _wethAmount,
@@ -138,7 +138,7 @@ contract SystemTest is Test, ABaseExit10Test {
     ERC20(weth).approve(address(exit10), _wethAmount);
     ERC20(usdc).approve(address(exit10), _usdcAmount);
     (_bondId, , , ) = exit10.createBond(
-      IUniswapBase.AddLiquidity({
+      UniswapBase.AddLiquidity({
         depositor: _user,
         amount0Desired: _usdcAmount,
         amount1Desired: _wethAmount,
@@ -164,7 +164,7 @@ contract SystemTest is Test, ABaseExit10Test {
     vm.startPrank(_user);
     (uint usdcAmount, uint wethAmount) = exit10.cancelBond(
       _bondId,
-      IUniswapBase.RemoveLiquidity({
+      UniswapBase.RemoveLiquidity({
         liquidity: uint128(bondAmount),
         amount0Min: 0,
         amount1Min: 0,
@@ -190,7 +190,7 @@ contract SystemTest is Test, ABaseExit10Test {
     vm.startPrank(_user);
     (uint boostTokenAmount, uint exitTokenAmount) = exit10.convertBond(
       _bondId,
-      IUniswapBase.RemoveLiquidity({
+      UniswapBase.RemoveLiquidity({
         liquidity: uint128(bondAmount),
         amount0Min: 0,
         amount1Min: 0,

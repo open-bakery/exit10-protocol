@@ -6,16 +6,43 @@ import { Math } from '@openzeppelin/contracts/utils/math/Math.sol';
 import { INPM } from './interfaces/INonfungiblePositionManager.sol';
 import { IUniswapV3Pool } from './interfaces/IUniswapV3Pool.sol';
 import { INFT } from './interfaces/INFT.sol';
-import { IExit10 } from './interfaces/IExit10.sol';
 import { BaseToken } from './BaseToken.sol';
 import { FeeSplitter } from './FeeSplitter.sol';
-import { IUniswapBase, UniswapBase } from './UniswapBase.sol';
+import { UniswapBase } from './UniswapBase.sol';
 import { MasterchefExit } from './MasterchefExit.sol';
 
 //import 'forge-std/Test.sol';
 
-contract Exit10 is IExit10, IUniswapBase, UniswapBase {
+contract Exit10 is UniswapBase {
   using SafeERC20 for IERC20;
+
+  struct DeployParams {
+    address NFT;
+    address STO;
+    address BOOT;
+    address BLP;
+    address EXIT;
+    address masterchef; // EXIT/USDC Stakers
+    address feeSplitter; // Distribution to STO + BOOT and BLP stakers
+    uint256 bootstrapPeriod; // Min duration of first chicken-in
+    uint256 accrualParameter; // The number of seconds it takes to accrue 50% of the cap, represented as an 18 digit fixed-point number.
+    uint256 lpPerUSD; // Amount of LP per USD that is minted on the 500 - 10000 Range Pool
+  }
+
+  struct BondData {
+    uint256 bondAmount;
+    uint256 claimedBoostAmount;
+    uint64 startTime;
+    uint64 endTime;
+    BondStatus status;
+  }
+
+  enum BondStatus {
+    nonExistent,
+    active,
+    cancelled,
+    converted
+  }
 
   uint256 private pendingBucket;
   uint256 private reserveBucket;
@@ -170,8 +197,8 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
     uint256 bondID,
     RemoveLiquidity memory params
   ) external returns (uint256 amountRemoved0, uint256 amountRemoved1) {
-    BondData memory bond = idToBondData[bondID];
     _requireCallerOwnsBond(bondID);
+    BondData memory bond = idToBondData[bondID];
     _requireActiveStatus(bond.status);
     _requireEqualLiquidity(bond.bondAmount, params.liquidity);
     claimAndDistributeFees();
@@ -193,25 +220,23 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
   ) external returns (uint256 boostTokenAmount, uint256 exitTokenAmount) {
     _requireNoExitMode();
 
-    BondData memory bond = idToBondData[bondID];
     _requireCallerOwnsBond(bondID);
+    BondData memory bond = idToBondData[bondID];
     _requireActiveStatus(bond.status);
     _requireEqualLiquidity(bond.bondAmount, params.liquidity);
     claimAndDistributeFees();
 
-    idToBondData[bondID].status = BondStatus.converted;
-    idToBondData[bondID].endTime = uint64(block.timestamp);
-
-    pendingBucket -= params.liquidity;
-
     uint256 accruedLiquidity = _getAccruedLiquidity(bond);
     boostTokenAmount = accruedLiquidity * TOKEN_MULTIPLIER;
 
+    idToBondData[bondID].status = BondStatus.converted;
+    idToBondData[bondID].endTime = uint64(block.timestamp);
     idToBondData[bondID].claimedBoostAmount = boostTokenAmount;
+
+    pendingBucket -= params.liquidity;
     reserveBucket += accruedLiquidity;
 
-    uint256 remainingLiquidity = bond.bondAmount - accruedLiquidity;
-    exitTokenAmount = (remainingLiquidity * TOKEN_MULTIPLIER) / LP_PER_USD;
+    exitTokenAmount = ((bond.bondAmount - accruedLiquidity) * TOKEN_MULTIPLIER) / LP_PER_USD;
 
     BLP.mint(msg.sender, boostTokenAmount);
     _mintExitCapped(msg.sender, exitTokenAmount);
@@ -220,7 +245,7 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
   }
 
   function redeem(RemoveLiquidity memory params) external returns (uint256 amountRemoved0, uint256 amountRemoved1) {
-    _requireValidAmount(params.liquidity);
+    _requireNonZeroAmount(params.liquidity);
     claimAndDistributeFees();
 
     reserveBucket -= params.liquidity;
@@ -246,22 +271,23 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
     exitBucketFinal = uint128(_liquidityAmount() - (pendingBucket + reserveBucket));
     uint256 exitBucketRewards;
 
+    RemoveLiquidity memory rmParams = RemoveLiquidity({
+      liquidity: uint128(exitBucketFinal),
+      amount0Min: 0,
+      amount1Min: 0,
+      deadline: DEADLINE
+    });
+
     if (POOL.token1() == TOKEN_IN) {
-      (exitBucketRewards, ) = _decreaseLiquidity(
-        RemoveLiquidity({ liquidity: uint128(exitBucketFinal), amount0Min: 0, amount1Min: 0, deadline: DEADLINE })
-      );
+      (exitBucketRewards, ) = _decreaseLiquidity(rmParams);
       _collect(address(this), uint128(exitBucketRewards), 0);
     } else {
-      (, exitBucketRewards) = _decreaseLiquidity(
-        RemoveLiquidity({ liquidity: uint128(exitBucketFinal), amount0Min: 0, amount1Min: 0, deadline: DEADLINE })
-      );
+      (, exitBucketRewards) = _decreaseLiquidity(rmParams);
       _collect(address(this), 0, uint128(exitBucketRewards));
     }
 
-    //TODO Figure out how to deal with the extreme case of exitBucketFinal being 0
-    if (exitBucketFinal == 0) exitBucketFinal = 1;
     // Total initial deposits that needs to be returned to bootsrappers
-    uint256 bootstrapRefund = (bootstrapBucket * exitBucketRewards) / exitBucketFinal;
+    uint256 bootstrapRefund = exitBucketFinal != 0 ? (bootstrapBucket * exitBucketRewards) / exitBucketFinal : 0;
 
     (bootstrapRewardsPlusRefund, teamPlusBackersRewards, exitTokenRewardsFinal) = _calculateFinalShares(
       bootstrapRefund,
@@ -345,38 +371,38 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
   function claimAndDistributeFees() public {
     (uint256 amountCollected0, uint256 amountCollected1) = _collect(address(this), MAX_UINT_128, MAX_UINT_128);
 
-    if (amountCollected0 + amountCollected1 != 0) {
-      if (_liquidityAmount() != 0) {
-        uint256 bootstrapFees0 = (bootstrapBucket * amountCollected0) / _liquidityAmount();
-        uint256 bootstrapFees1 = (bootstrapBucket * amountCollected1) / _liquidityAmount();
+    if (amountCollected0 + amountCollected1 == 0) return;
 
-        if (bootstrapFees0 != 0 && bootstrapFees1 != 0) {
-          try
-            INPM(NPM).increaseLiquidity(
-              INPM.IncreaseLiquidityParams({
-                tokenId: positionId,
-                amount0Desired: bootstrapFees0,
-                amount1Desired: bootstrapFees1,
-                amount0Min: 0,
-                amount1Min: 0,
-                deadline: DEADLINE
-              })
-            )
-          returns (uint128, uint256 amountAdded0, uint256 amountAdded1) {
-            amountCollected0 -= amountAdded0;
-            amountCollected1 -= amountAdded1;
-          } catch {
-            return;
-          }
+    if (_liquidityAmount() != 0) {
+      uint256 bootstrapFees0 = (bootstrapBucket * amountCollected0) / _liquidityAmount();
+      uint256 bootstrapFees1 = (bootstrapBucket * amountCollected1) / _liquidityAmount();
+
+      if (bootstrapFees0 != 0 && bootstrapFees1 != 0) {
+        try
+          INPM(NPM).increaseLiquidity(
+            INPM.IncreaseLiquidityParams({
+              tokenId: positionId,
+              amount0Desired: bootstrapFees0,
+              amount1Desired: bootstrapFees1,
+              amount0Min: 0,
+              amount1Min: 0,
+              deadline: DEADLINE
+            })
+          )
+        returns (uint128, uint256 amountAdded0, uint256 amountAdded1) {
+          amountCollected0 -= amountAdded0;
+          amountCollected1 -= amountAdded1;
+        } catch {
+          return;
         }
       }
-      FeeSplitter(FEE_SPLITTER).collectFees(
-        pendingBucket,
-        bootstrapBucket + reserveBucket + _exitBucket(),
-        amountCollected0,
-        amountCollected1
-      );
     }
+    FeeSplitter(FEE_SPLITTER).collectFees(
+      pendingBucket,
+      bootstrapBucket + reserveBucket + _exitBucket(),
+      amountCollected0,
+      amountCollected1
+    );
 
     emit ClaimAndDistributeFees(msg.sender, amountCollected0, amountCollected1);
   }
@@ -389,7 +415,7 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
     uint256 _claimed
   ) internal returns (uint256 _claim) {
     _requireExitMode();
-    _requireValidAmount(_amount);
+    _requireNonZeroAmount(_amount);
 
     _token.burn(msg.sender, IERC20(_token).balanceOf(msg.sender));
     _claim = (_amount * _externalSum) / _supply;
@@ -397,8 +423,8 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
   }
 
   function _depositTokens(uint256 _amount0, uint256 _amount1) internal {
-    if (_amount0 != 0) IERC20(POOL.token0()).safeTransferFrom(msg.sender, address(this), _amount0);
-    if (_amount1 != 0) IERC20(POOL.token1()).safeTransferFrom(msg.sender, address(this), _amount1);
+    IERC20(POOL.token0()).safeTransferFrom(msg.sender, address(this), _amount0);
+    IERC20(POOL.token1()).safeTransferFrom(msg.sender, address(this), _amount1);
   }
 
   function _safeTransferTokens(address _recipient, uint256 _amount0, uint256 _amount1) internal {
@@ -451,8 +477,6 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
   }
 
   function _requireOutOfTickRange() internal view {
-    // Uniswap's price is recorded as token1/token0
-    // https://github.com/timeless-fi/uniswap-poor-oracle.git
     if (TOKEN_IN > TOKEN_OUT) {
       require(_currentTick() <= TICK_LOWER, 'EXIT10: Current Tick not below TICK_LOWER');
     } else {
@@ -462,6 +486,18 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
 
   function _requireCallerOwnsBond(uint256 _bondID) internal view {
     require(msg.sender == NFT.ownerOf(_bondID), 'EXIT10: Caller must own the bond');
+  }
+
+  function _requireNonZeroAmount(uint256 _amount) internal pure {
+    require(_amount != 0, 'EXIT10: Amount must be != 0');
+  }
+
+  function _requireActiveStatus(BondStatus _status) internal pure {
+    require(_status == BondStatus.active, 'EXIT10: Bond must be active');
+  }
+
+  function _requireEqualLiquidity(uint256 _liquidityA, uint256 _liquidityB) internal pure {
+    require(_liquidityA == _liquidityB, 'EXIT10: Incorrect liquidity amount');
   }
 
   function _calculateFinalShares(
@@ -476,17 +512,5 @@ contract Exit10 is IExit10, IUniswapBase, UniswapBase {
     _stoRewards = tenPercent * 2;
     // 70% Exit Token holders
     _exitRewards = exitBucketMinusRefund - tenPercent * 3;
-  }
-
-  function _requireValidAmount(uint256 _amount) internal pure {
-    require(_amount != 0, 'EXIT10: Amount must be != 0');
-  }
-
-  function _requireActiveStatus(BondStatus _status) internal pure {
-    require(_status == BondStatus.active, 'EXIT10: Bond must be active');
-  }
-
-  function _requireEqualLiquidity(uint256 _liquidityA, uint256 _liquidityB) internal pure {
-    require(_liquidityA == _liquidityB, 'EXIT10: Incorrect liquidity amount');
   }
 }

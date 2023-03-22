@@ -43,6 +43,9 @@ dev:
 	$(MAKE) start-anvil-local
 	$(MAKE) deploy-infrastructure
 	@source ./config/local.ini ; sed < .env.template > .env $(SED_REPLACE)
+
+dev-ui:
+	$(MAKE) dev
 	./deploy/deploy-exit10.sh
 	./deploy/deploy-dev-data.sh
 	./deploy/export-local-ini-to-ui.sh

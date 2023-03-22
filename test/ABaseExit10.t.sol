@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 import { Test } from 'forge-std/Test.sol';
-import { IUniswapBase } from '../src/interfaces/IUniswapBase.sol';
+import { UniswapBase } from '../src/UniswapBase.sol';
 import { INPM } from '../src/interfaces/INonfungiblePositionManager.sol';
 import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import { ABaseTest } from './ABase.t.sol';
@@ -11,7 +11,7 @@ import { NFT } from '../src/NFT.sol';
 import { FeeSplitter } from '../src/FeeSplitter.sol';
 import { MasterchefExit } from '../src/Exit10.sol';
 import { Masterchef } from '../src/Masterchef.sol';
-import { Exit10, IExit10 } from '../src/Exit10.sol';
+import { Exit10 } from '../src/Exit10.sol';
 
 abstract contract ABaseExit10Test is Test, ABaseTest {
   Exit10 exit10;
@@ -45,8 +45,8 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
   uint256 constant ORACLE_SECONDS = 60;
   uint256 constant REWARDS_DURATION = 2 weeks;
 
-  IUniswapBase.BaseDeployParams baseParams =
-    IUniswapBase.BaseDeployParams({
+  UniswapBase.BaseDeployParams baseParams =
+    UniswapBase.BaseDeployParams({
       weth: weth,
       uniswapFactory: vm.envAddress('UNISWAP_V3_FACTORY'),
       nonfungiblePositionManager: vm.envAddress('UNISWAP_V3_NPM'),
@@ -72,7 +72,7 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
     masterchef2 = new MasterchefExit(address(exit), REWARDS_DURATION);
 
     feeSplitter = address(new FeeSplitter(address(masterchef0), address(masterchef1), vm.envAddress('SWAPPER')));
-    IExit10.DeployParams memory params = IExit10.DeployParams({
+    Exit10.DeployParams memory params = Exit10.DeployParams({
       NFT: address(nft),
       STO: address(sto),
       BOOT: address(boot),
@@ -124,7 +124,7 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
 
   function _createBond(Exit10 _exit10, uint256 _amount0, uint256 _amount1) internal returns (uint256 _bondId) {
     (_bondId, , , ) = _exit10.createBond(
-      IUniswapBase.AddLiquidity({
+      UniswapBase.AddLiquidity({
         depositor: address(this),
         amount0Desired: _amount0,
         amount1Desired: _amount1,

@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 import { Test } from 'forge-std/Test.sol';
 import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import { ABaseExit10Test } from './ABaseExit10.t.sol';
-import { IExit10, IUniswapBase } from '../src/Exit10.sol';
+import { Exit10, UniswapBase } from '../src/Exit10.sol';
 
 contract Exit10Test is Test, ABaseExit10Test {
   function setUp() public override {
@@ -19,7 +19,7 @@ contract Exit10Test is Test, ABaseExit10Test {
 
   function testBootstrapLock() public {
     (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) = exit10.bootstrapLock(
-      IUniswapBase.AddLiquidity({
+      UniswapBase.AddLiquidity({
         depositor: address(this),
         amount0Desired: 10000_000000,
         amount1Desired: 10 ether,
@@ -47,7 +47,7 @@ contract Exit10Test is Test, ABaseExit10Test {
     (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) = exit10.bootstrapLock{
       value: depositToken1
     }(
-      IUniswapBase.AddLiquidity({
+      UniswapBase.AddLiquidity({
         depositor: address(this),
         amount0Desired: depositToken0,
         amount1Desired: 0,
@@ -78,7 +78,7 @@ contract Exit10Test is Test, ABaseExit10Test {
 
     try
       exit10.bootstrapLock(
-        IUniswapBase.AddLiquidity({
+        UniswapBase.AddLiquidity({
           depositor: address(this),
           amount0Desired: minToken0,
           amount1Desired: minToken1,
@@ -97,7 +97,7 @@ contract Exit10Test is Test, ABaseExit10Test {
     skip(exit10.BOOTSTRAP_PERIOD());
     vm.expectRevert(bytes('EXIT10: Bootstrap ended'));
     exit10.bootstrapLock(
-      IUniswapBase.AddLiquidity({
+      UniswapBase.AddLiquidity({
         depositor: address(this),
         amount0Desired: 10000_000000,
         amount1Desired: 10 ether,
@@ -111,7 +111,7 @@ contract Exit10Test is Test, ABaseExit10Test {
   function testCreateBondBootstrapOngoingRevert() public {
     vm.expectRevert(bytes('EXIT10: Bootstrap ongoing'));
     exit10.createBond(
-      IUniswapBase.AddLiquidity({
+      UniswapBase.AddLiquidity({
         depositor: address(this),
         amount0Desired: 10000_000000,
         amount1Desired: 10 ether,
@@ -132,7 +132,7 @@ contract Exit10Test is Test, ABaseExit10Test {
       0,
       uint64(block.timestamp),
       0,
-      uint8(IExit10.BondStatus.active)
+      uint8(Exit10.BondStatus.active)
     );
     assertTrue(_liquidity(exit10.positionId(), exit10) != 0, 'Check liquidity');
     assertTrue(nft.ownerOf(bondId) == address(this), 'Check NFT owner');
@@ -148,7 +148,7 @@ contract Exit10Test is Test, ABaseExit10Test {
     (uint256 bondId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) = exit10.createBond{
       value: depositToken1
     }(
-      IUniswapBase.AddLiquidity({
+      UniswapBase.AddLiquidity({
         depositor: address(this),
         amount0Desired: depositToken0,
         amount1Desired: 0,
@@ -164,7 +164,7 @@ contract Exit10Test is Test, ABaseExit10Test {
       'Check amountAdded1'
     );
 
-    _checkBondData(exit10, bondId, liquidityAdded, 0, uint64(block.timestamp), 0, uint8(IExit10.BondStatus.active));
+    _checkBondData(exit10, bondId, liquidityAdded, 0, uint64(block.timestamp), 0, uint8(Exit10.BondStatus.active));
     _checkBalances(address(exit10), address(token0), address(token1), 0, 0);
     _checkBuckets(exit10, liquidityAdded, 0, 0, 0);
   }
@@ -175,7 +175,7 @@ contract Exit10Test is Test, ABaseExit10Test {
     uint256 depositToken1 = 5 ether;
     uint256 depositEther = 10 ether;
     (, , uint256 amountAdded0, uint256 amountAdded1) = exit10.createBond{ value: depositToken1 }(
-      IUniswapBase.AddLiquidity({
+      UniswapBase.AddLiquidity({
         depositor: address(this),
         amount0Desired: depositToken0,
         amount1Desired: depositToken1,
@@ -195,7 +195,7 @@ contract Exit10Test is Test, ABaseExit10Test {
   function testCreateBondOnBehalfOfUser() public {
     skip(exit10.BOOTSTRAP_PERIOD());
     (uint256 bondId, , , ) = exit10.createBond(
-      IUniswapBase.AddLiquidity({
+      UniswapBase.AddLiquidity({
         depositor: address(0xdead),
         amount0Desired: 10000_000000,
         amount1Desired: 10 ether,
@@ -209,7 +209,7 @@ contract Exit10Test is Test, ABaseExit10Test {
 
   function testCreateBondWithBootstrap() public {
     (, uint128 liquidityAdded, , ) = exit10.bootstrapLock(
-      IUniswapBase.AddLiquidity({
+      UniswapBase.AddLiquidity({
         depositor: address(this),
         amount0Desired: 10000_000000,
         amount1Desired: 10 ether,
@@ -227,7 +227,7 @@ contract Exit10Test is Test, ABaseExit10Test {
       0,
       uint64(block.timestamp),
       0,
-      uint8(IExit10.BondStatus.active)
+      uint8(Exit10.BondStatus.active)
     );
     assertTrue(_liquidity(exit10.positionId(), exit10) != 0, 'Check liquidity');
     assertTrue(nft.ownerOf(bondId) == address(this), 'Check NFT owner');
@@ -246,7 +246,7 @@ contract Exit10Test is Test, ABaseExit10Test {
     (uint256 balanceToken0, uint256 balanceToken1) = _getTokensBalance(address(token0), address(token1));
     exit10.cancelBond(
       bondId,
-      IUniswapBase.RemoveLiquidity({
+      UniswapBase.RemoveLiquidity({
         liquidity: uint128(bondAmount),
         amount0Min: 0,
         amount1Min: 0,
@@ -258,7 +258,7 @@ contract Exit10Test is Test, ABaseExit10Test {
     assertTrue(token1.balanceOf(address(this)) > balanceToken1, 'Check balance token1');
 
     _checkBalances(address(exit10), address(token0), address(token1), 0, 0);
-    _checkBondData(exit10, bondId, liquidity, 0, startTime, endTime, uint8(IExit10.BondStatus.cancelled));
+    _checkBondData(exit10, bondId, liquidity, 0, startTime, endTime, uint8(Exit10.BondStatus.cancelled));
     _checkBuckets(exit10, 0, 0, 0, 0);
   }
 
@@ -269,7 +269,7 @@ contract Exit10Test is Test, ABaseExit10Test {
     vm.expectRevert(bytes('EXIT10: Caller must own the bond'));
     exit10.cancelBond(
       bondId,
-      IUniswapBase.RemoveLiquidity({
+      UniswapBase.RemoveLiquidity({
         liquidity: uint128(bondAmount),
         amount0Min: 0,
         amount1Min: 0,
@@ -283,7 +283,7 @@ contract Exit10Test is Test, ABaseExit10Test {
     (uint256 bondAmount, , , , ) = exit10.getBondData(bondId);
     exit10.cancelBond(
       bondId,
-      IUniswapBase.RemoveLiquidity({
+      UniswapBase.RemoveLiquidity({
         liquidity: uint128(bondAmount),
         amount0Min: 0,
         amount1Min: 0,
@@ -293,7 +293,7 @@ contract Exit10Test is Test, ABaseExit10Test {
     vm.expectRevert(bytes('EXIT10: Bond must be active'));
     exit10.cancelBond(
       bondId,
-      IUniswapBase.RemoveLiquidity({
+      UniswapBase.RemoveLiquidity({
         liquidity: uint128(bondAmount),
         amount0Min: 0,
         amount1Min: 0,
@@ -311,7 +311,7 @@ contract Exit10Test is Test, ABaseExit10Test {
     (uint256 bondAmount, , , , ) = exit10.getBondData(bondId);
     exit10.convertBond(
       bondId,
-      IUniswapBase.RemoveLiquidity({
+      UniswapBase.RemoveLiquidity({
         liquidity: uint128(bondAmount),
         amount0Min: 0,
         amount1Min: 0,
@@ -333,7 +333,7 @@ contract Exit10Test is Test, ABaseExit10Test {
       (liquidity / 2) * exit10.TOKEN_MULTIPLIER(),
       startTime,
       endTime,
-      uint8(IExit10.BondStatus.converted)
+      uint8(Exit10.BondStatus.converted)
     );
     _checkBuckets(exit10, 0, liquidity / 2, exitBucket, 0);
   }
@@ -344,7 +344,7 @@ contract Exit10Test is Test, ABaseExit10Test {
     (uint256 bondAmount, , , , ) = exit10.getBondData(bondId);
     exit10.convertBond(
       bondId,
-      IUniswapBase.RemoveLiquidity({
+      UniswapBase.RemoveLiquidity({
         liquidity: uint128(bondAmount),
         amount0Min: 0,
         amount1Min: 0,
@@ -354,7 +354,7 @@ contract Exit10Test is Test, ABaseExit10Test {
     (uint256 balanceToken0, uint256 balanceToken1) = _getTokensBalance(address(token0), address(token1));
     uint128 liquidityToRemove = uint128(exit10.BLP().balanceOf(address(this)) / exit10.TOKEN_MULTIPLIER());
     exit10.redeem(
-      IUniswapBase.RemoveLiquidity({
+      UniswapBase.RemoveLiquidity({
         liquidity: liquidityToRemove,
         amount0Min: 0,
         amount1Min: 0,
@@ -373,7 +373,7 @@ contract Exit10Test is Test, ABaseExit10Test {
   function testClaimAndDistributeFees() public {
     skip(exit10.BOOTSTRAP_PERIOD());
     exit10.createBond(
-      IUniswapBase.AddLiquidity({
+      UniswapBase.AddLiquidity({
         depositor: address(this),
         amount0Desired: 10_000_000_000000,
         amount1Desired: 10_000 ether,
@@ -404,7 +404,7 @@ contract Exit10Test is Test, ABaseExit10Test {
 
   function testExit10() public {
     exit10.bootstrapLock(
-      IUniswapBase.AddLiquidity({
+      UniswapBase.AddLiquidity({
         depositor: address(this),
         amount0Desired: 10000_000000,
         amount1Desired: 10 ether,
@@ -418,7 +418,7 @@ contract Exit10Test is Test, ABaseExit10Test {
     (uint256 bondAmount, , , , ) = exit10.getBondData(bondId);
     exit10.convertBond(
       bondId,
-      IUniswapBase.RemoveLiquidity({
+      UniswapBase.RemoveLiquidity({
         liquidity: uint128(bondAmount),
         amount0Min: 0,
         amount1Min: 0,
@@ -453,7 +453,7 @@ contract Exit10Test is Test, ABaseExit10Test {
 
   function testBootstrapClaim() public {
     exit10.bootstrapLock(
-      IUniswapBase.AddLiquidity({
+      UniswapBase.AddLiquidity({
         depositor: address(this),
         amount0Desired: 10000_000000,
         amount1Desired: 10 ether,
@@ -467,7 +467,7 @@ contract Exit10Test is Test, ABaseExit10Test {
     (uint256 bondAmount, , , , ) = exit10.getBondData(bondId);
     exit10.convertBond(
       bondId,
-      IUniswapBase.RemoveLiquidity({
+      UniswapBase.RemoveLiquidity({
         liquidity: uint128(bondAmount),
         amount0Min: 0,
         amount1Min: 0,
@@ -507,7 +507,7 @@ contract Exit10Test is Test, ABaseExit10Test {
     (uint256 bondAmount, , , , ) = exit10.getBondData(bondId);
     exit10.convertBond(
       bondId,
-      IUniswapBase.RemoveLiquidity({
+      UniswapBase.RemoveLiquidity({
         liquidity: uint128(bondAmount),
         amount0Min: 0,
         amount1Min: 0,

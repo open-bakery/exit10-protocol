@@ -4,7 +4,7 @@ import { Test } from 'forge-std/Test.sol';
 import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import { IERC721 } from '@openzeppelin/contracts/token/ERC721/IERC721.sol';
 import { ABaseExit10Test } from './ABaseExit10.t.sol';
-import { IExit10, IUniswapBase } from '../src/Exit10.sol';
+import { Exit10, UniswapBase } from '../src/Exit10.sol';
 import { DepositHelper } from '../src/DepositHelper.sol';
 import { IUniswapV3Router } from '../src/interfaces/IUniswapV3Router.sol';
 
@@ -76,7 +76,7 @@ contract DepositHelperTest is Test, ABaseExit10Test {
 
     _checkBalances(address(depositHelper), usdc, weth, 0, 0);
     _checkBuckets(exit10, liquidityAdded, 0, 0, 0);
-    _checkBondData(exit10, bondId, liquidityAdded, 0, uint64(block.timestamp), 0, uint8(IExit10.BondStatus.active));
+    _checkBondData(exit10, bondId, liquidityAdded, 0, uint64(block.timestamp), 0, uint8(Exit10.BondStatus.active));
 
     assertTrue(_liquidity(exit10.positionId(), exit10) == liquidityAdded, 'Check position created');
     assertTrue(address(this).balance == preBalanceEth - etherAmount, 'Check Eth deposit');

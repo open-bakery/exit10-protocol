@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { ERC721, ERC721Enumerable } from '@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol';
 import { Ownable } from '@openzeppelin/contracts/access/Ownable.sol';
-import { Exit10, IExit10 } from './Exit10.sol';
+import { Exit10 } from './Exit10.sol';
 
 contract NFT is ERC721Enumerable, Ownable {
   Exit10 public exit10;
@@ -68,7 +68,7 @@ contract NFT is ERC721Enumerable, Ownable {
       (, , , uint256 endTime, uint8 status) = exit10.getBondData(_tokenID);
 
       require(
-        status == uint8(IExit10.BondStatus.active) || block.timestamp >= endTime + TRANSFER_LOCKOUT_PERIOD_SECONDS,
+        status == uint8(Exit10.BondStatus.active) || block.timestamp >= endTime + TRANSFER_LOCKOUT_PERIOD_SECONDS,
         'NFT: Cannot transfer during lockout period'
       );
     }

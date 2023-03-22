@@ -2,7 +2,6 @@
 pragma solidity >=0.8.0;
 
 import '@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol';
-import './IExit10.sol';
 
 interface INFT is IERC721Enumerable {
   function mint(address _bonder) external returns (uint256);

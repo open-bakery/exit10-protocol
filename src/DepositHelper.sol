@@ -5,7 +5,7 @@ import { IERC20, SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/Saf
 import { IUniswapV3Router } from '../src/interfaces/IUniswapV3Router.sol';
 import { INPM } from '../src/interfaces/INonfungiblePositionManager.sol';
 import { IWETH9 } from '../src/interfaces/IWETH9.sol';
-import { IExit10, IUniswapBase, Exit10, UniswapBase } from './Exit10.sol';
+import { Exit10, UniswapBase } from './Exit10.sol';
 
 contract DepositHelper {
   using SafeERC20 for IERC20;
@@ -100,7 +100,7 @@ contract DepositHelper {
     uint256 _initialAmount0,
     uint256 _initialAmount1,
     IUniswapV3Router.ExactInputSingleParams memory _swapParams
-  ) internal returns (IUniswapBase.AddLiquidity memory _params) {
+  ) internal returns (UniswapBase.AddLiquidity memory _params) {
     if (msg.value != 0) {
       (_initialAmount0, _initialAmount1) = _processEth(_token0, _token1, _initialAmount0, _initialAmount1, msg.value);
     }
@@ -119,7 +119,7 @@ contract DepositHelper {
 
     _approveTokens(_token0, _token1, EXIT_10, _initialAmount0, _initialAmount1);
 
-    _params = IUniswapBase.AddLiquidity({
+    _params = UniswapBase.AddLiquidity({
       depositor: msg.sender,
       amount0Desired: _initialAmount0,
       amount1Desired: _initialAmount1,

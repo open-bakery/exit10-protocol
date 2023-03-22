@@ -32,4 +32,18 @@ contract MasterchefExit is AMasterchefBase {
       emit StopRewards(undistributedRewards);
     } else emit StopRewards(0);
   }
+
+  function _updateUndistributedRewards(uint256 _amount) internal override {
+    //Updates pool to account for the previous rewardRate.
+    _massUpdatePools();
+
+    uint256 duration = periodFinish - block.timestamp;
+
+    uint256 amount = _amount * PRECISION;
+    if (block.timestamp < periodFinish) {
+      uint256 undistributedRewards = rewardRate * (periodFinish - block.timestamp);
+      amount += undistributedRewards;
+    }
+    rewardRate = amount / duration;
+  }
 }

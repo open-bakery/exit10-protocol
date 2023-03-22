@@ -65,13 +65,13 @@ contract FeeSplitter is Ownable {
   ) external onlyAuthorized {
     if (amountTokenOut != 0) {
       IERC20(Exit10(exit10).TOKEN_OUT()).safeTransferFrom(exit10, address(this), amountTokenOut);
-      pendingBucketTokenOut += _calcShare(pendingBucket, pendingBucket + remainingBuckets, amountTokenOut);
+      pendingBucketTokenOut += _calcPortionOfValue(pendingBucket, pendingBucket + remainingBuckets, amountTokenOut);
       remainingBucketsTokenOut += (amountTokenOut - pendingBucketTokenOut);
     }
 
     if (amountTokenIn != 0) {
       IERC20(Exit10(exit10).TOKEN_IN()).safeTransferFrom(exit10, address(this), amountTokenIn);
-      pendingBucketTokenIn += _calcShare(pendingBucket, pendingBucket + remainingBuckets, amountTokenIn);
+      pendingBucketTokenIn += _calcPortionOfValue(pendingBucket, pendingBucket + remainingBuckets, amountTokenIn);
       remainingBucketsTokenIn += (amountTokenIn - pendingBucketTokenIn);
     }
 
@@ -91,14 +91,14 @@ contract FeeSplitter is Ownable {
 
       if (amount != balanceTokenOut) {
         notExchanged = balanceTokenOut - amount;
-        notExchangedPendingShare = _calcShare(
+        notExchangedPendingShare = _calcPortionOfValue(
           pendingBucketTokenOut,
           pendingBucketTokenOut + remainingBucketsTokenOut,
           notExchanged
         );
       }
 
-      uint256 exchangedPendingShare = _calcShare(
+      uint256 exchangedPendingShare = _calcPortionOfValue(
         pendingBucketTokenOut,
         pendingBucketTokenOut + remainingBucketsTokenOut,
         totalExchanged
@@ -143,7 +143,9 @@ contract FeeSplitter is Ownable {
     if (_amount != 0) IERC20(_token).safeTransfer(_recipient, _amount);
   }
 
-  function _calcShare(uint256 _part, uint256 _total, uint256 _externalSum) internal pure returns (uint256 _share) {
-    if (_total != 0) _share = (_part * _externalSum) / _total;
+  // returns _shareOfTotal/_total fraction of _value. Order of operation is reversed keep precision
+  function _calcPortionOfValue(uint256 _shareOfTotal, uint256 _total, uint256 _value) internal pure returns (uint256) {
+    if (_total == 0) return 0;
+    return (_shareOfTotal * _value) / _total;
   }
 }

@@ -66,7 +66,7 @@ trace:
 	forge test -vvv --mc DepositHelperTest --fork-url $(RPC_URL)
 
 trace1:
-	forge test -vvv --mc Exit10 --fork-url $(RPC_URL)
+	forge test -vvv --mt testRedeemZeroAmount --fork-url $(RPC_URL)
 
 system:
 	forge test -vv --mc SystemTest --fork-url $(RPC_URL)

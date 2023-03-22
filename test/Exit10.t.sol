@@ -370,6 +370,25 @@ contract Exit10Test is Test, ABaseExit10Test {
     _checkBuckets(exit10, 0, 0, _liquidity(exit10.positionId(), exit10), 0);
   }
 
+  function testRedeemZeroAmount() public {
+    uint256 bondId = _skipBootAndCreateBond(exit10);
+    skip(accrualParameter);
+    (uint256 bondAmount, , , , ) = exit10.getBondData(bondId);
+    exit10.convertBond(
+      bondId,
+      UniswapBase.RemoveLiquidity({
+        liquidity: uint128(bondAmount),
+        amount0Min: 0,
+        amount1Min: 0,
+        deadline: block.timestamp
+      })
+    );
+    vm.expectRevert();
+    exit10.redeem(
+      UniswapBase.RemoveLiquidity({ liquidity: 0, amount0Min: 0, amount1Min: 0, deadline: block.timestamp })
+    );
+  }
+
   function testClaimAndDistributeFees() public {
     skip(exit10.BOOTSTRAP_PERIOD());
     exit10.createBond(

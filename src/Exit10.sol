@@ -247,7 +247,6 @@ contract Exit10 is UniswapBase {
   }
 
   function redeem(RemoveLiquidity memory params) external returns (uint256 amountRemoved0, uint256 amountRemoved1) {
-    _requireNonZeroAmount(params.liquidity);
     claimAndDistributeFees();
 
     reserveBucket -= params.liquidity;
@@ -432,7 +431,7 @@ contract Exit10 is UniswapBase {
     uint256 _claimed
   ) internal returns (uint256 _claim) {
     _requireExitMode();
-    _requireNonZeroAmount(_amount);
+    require(_amount != 0, 'EXIT10: Amount must be != 0');
 
     _token.burn(msg.sender, IERC20(_token).balanceOf(msg.sender));
     _claim = (_amount * _externalSum) / _supply;
@@ -503,10 +502,6 @@ contract Exit10 is UniswapBase {
 
   function _requireCallerOwnsBond(uint256 _bondID) internal view {
     require(msg.sender == NFT.ownerOf(_bondID), 'EXIT10: Caller must own the bond');
-  }
-
-  function _requireNonZeroAmount(uint256 _amount) internal pure {
-    require(_amount != 0, 'EXIT10: Amount must be != 0');
   }
 
   function _requireActiveStatus(BondStatus _status) internal pure {

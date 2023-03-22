@@ -126,8 +126,8 @@ contract FeeSplitter is Ownable {
   function _swap(uint256 _amount) internal returns (uint256 _amountAcquired) {
     ISwapper.SwapParameters memory params = ISwapper.SwapParameters({
       recipient: address(this),
-      tokenIn: Exit10(exit10).TOKEN_OUT(),
-      tokenOut: Exit10(exit10).TOKEN_IN(),
+      tokenIn: Exit10(exit10).TOKEN_OUT(), // TOKEN_OUT is the sell token going into the swap
+      tokenOut: Exit10(exit10).TOKEN_IN(), // TOKEN_IN is the buy token going out of the swap
       fee: Exit10(exit10).FEE(),
       amountIn: _amount,
       slippage: SLIPPAGE,

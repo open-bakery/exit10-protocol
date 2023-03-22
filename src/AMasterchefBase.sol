@@ -47,19 +47,19 @@ abstract contract AMasterchefBase is Ownable {
     periodFinish = block.timestamp + rewardsDuration_;
   }
 
-  function add(uint256 _allocPoint, address _token) external onlyOwner {
-    require(poolToken[address(_token)] == false, 'Masterchef: Token already added');
-    require(_token != REWARD_TOKEN, 'Masterchef: Staking reward token not supported');
-    require(_allocPoint != 0, 'Masterchef: Allocation must be non zero');
+  function add(uint256 allocPoint, address token) external onlyOwner {
+    require(poolToken[address(token)] == false, 'Masterchef: Token already added');
+    require(token != REWARD_TOKEN, 'Masterchef: Staking reward token not supported');
+    require(allocPoint != 0, 'Masterchef: Allocation must be non zero');
 
     if (totalAllocPoint != 0) _massUpdatePools();
 
-    totalAllocPoint += _allocPoint;
+    totalAllocPoint += allocPoint;
 
     poolInfo.push(
       PoolInfo({
-        token: _token,
-        allocPoint: _allocPoint,
+        token: token,
+        allocPoint: allocPoint,
         lastUpdateTime: block.timestamp,
         totalStaked: 0,
         accRewardPerShare: 0,
@@ -67,54 +67,54 @@ abstract contract AMasterchefBase is Ownable {
       })
     );
 
-    poolToken[address(_token)] = true;
+    poolToken[address(token)] = true;
   }
 
-  function deposit(uint256 _pid, uint256 _amount) external {
-    PoolInfo storage pool = poolInfo[_pid];
-    UserInfo storage user = userInfo[_pid][msg.sender];
+  function deposit(uint256 pid, uint256 amount) external {
+    PoolInfo storage pool = poolInfo[pid];
+    UserInfo storage user = userInfo[pid][msg.sender];
 
     // Updates the accRewardPerShare and accUndistributedReward if applicable.
-    _updatePool(_pid);
+    _updatePool(pid);
 
     if (pool.totalStaked == 0) {
       // Special case: no one was staking, the pool was accumulating rewards.
       _updateUndistributedRewards(pool.accUndistributedReward);
       pool.accUndistributedReward = 0;
     } else {
-      _safeClaimRewards(_pid, _getUserPendingReward(user.amount, user.rewardDebt, pool.accRewardPerShare));
+      _safeClaimRewards(pid, _getUserPendingReward(user.amount, user.rewardDebt, pool.accRewardPerShare));
     }
 
-    _transferAmountIn(pool.token, _amount);
-    user.amount += _amount;
+    _transferAmountIn(pool.token, amount);
+    user.amount += amount;
     user.rewardDebt = (user.amount * pool.accRewardPerShare) / PRECISION;
-    pool.totalStaked += _amount;
+    pool.totalStaked += amount;
 
-    emit Deposit(msg.sender, _pid, _amount);
+    emit Deposit(msg.sender, pid, amount);
   }
 
-  function withdraw(uint256 _pid, uint256 _amount) public {
-    PoolInfo storage pool = poolInfo[_pid];
-    UserInfo storage user = userInfo[_pid][msg.sender];
-    _updatePool(_pid);
+  function withdraw(uint256 pid, uint256 amount) public {
+    PoolInfo storage pool = poolInfo[pid];
+    UserInfo storage user = userInfo[pid][msg.sender];
+    _updatePool(pid);
 
-    _amount = _amount > user.amount ? user.amount : _amount;
+    amount = amount > user.amount ? user.amount : amount;
 
-    _safeClaimRewards(_pid, _getUserPendingReward(user.amount, user.rewardDebt, pool.accRewardPerShare));
+    _safeClaimRewards(pid, _getUserPendingReward(user.amount, user.rewardDebt, pool.accRewardPerShare));
 
-    user.amount -= _amount;
+    user.amount -= amount;
     user.rewardDebt = (user.amount * pool.accRewardPerShare) / PRECISION;
-    pool.totalStaked -= _amount;
-    _transferAmountOut(pool.token, _amount);
+    pool.totalStaked -= amount;
+    _transferAmountOut(pool.token, amount);
 
-    emit Withdraw(msg.sender, _pid, _amount);
+    emit Withdraw(msg.sender, pid, amount);
   }
 
   // Withdraw ignoring rewards. EMERGENCY ONLY.
   // !Caution this will clear all user's pending rewards!
-  function emergencyWithdraw(uint256 _pid) external {
-    PoolInfo storage pool = poolInfo[_pid];
-    UserInfo storage user = userInfo[_pid][msg.sender];
+  function emergencyWithdraw(uint256 pid) external {
+    PoolInfo storage pool = poolInfo[pid];
+    UserInfo storage user = userInfo[pid][msg.sender];
 
     uint256 _amount = user.amount;
     user.amount = 0;
@@ -122,7 +122,7 @@ abstract contract AMasterchefBase is Ownable {
     pool.totalStaked -= _amount;
 
     IERC20(pool.token).safeTransfer(address(msg.sender), _amount);
-    emit EmergencyWithdraw(msg.sender, _pid, _amount);
+    emit EmergencyWithdraw(msg.sender, pid, _amount);
     // No mass update dont update pending rewards
   }
 
@@ -140,9 +140,9 @@ abstract contract AMasterchefBase is Ownable {
     return poolInfo.length;
   }
 
-  function pendingReward(uint256 _pid, address _user) external view returns (uint256) {
-    PoolInfo storage pool = poolInfo[_pid];
-    UserInfo storage user = userInfo[_pid][_user];
+  function pendingReward(uint256 pid, address user_) external view returns (uint256) {
+    PoolInfo storage pool = poolInfo[pid];
+    UserInfo storage user = userInfo[pid][user_];
 
     uint256 accRewardPerShare = pool.accRewardPerShare;
 

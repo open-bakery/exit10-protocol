@@ -43,7 +43,7 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
 
   Masterchef masterchef0; // 50% BOOT 50% STO
   Masterchef masterchef1; // BLP
-  MasterchefExit masterchef2; // EXIT/USDC LP Uniswap v2
+  MasterchefExit masterchefExit; // EXIT/USDC LP Uniswap v2
 
   uint256 constant ORACLE_SECONDS = 60;
   uint256 constant REWARDS_DURATION = 2 weeks;
@@ -72,7 +72,7 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
     // Deploy dependency contracts
     masterchef0 = new Masterchef(weth, REWARDS_DURATION);
     masterchef1 = new Masterchef(weth, REWARDS_DURATION);
-    masterchef2 = new MasterchefExit(address(exit), REWARDS_DURATION);
+    masterchefExit = new MasterchefExit(address(exit), REWARDS_DURATION);
 
     feeSplitter = address(new FeeSplitter(address(masterchef0), address(masterchef1), vm.envAddress('SWAPPER')));
     Exit10.DeployParams memory params = Exit10.DeployParams({
@@ -81,7 +81,7 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
       BOOT: address(boot),
       BLP: address(blp),
       EXIT: address(exit),
-      masterchef: address(masterchef2),
+      masterchef: address(masterchefExit),
       feeSplitter: feeSplitter,
       bootstrapPeriod: bootstrapPeriod,
       bootstrapTarget: bootstrapTarget,
@@ -121,13 +121,36 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
     masterchef1.renounceOwnership();
   }
 
-  function _skipBootAndCreateBond() internal returns (uint256 _bondId) {
-    skip(exit10.BOOTSTRAP_PERIOD());
-    _bondId = _createBond(10_000_000000, 10 ether);
+  function _skipBootAndCreateBond() internal returns (uint256 _bondId, uint128 _liquidityAdded) {
+    _skipBootstrap();
+    (_bondId, _liquidityAdded) = _createBond();
   }
 
-  function _createBond(uint256 _amount0, uint256 _amount1) internal returns (uint256 _bondId) {
-    (_bondId, , , ) = exit10.createBond(_addLiquidityParams(_amount0, _amount1));
+  function _createBond(uint256 _amount0, uint256 _amount1) internal returns (uint256 _bondId, uint128 _liquidityAdded) {
+    (_bondId, _liquidityAdded, , ) = exit10.createBond(_addLiquidityParams(_amount0, _amount1));
+  }
+
+  function _createBond() internal returns (uint256 _bondId, uint128 _liquidityAdded) {
+    return _createBond(10000_000000, 10 ether);
+  }
+
+  function _skipBootstrap() internal {
+    skip(exit10.BOOTSTRAP_PERIOD());
+  }
+
+  function _skipToExit() internal {
+    exit10.bootstrapLock(_addLiquidityParams(10000_000000, 10 ether));
+    _skipBootstrap();
+    _eth10k();
+    exit10.exit10();
+  }
+
+  function _skipToExitWithBond() internal returns (uint256) {
+    _skipBootstrap();
+    (uint256 bondId, ) = _createBond();
+    _eth10k();
+    exit10.exit10();
+    return bondId;
   }
 
   function _setUpExitPool(Exit10 _exit10, address _lp) internal {
@@ -189,26 +212,26 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
 
   function _checkBuckets(uint256 _pending, uint256 _reserve, uint256 _exit, uint256 _bootstrap) internal {
     (uint256 statePending, uint256 stateReserve, uint256 stateExit, uint256 stateBootstrap) = exit10.getBuckets();
-    assertTrue(statePending == _pending, 'Treasury: Pending bucket check');
-    assertTrue(stateReserve == _reserve, 'Treasury: Reserve bucket check');
-    assertTrue(stateExit == _exit, 'Treasury: Exit bucket check');
-    assertTrue(stateBootstrap == _bootstrap, 'Treasury: Bootstrap bucket check');
+    assertEq(statePending, _pending, 'Treasury: Pending bucket check');
+    assertEq(stateReserve, _reserve, 'Treasury: Reserve bucket check');
+    assertEq(stateExit, _exit, 'Treasury: Exit bucket check');
+    assertEq(stateBootstrap, _bootstrap, 'Treasury: Bootstrap bucket check');
   }
 
   function _checkBondData(
     uint256 _bondId,
     uint256 _bondAmount,
     uint256 _claimedBoostAmount,
-    uint64 _startTime,
-    uint64 _endTime,
+    uint256 _startTime,
+    uint256 _endTime,
     uint8 _status
   ) internal {
     (uint256 bondAmount, uint256 claimedBoostToken, uint64 startTime, uint64 endTime, uint8 status) = exit10
       .getBondData(_bondId);
     assertTrue(bondAmount == _bondAmount, 'Check bond amount');
     assertTrue(claimedBoostToken == _claimedBoostAmount, 'Check claimed boosted tokens');
-    assertTrue(startTime == _startTime, 'Check startTime');
-    assertTrue(endTime == _endTime, 'Check endTime');
+    assertTrue(startTime == uint64(_startTime), 'Check startTime');
+    assertTrue(endTime == uint64(_endTime), 'Check endTime');
     assertTrue(status == _status, 'Check status');
   }
 
@@ -219,6 +242,22 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
     return
       UniswapBase.AddLiquidity({
         depositor: address(this),
+        amount0Desired: _amount0,
+        amount1Desired: _amount1,
+        amount0Min: 0,
+        amount1Min: 0,
+        deadline: block.timestamp
+      });
+  }
+
+  function _addLiquidityParams(
+    address _depositor,
+    uint256 _amount0,
+    uint256 _amount1
+  ) internal view returns (UniswapBase.AddLiquidity memory) {
+    return
+      UniswapBase.AddLiquidity({
+        depositor: _depositor,
         amount0Desired: _amount0,
         amount1Desired: _amount1,
         amount0Min: 0,
@@ -242,8 +281,20 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
     assertTrue(ERC20(token1).balanceOf(address(exit10)) == _amount1, 'Check balance 1');
   }
 
-  function _checkBalancesThis(address _token0, address _token1, uint256 _amount0, uint256 _amount1) internal {
-    assertEq(ERC20(_token0).balanceOf(address(this)), _amount0, 'Check balance 0');
-    assertEq(ERC20(_token1).balanceOf(address(this)), _amount1, 'Check balance 1');
+  function _checkBalances(uint256 _amount0, uint256 _amount1) internal {
+    assertEq(_balance0(), _amount0, 'Check balance 0');
+    assertEq(_balance1(), _amount1, 'Check balance 1');
+  }
+
+  function _getTokensBalance() internal view returns (uint256 _balance0, uint256 _balance1) {
+    (_balance0, _balance1) = _getTokensBalance(token0, token1);
+  }
+
+  function _balance0() internal view returns (uint256) {
+    return _balance(token0);
+  }
+
+  function _balance1() internal view returns (uint256) {
+    return _balance(token1);
   }
 }

@@ -53,7 +53,7 @@ contract DepositHelperTest is Test, ABaseExit10Test {
   }
 
   function testSwapAndCreateBond() public {
-    skip(exit10.BOOTSTRAP_PERIOD());
+    _skipBootstrap();
     uint256 preBalanceEth = address(this).balance;
     uint256 initialAmount0 = _tokenAmount(usdc, 10000);
     uint256 sellAmount0 = _tokenAmount(usdc, 1000);
@@ -75,7 +75,7 @@ contract DepositHelperTest is Test, ABaseExit10Test {
 
     _checkBalances(address(depositHelper), usdc, weth, 0, 0);
     _checkBuckets(liquidityAdded, 0, 0, 0);
-    _checkBondData(bondId, liquidityAdded, 0, uint64(block.timestamp), 0, uint8(Exit10.BondStatus.active));
+    _checkBondData(bondId, liquidityAdded, 0, block.timestamp, 0, uint8(Exit10.BondStatus.active));
 
     assertTrue(_liquidity(exit10.positionId(), exit10) == liquidityAdded, 'Check position created');
     assertTrue(address(this).balance == preBalanceEth - etherAmount, 'Check Eth deposit');

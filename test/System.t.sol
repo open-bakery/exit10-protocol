@@ -48,7 +48,7 @@ contract SystemTest is Test, ABaseExit10Test {
     _convertBond(bondId, alice);
     _displayTreasury();
     _lpExit(alice);
-    _stake(alice, address(masterchef2), 0, lp);
+    _stake(alice, address(masterchefExit), 0, lp);
   }
 
   function _generateFees() internal {
@@ -72,7 +72,7 @@ contract SystemTest is Test, ABaseExit10Test {
   function _displayRewardBalanceMasterchefs() internal view {
     _displayBalance('Masterchef0', address(masterchef0), weth);
     _displayBalance('Masterchef1', address(masterchef1), weth);
-    _displayBalance('Masterchef2', address(masterchef2), address(exit));
+    _displayBalance('Masterchef2', address(masterchefExit), address(exit));
   }
 
   function _lpExit(address _user) internal returns (uint _amountAddedExit, uint _amountAddedUsdc, uint _liquidity) {
@@ -108,14 +108,7 @@ contract SystemTest is Test, ABaseExit10Test {
     ERC20(weth).approve(address(exit10), _wethAmount);
     ERC20(usdc).approve(address(exit10), _usdcAmount);
     (tokenId, liquidityAdded, amountAdded0, amountAdded1) = exit10.bootstrapLock(
-      UniswapBase.AddLiquidity({
-        depositor: _user,
-        amount0Desired: _usdcAmount,
-        amount1Desired: _wethAmount,
-        amount0Min: 0,
-        amount1Min: 0,
-        deadline: block.timestamp
-      })
+      _addLiquidityParams(_user, _usdcAmount, _wethAmount)
     );
     vm.stopPrank();
 
@@ -136,16 +129,7 @@ contract SystemTest is Test, ABaseExit10Test {
     vm.startPrank(_user);
     ERC20(weth).approve(address(exit10), _wethAmount);
     ERC20(usdc).approve(address(exit10), _usdcAmount);
-    (_bondId, , , ) = exit10.createBond(
-      UniswapBase.AddLiquidity({
-        depositor: _user,
-        amount0Desired: _usdcAmount,
-        amount1Desired: _wethAmount,
-        amount0Min: 0,
-        amount1Min: 0,
-        deadline: block.timestamp
-      })
-    );
+    (_bondId, , , ) = exit10.createBond(_addLiquidityParams(_user, _usdcAmount, _wethAmount));
     vm.stopPrank();
 
     string memory log0 = string.concat('User: ', userName[_user]);
@@ -161,15 +145,7 @@ contract SystemTest is Test, ABaseExit10Test {
   function _cancelBond(uint _bondId, address _user) internal {
     (uint bondAmount, , , , ) = exit10.getBondData(_bondId);
     vm.startPrank(_user);
-    (uint usdcAmount, uint wethAmount) = exit10.cancelBond(
-      _bondId,
-      UniswapBase.RemoveLiquidity({
-        liquidity: uint128(bondAmount),
-        amount0Min: 0,
-        amount1Min: 0,
-        deadline: block.timestamp
-      })
-    );
+    (uint usdcAmount, uint wethAmount) = exit10.cancelBond(_bondId, _removeLiquidityParams(bondAmount));
     vm.stopPrank();
 
     string memory log0 = string.concat('User: ', userName[_user]);
@@ -187,15 +163,7 @@ contract SystemTest is Test, ABaseExit10Test {
   function _convertBond(uint _bondId, address _user) internal {
     (uint bondAmount, , , , ) = exit10.getBondData(_bondId);
     vm.startPrank(_user);
-    (uint boostTokenAmount, uint exitTokenAmount) = exit10.convertBond(
-      _bondId,
-      UniswapBase.RemoveLiquidity({
-        liquidity: uint128(bondAmount),
-        amount0Min: 0,
-        amount1Min: 0,
-        deadline: block.timestamp
-      })
-    );
+    (uint boostTokenAmount, uint exitTokenAmount) = exit10.convertBond(_bondId, _removeLiquidityParams(bondAmount));
     vm.stopPrank();
 
     string memory log0 = string.concat('User: ', userName[_user]);

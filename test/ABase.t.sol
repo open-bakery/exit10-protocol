@@ -93,4 +93,8 @@ abstract contract ABaseTest is Test {
   function _balance(ERC20 _token) internal view returns (uint256) {
     return _token.balanceOf(address(this));
   }
+
+  function _balance(ERC20 _token, address who) internal view returns (uint256) {
+    return _token.balanceOf(who);
+  }
 }

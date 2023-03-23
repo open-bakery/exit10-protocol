@@ -11,7 +11,15 @@ contract Exit10_exit10Test is Exit10Test {
 
   function test_exit10_RevertIf_NotOutOfRange() public {
     _skipBootAndCreateBond();
+
     vm.expectRevert(bytes('EXIT10: Current Tick not below TICK_LOWER'));
+    exit10.exit10();
+  }
+
+  function test_exit10_RevertIf_NoLiquidity() public {
+    _skipBootstrap();
+    _eth10k();
+    vm.expectRevert(bytes('ERC721: operator query for nonexistent token'));
     exit10.exit10();
   }
 
@@ -21,28 +29,25 @@ contract Exit10_exit10Test is Exit10Test {
     skip(accrualParameter);
     exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
     (uint256 pending, uint256 reserve, uint256 exit, uint256 bootstrap) = exit10.getBuckets();
+
     _checkBalancesExit10(0, 0);
 
     _eth10k();
-    uint128 totalLiquidity = _liquidity();
+    uint128 liquidityBeforeExit = _liquidity();
     exit10.exit10();
-
-    assertTrue(exit10.inExitMode(), 'Check inExitMode');
-    assertTrue(_liquidity() - pending == reserve, 'Check reserve amount');
-    assertTrue(token0.balanceOf(address(exit10)) != 0, 'Check acquired USD != 0');
-
-    uint256 AcquiredUSD = token0.balanceOf(address(exit10)) + token0.balanceOf(address(sto));
-    uint256 exitLiquidityPlusBootstrap = totalLiquidity - reserve;
-
-    assertTrue(exit + bootstrap == exitLiquidityPlusBootstrap, 'Check Exitbucket');
-
+    uint256 AcquiredUSD = _balance(token0, address(exit10)) + _balance(token0, address(sto));
+    uint256 exitLiquidityPlusBootstrap = liquidityBeforeExit - reserve;
     uint256 exitBootstrapUSD = (bootstrap * AcquiredUSD) / exitLiquidityPlusBootstrap;
     uint256 exitLiquidityUSD = (AcquiredUSD - exitBootstrapUSD);
     uint256 share = exitLiquidityUSD / 10;
 
-    assertTrue(exit10.bootstrapRewardsPlusRefund() == exitBootstrapUSD + share, 'Check Bootstrap USD share amount');
-    assertTrue(exit10.teamPlusBackersRewards() == share * 2, 'Check team plus backers'); // 20%
-    assertTrue(AcquiredUSD - (exitBootstrapUSD + share * 3) == exit10.exitTokenRewardsFinal(), 'Check exit liquidity');
-    assertTrue(ERC20(token1).balanceOf(address(exit10)) == 0, 'Check balance token1 == 0');
+    assertTrue(exit10.inExitMode(), 'Check inExitMode');
+    assertEq(_liquidity() - pending, reserve, 'Check reserve amount');
+    assertGt(_balance(token0, address(exit10)), 0, 'Check acquired USD > 0');
+    assertEq(exit + bootstrap, exitLiquidityPlusBootstrap, 'Check Exit Bucket');
+    assertEq(exit10.bootstrapRewardsPlusRefund(), exitBootstrapUSD + share, 'Check Bootstrap USD share amount');
+    assertEq(exit10.teamPlusBackersRewards(), share * 2, 'Check team plus backers'); // 20%
+    assertEq(AcquiredUSD - (exitBootstrapUSD + share * 3), exit10.exitTokenRewardsFinal(), 'Check exit liquidity');
+    assertEq(_balance(token1, address(exit10)), 0, 'Check balance token1 == 0');
   }
 }

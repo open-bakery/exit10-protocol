@@ -16,14 +16,14 @@ contract Exit10_exixtClaimTest is Exit10Test {
 
     _eth10k();
     exit10.exit10();
-    uint256 initialBalanceUSDC = _balance(token0);
+    uint256 initialBalanceUSDC = _balance0();
     uint256 precision = 1e18;
     uint256 exitTokenShare = (_balance(exit) * precision) / ERC20(exit).totalSupply();
     exit10.exitClaim();
 
     assertEq(_balance(exit), 0, 'Check exit burn');
     assertEq(
-      _balance(token0) - initialBalanceUSDC,
+      _balance0() - initialBalanceUSDC,
       (exit10.exitTokenRewardsFinal() * exitTokenShare) / precision,
       'Check USD balance'
     );

@@ -18,7 +18,7 @@ contract Exit10_bootstrapLockTest is Exit10Test {
     assertEq(amountAdded1, initialBalance - _balance1(), 'Check amountAdded1');
     assertEq(tokenId, exit10.positionId(), 'Check positionId');
     assertGt(liquidityAdded, 0, 'Check liquidityAdded');
-    assertEq(_balance(exit10.BOOT()), liquidityAdded * exit10.TOKEN_MULTIPLIER(), 'Check BOOT balance');
+    assertEq(_balance(boot), liquidityAdded * exit10.TOKEN_MULTIPLIER(), 'Check BOOT balance');
 
     _checkBalancesExit10(0, 0);
     _checkBuckets(0, 0, 0, liquidityAdded);
@@ -36,7 +36,7 @@ contract Exit10_bootstrapLockTest is Exit10Test {
     assertEq(amountAdded1, depositToken1 - (_balance1() - initialBalance), 'Check amountAdded1');
     assertEq(tokenId, exit10.positionId(), 'Check positionId');
     assertGt(liquidityAdded, 0, 'Check liquidityAdded');
-    assertEq(_balance(exit10.BOOT()), liquidityAdded * exit10.TOKEN_MULTIPLIER(), 'Check BOOT balance');
+    assertEq(_balance(boot), liquidityAdded * exit10.TOKEN_MULTIPLIER(), 'Check BOOT balance');
 
     _checkBalancesExit10(0, 0);
     _checkBuckets(0, 0, 0, liquidityAdded);

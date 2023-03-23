@@ -24,11 +24,11 @@ contract Exit10_exit10Test is Exit10Test {
     _checkBalancesExit10(0, 0);
 
     _eth10k();
-    uint128 totalLiquidity = __liquidity();
+    uint128 totalLiquidity = _liquidity();
     exit10.exit10();
 
     assertTrue(exit10.inExitMode(), 'Check inExitMode');
-    assertTrue(__liquidity() - pending == reserve, 'Check reserve amount');
+    assertTrue(_liquidity() - pending == reserve, 'Check reserve amount');
     assertTrue(token0.balanceOf(address(exit10)) != 0, 'Check acquired USD != 0');
 
     uint256 AcquiredUSD = token0.balanceOf(address(exit10)) + token0.balanceOf(address(sto));

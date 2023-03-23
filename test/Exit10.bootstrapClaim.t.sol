@@ -16,17 +16,17 @@ contract Exit10_bootstrapClaimTest is Exit10Test {
     exit10.exit10();
     (uint256 pending, uint256 reserve, , uint256 bootstrap) = exit10.getBuckets();
 
-    assertEq(__liquidity(), pending + reserve, 'Check liquidity position');
+    assertEq(_liquidity(), pending + reserve, 'Check liquidity position');
 
-    uint256 currentBalanceUSDC = _balance(token0);
-    uint256 bootBalance = _balance(exit10.BOOT());
+    uint256 currentBalanceUSDC = _balance0();
+    uint256 bootBalance = _balance(boot);
     exit10.bootstrapClaim();
     uint256 claimableAmount = ((bootBalance / exit10.TOKEN_MULTIPLIER()) * exit10.bootstrapRewardsPlusRefund()) /
       bootstrap;
 
-    assertEq(_balance(exit10.BOOT()), 0, 'Check BOOT burned');
-    assertEq(_balance(token0) - currentBalanceUSDC, claimableAmount, 'Check claimable amount');
-    assertEq(_balance(token0), currentBalanceUSDC + claimableAmount, 'Check amount claimed'); // jiri: haha:)
+    assertEq(_balance(boot), 0, 'Check BOOT burned');
+    assertEq(_balance0() - currentBalanceUSDC, claimableAmount, 'Check claimable amount');
+    assertEq(_balance0(), currentBalanceUSDC + claimableAmount, 'Check amount claimed'); // jiri: haha:)
     assertGt(claimableAmount, 0, 'Check claimable != 0');
   }
 

@@ -194,11 +194,7 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
     );
   }
 
-  function _liquidity(uint256 _positionId, Exit10 _exit10) internal view returns (uint128 _liq) {
-    (, , , , , , , _liq, , , , ) = INPM(_exit10.NPM()).positions(_positionId);
-  }
-
-  function __liquidity() internal view returns (uint128 _liq) {
+  function _liquidity() internal view returns (uint128 _liq) {
     (, , , , , , , _liq, , , , ) = INPM(exit10.NPM()).positions(exit10.positionId());
   }
 

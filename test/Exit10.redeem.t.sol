@@ -18,9 +18,9 @@ contract Exit10_redeemTest is Exit10Test {
 
     assertGt(_balance0(), balanceToken0, 'Check balance token0');
     assertGt(_balance1(), balanceToken1, 'Check balance token1');
-    assertEq(_balance(exit10.BLP()), 0, 'Check balance BLP');
+    assertEq(_balance(blp), 0, 'Check balance BLP');
     _checkBalancesExit10(0, 0);
-    _checkBuckets(0, 0, __liquidity(), 0);
+    _checkBuckets(0, 0, _liquidity(), 0);
   }
 
   function test_redeem_ZeroAmount() public {

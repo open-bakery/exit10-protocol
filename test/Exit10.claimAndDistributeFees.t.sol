@@ -12,7 +12,7 @@ contract Exit10_claimAndDistributeFeesTest is Exit10Test {
     _createBond(10_000_000_000000, 10_000 ether);
     _generateFees(address(token0), address(token1), 100_000_000_000000);
 
-    _checkBuckets(__liquidity(), 0, 0, 0);
+    _checkBuckets(_liquidity(), 0, 0, 0);
 
     exit10.claimAndDistributeFees();
     uint256 feesClaimed0 = token0.balanceOf(feeSplitter);

@@ -32,6 +32,11 @@ abstract contract ABaseTest is Test {
     _maxApprove(_token, _spender);
   }
 
+  function _mintAndApprove(ERC20 _token, uint256 _amount, address _spender) internal {
+    deal(address(_token), address(this), _amount);
+    _maxApprove(address(_token), _spender);
+  }
+
   function _maxApprove(address _token, address _spender) internal {
     ERC20(_token).approve(_spender, type(uint256).max);
   }
@@ -94,7 +99,15 @@ abstract contract ABaseTest is Test {
     return _token.balanceOf(address(this));
   }
 
+  function _balance(address _token) internal view returns (uint256) {
+    return ERC20(_token).balanceOf(address(this));
+  }
+
   function _balance(ERC20 _token, address who) internal view returns (uint256) {
     return _token.balanceOf(who);
+  }
+
+  function _balance(address _token, address who) internal view returns (uint256) {
+    return ERC20(_token).balanceOf(who);
   }
 }

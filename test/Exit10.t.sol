@@ -6,14 +6,6 @@ import { ABaseExit10Test } from './ABaseExit10.t.sol';
 import { Exit10, UniswapBase } from '../src/Exit10.sol';
 
 contract Exit10Test is Test, ABaseExit10Test {
-  event BootstrapLock(
-    address indexed recipient,
-    uint256 lockAmount,
-    uint256 amountAdded0,
-    uint256 amountAdded1,
-    uint256 bootTokensMinted
-  );
-
   function setUp() public override {
     super.setUp();
   }

@@ -39,7 +39,7 @@ contract DepositHelperTest is Test, ABaseExit10Test {
       .swapAndBootstrapLock{ value: etherAmount }(initialAmount0, initialAmount1, swapParams);
 
     _checkBalances(address(depositHelper), usdc, weth, 0, 0);
-    _checkBuckets(exit10, 0, 0, 0, liquidityAdded);
+    _checkBuckets(0, 0, 0, liquidityAdded);
 
     assertTrue(_liquidity(tokenId, exit10) == liquidityAdded, 'Check position created');
     assertTrue(
@@ -75,8 +75,8 @@ contract DepositHelperTest is Test, ABaseExit10Test {
       .swapAndCreateBond{ value: etherAmount }(initialAmount0, initialAmount1, swapParams);
 
     _checkBalances(address(depositHelper), usdc, weth, 0, 0);
-    _checkBuckets(exit10, liquidityAdded, 0, 0, 0);
-    _checkBondData(exit10, bondId, liquidityAdded, 0, uint64(block.timestamp), 0, uint8(Exit10.BondStatus.active));
+    _checkBuckets(liquidityAdded, 0, 0, 0);
+    _checkBondData(bondId, liquidityAdded, 0, uint64(block.timestamp), 0, uint8(Exit10.BondStatus.active));
 
     assertTrue(_liquidity(exit10.positionId(), exit10) == liquidityAdded, 'Check position created');
     assertTrue(address(this).balance == preBalanceEth - etherAmount, 'Check Eth deposit');

@@ -122,22 +122,13 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
     masterchef1.renounceOwnership();
   }
 
-  function _skipBootAndCreateBond(Exit10 _exit10) internal returns (uint256 _bondId) {
-    skip(_exit10.BOOTSTRAP_PERIOD());
-    _bondId = _createBond(_exit10, 10_000_000000, 10 ether);
+  function _skipBootAndCreateBond() internal returns (uint256 _bondId) {
+    skip(exit10.BOOTSTRAP_PERIOD());
+    _bondId = _createBond(10_000_000000, 10 ether);
   }
 
-  function _createBond(Exit10 _exit10, uint256 _amount0, uint256 _amount1) internal returns (uint256 _bondId) {
-    (_bondId, , , ) = _exit10.createBond(
-      UniswapBase.AddLiquidity({
-        depositor: address(this),
-        amount0Desired: _amount0,
-        amount1Desired: _amount1,
-        amount0Min: 0,
-        amount1Min: 0,
-        deadline: block.timestamp
-      })
-    );
+  function _createBond(uint256 _amount0, uint256 _amount1) internal returns (uint256 _bondId) {
+    (_bondId, , , ) = exit10.createBond(_addLiquidityParams(_amount0, _amount1));
   }
 
   function _setUpExitPool(Exit10 _exit10, address _lp) internal {
@@ -185,22 +176,20 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
     (, , , , , , , _liq, , , , ) = INPM(_exit10.NPM()).positions(_positionId);
   }
 
+  function __liquidity() internal view returns (uint128 _liq) {
+    (, , , , , , , _liq, , , , ) = INPM(exit10.NPM()).positions(exit10.positionId());
+  }
+
   function _currentTick(Exit10 _exit10) internal view returns (int24 _tick) {
     (, _tick, , , , , ) = _exit10.POOL().slot0();
   }
 
-  function _eth10k(Exit10 _exit10) internal {
-    _swap(_exit10.TOKEN_OUT(), _exit10.TOKEN_IN(), 200_000_000_000000);
+  function _eth10k() internal {
+    _swap(exit10.TOKEN_OUT(), exit10.TOKEN_IN(), 200_000_000_000000);
   }
 
-  function _checkBuckets(
-    Exit10 _exit10,
-    uint256 _pending,
-    uint256 _reserve,
-    uint256 _exit,
-    uint256 _bootstrap
-  ) internal {
-    (uint256 statePending, uint256 stateReserve, uint256 stateExit, uint256 stateBootstrap) = _exit10.getBuckets();
+  function _checkBuckets(uint256 _pending, uint256 _reserve, uint256 _exit, uint256 _bootstrap) internal {
+    (uint256 statePending, uint256 stateReserve, uint256 stateExit, uint256 stateBootstrap) = exit10.getBuckets();
     assertTrue(statePending == _pending, 'Treasury: Pending bucket check');
     assertTrue(stateReserve == _reserve, 'Treasury: Reserve bucket check');
     assertTrue(stateExit == _exit, 'Treasury: Exit bucket check');
@@ -208,7 +197,6 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
   }
 
   function _checkBondData(
-    Exit10 _exit10,
     uint256 _bondId,
     uint256 _bondAmount,
     uint256 _claimedBoostAmount,
@@ -216,12 +204,47 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
     uint64 _endTime,
     uint8 _status
   ) internal {
-    (uint256 bondAmount, uint256 claimedBoostToken, uint64 startTime, uint64 endTime, uint8 status) = _exit10
+    (uint256 bondAmount, uint256 claimedBoostToken, uint64 startTime, uint64 endTime, uint8 status) = exit10
       .getBondData(_bondId);
     assertTrue(bondAmount == _bondAmount, 'Check bond amount');
     assertTrue(claimedBoostToken == _claimedBoostAmount, 'Check claimed boosted tokens');
     assertTrue(startTime == _startTime, 'Check startTime');
     assertTrue(endTime == _endTime, 'Check endTime');
     assertTrue(status == _status, 'Check status');
+  }
+
+  function _addLiquidityParams(
+    uint256 _amount0,
+    uint256 _amount1
+  ) internal view returns (UniswapBase.AddLiquidity memory) {
+    return
+      UniswapBase.AddLiquidity({
+        depositor: address(this),
+        amount0Desired: _amount0,
+        amount1Desired: _amount1,
+        amount0Min: 0,
+        amount1Min: 0,
+        deadline: block.timestamp
+      });
+  }
+
+  function _removeLiquidityParams(uint256 _liq) internal view returns (UniswapBase.RemoveLiquidity memory) {
+    return
+      UniswapBase.RemoveLiquidity({
+        liquidity: uint128(_liq),
+        amount0Min: 0,
+        amount1Min: 0,
+        deadline: block.timestamp
+      });
+  }
+
+  function _checkBalancesExit10(uint256 _amount0, uint256 _amount1) internal {
+    assertTrue(ERC20(token0).balanceOf(address(exit10)) == _amount0, 'Check balance 0');
+    assertTrue(ERC20(token1).balanceOf(address(exit10)) == _amount1, 'Check balance 1');
+  }
+
+  function _checkBalancesThis(address _token0, address _token1, uint256 _amount0, uint256 _amount1) internal {
+    assertEq(ERC20(_token0).balanceOf(address(this)), _amount0, 'Check balance 0');
+    assertEq(ERC20(_token1).balanceOf(address(this)), _amount1, 'Check balance 1');
   }
 }

@@ -12,3 +12,4 @@ broadcast/
 anvil.log
 .vscode
 test/Temp.t.sol
+config/local.ini

@@ -35,6 +35,11 @@ abstract contract ABaseTest is Test {
     ERC20(_token).approve(_spender, type(uint256).max);
   }
 
+  function _maxApprove(address _token1, address _token2, address _spender) internal {
+    ERC20(_token1).approve(_spender, type(uint256).max);
+    ERC20(_token2).approve(_spender, type(uint256).max);
+  }
+
   function _generateFees(address _tokenA, address _tokenB, uint256 _amountA) internal {
     deal(_tokenA, address(this), _amountA);
     uint256 amountOut = _swap(_tokenA, _tokenB, _amountA);

@@ -14,8 +14,7 @@ contract DepositHelperTest is Test, ABaseExit10Test {
   function setUp() public override {
     super.setUp();
     depositHelper = new DepositHelper(address(UNISWAP_V3_ROUTER), address(exit10), weth);
-    _maxApprove(weth, address(depositHelper));
-    _maxApprove(usdc, address(depositHelper));
+    _maxApprove(weth, usdc, address(depositHelper));
   }
 
   function testSwapAndBootstrapLock() public {

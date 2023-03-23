@@ -106,8 +106,7 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
     token0 = ERC20(exit10.POOL().token0());
     token1 = ERC20(exit10.POOL().token1());
 
-    _maxApprove(weth, address(UNISWAP_V3_ROUTER));
-    _maxApprove(usdc, address(UNISWAP_V3_ROUTER));
+    _maxApprove(weth, usdc, address(UNISWAP_V3_ROUTER));
     _mintAndApprove(address(token0), initialBalance, address(exit10));
     _mintAndApprove(address(token1), initialBalance, address(exit10));
   }

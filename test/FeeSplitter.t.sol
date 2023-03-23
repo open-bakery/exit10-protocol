@@ -8,8 +8,9 @@ import { BaseToken } from '../src/BaseToken.sol';
 import { FeeSplitter } from '../src/FeeSplitter.sol';
 import { Masterchef } from '../src/Masterchef.sol';
 import { ISwapper } from '../src/interfaces/ISwapper.sol';
+import './ABase.t.sol';
 
-contract FeeSplitterTest is Test {
+contract FeeSplitterTest is ABaseTest {
   BaseToken STO = new BaseToken('Share Token', 'STO');
   BaseToken BOOT = new BaseToken('Bootstrap Token', 'BOOT');
   BaseToken BLP = new BaseToken('Boosted LP', 'BLP');
@@ -32,8 +33,7 @@ contract FeeSplitterTest is Test {
     Masterchef(masterchef0).setRewardDistributor(address(feeSplitter));
     Masterchef(masterchef1).setRewardDistributor(address(feeSplitter));
     feeSplitter.setExit10(address(this));
-    ERC20(USDC).approve(address(feeSplitter), type(uint256).max);
-    ERC20(WETH).approve(address(feeSplitter), type(uint256).max);
+    _maxApprove(USDC, WETH, address(feeSplitter));
     Masterchef(masterchef0).add(10, address(0x01));
     Masterchef(masterchef1).add(10, address(0x01));
   }
@@ -53,8 +53,7 @@ contract FeeSplitterTest is Test {
     uint256 amountTokenOut = 100_000_000000;
     uint256 amountTokenIn = 10_000 ether;
     _dealTokens(amountTokenOut, amountTokenIn);
-    ERC20(USDC).approve(swapper, type(uint256).max);
-    ERC20(WETH).approve(swapper, type(uint256).max);
+    _maxApprove(USDC, WETH, swapper);
     skip(ORACLE_SECONDS);
     ISwapper(swapper).swap(
       ISwapper.SwapParameters({

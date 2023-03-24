@@ -28,6 +28,7 @@ contract Exit10 is UniswapBase {
     address feeSplitter; // Distribution to STO + BOOT and BLP stakers
     uint256 bootstrapPeriod; // Min duration of first chicken-in
     uint256 bootstrapTarget;
+    uint256 bootstrapCap;
     uint256 liquidityPerUsd; // Amount of LP per USD that is minted passed the upper range of the 500-10000 pool
     uint256 exitDiscount;
     uint256 accrualParameter; // The number of seconds it takes to accrue 50% of the cap, represented as an 18 digit fixed-point number.
@@ -66,6 +67,7 @@ contract Exit10 is UniswapBase {
   uint256 public teamPlusBackersRewards;
   uint256 public teamPlusBackersRewardsClaimed;
 
+  bool public isBootstrapCapReached;
   bool public inExitMode;
 
   mapping(uint256 => BondData) private idToBondData;
@@ -94,6 +96,7 @@ contract Exit10 is UniswapBase {
   uint256 public immutable DEPLOYMENT_TIMESTAMP;
   uint256 public immutable BOOTSTRAP_PERIOD;
   uint256 public immutable BOOTSTRAP_TARGET;
+  uint256 public immutable BOOTSTRAP_CAP;
   uint256 public immutable ACCRUAL_PARAMETER;
   uint256 public immutable LIQUIDITY_PER_USD;
   uint256 public immutable EXIT_DISCOUNT;
@@ -150,6 +153,7 @@ contract Exit10 is UniswapBase {
 
     BOOTSTRAP_PERIOD = params_.bootstrapPeriod;
     BOOTSTRAP_TARGET = params_.bootstrapTarget;
+    BOOTSTRAP_CAP = params_.bootstrapCap;
     ACCRUAL_PARAMETER = params_.accrualParameter * DECIMAL_PRECISION;
     LIQUIDITY_PER_USD = params_.liquidityPerUsd;
     EXIT_DISCOUNT = params_.exitDiscount;
@@ -171,6 +175,18 @@ contract Exit10 is UniswapBase {
     (tokenId, liquidityAdded, amountAdded0, amountAdded1) = _addLiquidity(params);
 
     bootstrapBucket += liquidityAdded;
+
+    if (BOOTSTRAP_CAP != 0) {
+      if (bootstrapBucket > BOOTSTRAP_CAP) {
+        uint256 diff = BOOTSTRAP_CAP - bootstrapBucket;
+        (uint256 amountRemoved0, uint256 amountRemoved1) = _decreaseLiquidity(
+          UniswapBase.RemoveLiquidity({ liquidity: uint128(diff), amount0Min: 0, amount1Min: 0, deadline: DEADLINE })
+        );
+        _collect(msg.sender, uint128(amountRemoved0), uint128(amountRemoved1));
+        isBootstrapCapReached = true;
+      }
+    }
+
     uint256 mintAmount = liquidityAdded * TOKEN_MULTIPLIER;
     BOOT.mint(params.depositor, mintAmount);
 
@@ -513,7 +529,7 @@ contract Exit10 is UniswapBase {
   }
 
   function _isBootstrapOngoing() internal view returns (bool) {
-    return (block.timestamp < DEPLOYMENT_TIMESTAMP + BOOTSTRAP_PERIOD);
+    return (block.timestamp < DEPLOYMENT_TIMESTAMP + BOOTSTRAP_PERIOD && !isBootstrapCapReached);
   }
 
   function _requireExitMode() internal view {

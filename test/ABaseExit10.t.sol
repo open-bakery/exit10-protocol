@@ -224,11 +224,11 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
   ) internal {
     (uint256 bondAmount, uint256 claimedBoostToken, uint64 startTime, uint64 endTime, uint8 status) = exit10
       .getBondData(_bondId);
-    assertTrue(bondAmount == _bondAmount, 'Check bond amount');
-    assertTrue(claimedBoostToken == _claimedBoostAmount, 'Check claimed boosted tokens');
-    assertTrue(startTime == uint64(_startTime), 'Check startTime');
-    assertTrue(endTime == uint64(_endTime), 'Check endTime');
-    assertTrue(status == _status, 'Check status');
+    assertEq(bondAmount, _bondAmount, 'Check bond amount');
+    assertEq(claimedBoostToken, _claimedBoostAmount, 'Check bond claimed boosted tokens');
+    assertEq(startTime, uint64(_startTime), 'Check bond startTime');
+    assertEq(endTime, uint64(_endTime), 'Check bond endTime');
+    assertEq(status, _status, 'Check bond status');
   }
 
   function _addLiquidityParams(
@@ -273,13 +273,13 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
   }
 
   function _checkBalancesExit10(uint256 _amount0, uint256 _amount1) internal {
-    assertTrue(ERC20(token0).balanceOf(address(exit10)) == _amount0, 'Check balance 0');
-    assertTrue(ERC20(token1).balanceOf(address(exit10)) == _amount1, 'Check balance 1');
+    assertEq(ERC20(token0).balanceOf(address(exit10)), _amount0, 'Check balance exit10, token0');
+    assertEq(ERC20(token1).balanceOf(address(exit10)), _amount1, 'Check balance exit10, token1');
   }
 
   function _checkBalances(uint256 _amount0, uint256 _amount1) internal {
-    assertEq(_balance0(), _amount0, 'Check balance 0');
-    assertEq(_balance1(), _amount1, 'Check balance 1');
+    assertEq(_balance0(), _amount0, 'Check my balance token0');
+    assertEq(_balance1(), _amount1, 'Check my balance token1');
   }
 
   function _getTokensBalance() internal view returns (uint256 _balance0, uint256 _balance1) {

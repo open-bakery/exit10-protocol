@@ -18,8 +18,8 @@ contract Exit10_claimAndDistributeFeesTest is Exit10Test {
     uint256 feesClaimed0 = token0.balanceOf(feeSplitter);
     uint256 feesClaimed1 = token1.balanceOf(feeSplitter);
 
-    assertTrue(feesClaimed0 != 0, 'Check fees claimed 0');
-    assertTrue(feesClaimed1 != 0, 'Check fees claimed 1');
+    assertGt(feesClaimed0, 0, 'Fees claimed 0 > 0');
+    assertGt(feesClaimed1, 0, 'Fees claimed 1 > 0');
 
     _checkBalancesExit10(0, 0);
   }

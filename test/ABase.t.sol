@@ -23,8 +23,8 @@ abstract contract ABaseTest is Test {
     uint256 _amount0,
     uint256 _amount1
   ) internal {
-    assertTrue(ERC20(_token0).balanceOf(_holder) == _amount0, 'Check balance 0');
-    assertTrue(ERC20(_token1).balanceOf(_holder) == _amount1, 'Check balance 1');
+    assertEq(ERC20(_token0).balanceOf(_holder), _amount0, 'Check balance 0');
+    assertEq(ERC20(_token1).balanceOf(_holder), _amount1, 'Check balance 1');
   }
 
   function _mintAndApprove(address _token, uint256 _amount, address _spender) internal {

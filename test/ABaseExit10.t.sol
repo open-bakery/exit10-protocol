@@ -35,7 +35,9 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
   uint256 initialBalance = 1_000_000_000 ether;
   uint256 bootstrapPeriod = 2 weeks;
   uint256 accrualParameter = 1 weeks;
-  uint256 lpPerUSD = 1; // made up number
+  uint256 bootstrapTarget = vm.envUint('BOOTSTRAP_TARGET');
+  uint256 liquidityPerUsd = vm.envUint('LIQUIDITY_PER_USDC');
+  uint256 exitDiscount = vm.envUint('EXIT_DISCOUNT');
   uint256 deployTime;
 
   Masterchef masterchef0; // 50% BOOT 50% STO
@@ -81,8 +83,10 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
       masterchef: address(masterchef2),
       feeSplitter: feeSplitter,
       bootstrapPeriod: bootstrapPeriod,
+      bootstrapTarget: bootstrapTarget,
       accrualParameter: accrualParameter,
-      lpPerUSD: lpPerUSD
+      liquidityPerUsd: liquidityPerUsd,
+      exitDiscount: exitDiscount
     });
 
     exit10 = new Exit10(baseParams, params);

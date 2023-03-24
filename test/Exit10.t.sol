@@ -323,7 +323,10 @@ contract Exit10Test is Test, ABaseExit10Test {
     uint256 exitBucket = _liquidity(exit10.positionId(), exit10) - (liquidity / 2);
 
     assertTrue(exit10.BLP().balanceOf(address(this)) == (liquidity / 2) * exit10.TOKEN_MULTIPLIER());
-    assertTrue(exit10.EXIT().balanceOf(address(this)) == exitBucket * exit10.TOKEN_MULTIPLIER(), 'Check exit bucket');
+    assertTrue(
+      exit10.EXIT().balanceOf(address(this)) == _applyDiscount((exitBucket * 1e18) / liquidityPerUsd, 500),
+      'Check exit bucket'
+    );
 
     _checkBalances(address(exit10), address(token0), address(token1), 0, 0);
     _checkBondData(

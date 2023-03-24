@@ -9,6 +9,7 @@ import { Exit10 } from '../src/Exit10.sol';
 
 abstract contract ABaseTest is Test {
   uint256 constant MAX_UINT_256 = type(uint256).max;
+  uint256 constant PERCENT_BASE = 10000;
 
   IUniswapV2Factory immutable UNISWAP_V2_FACTORY = IUniswapV2Factory(vm.envAddress('UNISWAP_V2_FACTORY'));
   IUniswapV2Router immutable UNISWAP_V2_ROUTER = IUniswapV2Router(vm.envAddress('UNISWAP_V2_ROUTER'));
@@ -65,5 +66,9 @@ abstract contract ABaseTest is Test {
   ) internal view returns (uint256 _balanceA, uint256 _balanceB) {
     _balanceA = ERC20(_tokenA).balanceOf(address(this));
     _balanceB = ERC20(_tokenB).balanceOf(address(this));
+  }
+
+  function _applyDiscount(uint256 _amount, uint256 _discountPercentage) internal pure returns (uint256) {
+    return _amount + ((_amount * _discountPercentage) / PERCENT_BASE);
   }
 }

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { IERC20, SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import { Math } from '@openzeppelin/contracts/utils/math/Math.sol';
 import { INPM } from './interfaces/INonfungiblePositionManager.sol';
 import { IUniswapV3Pool } from './interfaces/IUniswapV3Pool.sol';
@@ -77,9 +78,9 @@ contract Exit10 is UniswapBase {
   uint256 public constant MAX_EXIT_SUPPLY = LP_EXIT_REWARD + BONDERS_EXIT_REWARD;
   uint256 private constant MAX_UINT_256 = type(uint256).max;
   uint128 private constant MAX_UINT_128 = type(uint128).max;
-  uint256 private constant DECIMAL_PRECISION = 1e18;
   uint256 private constant DEADLINE = 1e10;
-  uint256 private constant PERCENT_BASE = 100;
+  uint256 private constant DECIMAL_PRECISION = 1e18;
+  uint256 private constant PERCENT_BASE = 10000;
 
   BaseToken public immutable EXIT;
   BaseToken public immutable BLP;
@@ -96,6 +97,7 @@ contract Exit10 is UniswapBase {
   uint256 public immutable ACCRUAL_PARAMETER;
   uint256 public immutable LIQUIDITY_PER_USD;
   uint256 public immutable EXIT_DISCOUNT;
+  uint256 public immutable TOKEN_OUT_DECIMALS;
 
   event BootstrapLock(
     address indexed recipient,
@@ -151,11 +153,7 @@ contract Exit10 is UniswapBase {
     ACCRUAL_PARAMETER = params_.accrualParameter * DECIMAL_PRECISION;
     LIQUIDITY_PER_USD = params_.liquidityPerUsd;
     EXIT_DISCOUNT = params_.exitDiscount;
-
-    uint256 bootstrapTarget;
-    uint256 liquidityPerUsd; // Amount of LP per USD that is minted passed the upper range of the 500-10000 pool
-    uint256 exitDiscount;
-    uint256 accrualParameter;
+    TOKEN_OUT_DECIMALS = 10 ** ERC20(TOKEN_OUT).decimals();
 
     IERC20(IUniswapV3Pool(POOL).token0()).approve(NPM, MAX_UINT_256);
     IERC20(IUniswapV3Pool(POOL).token1()).approve(NPM, MAX_UINT_256);
@@ -250,7 +248,7 @@ contract Exit10 is UniswapBase {
     pendingBucket -= params.liquidity;
     reserveBucket += accruedLiquidity;
 
-    exitTokenAmount = ((bond.bondAmount - accruedLiquidity) * TOKEN_MULTIPLIER) / LP_PER_USD;
+    exitTokenAmount = _getDiscountedExitAmount((bond.bondAmount - accruedLiquidity), EXIT_DISCOUNT);
 
     BLP.mint(msg.sender, boostTokenAmount);
     _mintExitCapped(msg.sender, exitTokenAmount);
@@ -317,9 +315,9 @@ contract Exit10 is UniswapBase {
     );
   }
 
-  function bootstrapClaim() external {
+  function bootstrapClaim() external returns (uint256 claim) {
     uint256 bootBalance = IERC20(BOOT).balanceOf(msg.sender);
-    uint256 claim = _safeTokenClaim(
+    claim = _safeTokenClaim(
       BOOT,
       bootBalance / TOKEN_MULTIPLIER,
       bootstrapBucket,
@@ -435,6 +433,28 @@ contract Exit10 is UniswapBase {
     emit ClaimAndDistributeFees(msg.sender, amountCollected0, amountCollected1);
   }
 
+  function _getDiscountedExitAmount(uint256 _liquidity, uint256 _discountPercentage) internal view returns (uint256) {
+    return _applyDiscount(_getExitAmount(_liquidity), _discountPercentage);
+  }
+
+  function _getExitAmount(uint256 _liquidity) internal view returns (uint256) {
+    uint256 percentFromTaget = _getPercentFromTarget(_liquidity) <= 5000 ? 5000 : _getPercentFromTarget(_liquidity);
+    uint256 projectedLiquidityPerExit = (LIQUIDITY_PER_USD * percentFromTaget) / PERCENT_BASE;
+    uint256 actualLiquidityPerExit = _getActualLiquidityPerExit(_exitBucket());
+    uint256 liquidityPerExit = actualLiquidityPerExit > projectedLiquidityPerExit
+      ? actualLiquidityPerExit
+      : projectedLiquidityPerExit;
+    return ((_liquidity * DECIMAL_PRECISION) / liquidityPerExit);
+  }
+
+  function _getPercentFromTarget(uint256 _amountBootstrapped) internal view returns (uint256) {
+    return (_amountBootstrapped * PERCENT_BASE) / _getLiquidityForBootsrapTarget();
+  }
+
+  function _getLiquidityForBootsrapTarget() internal view returns (uint256) {
+    return (BOOTSTRAP_TARGET * LIQUIDITY_PER_USD) / TOKEN_OUT_DECIMALS;
+  }
+
   function _safeTokenClaim(
     BaseToken _token,
     uint256 _amount,
@@ -522,6 +542,15 @@ contract Exit10 is UniswapBase {
 
   function _requireEqualLiquidity(uint256 _liquidityA, uint256 _liquidityB) internal pure {
     require(_liquidityA == _liquidityB, 'EXIT10: Incorrect liquidity amount');
+  }
+
+  function _applyDiscount(uint256 _amount, uint256 _discountPercentage) internal pure returns (uint256) {
+    return _amount + ((_amount * _discountPercentage) / PERCENT_BASE);
+  }
+
+  function _getActualLiquidityPerExit(uint256 _exitBucketAmount) internal pure returns (uint256) {
+    uint256 exitTokenShareOfBucket = (_exitBucketAmount * 7000) / PERCENT_BASE;
+    return (exitTokenShareOfBucket * DECIMAL_PRECISION) / MAX_EXIT_SUPPLY;
   }
 
   function _calculateFinalShares(

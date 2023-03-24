@@ -26,8 +26,10 @@ contract Exit10 is UniswapBase {
     address masterchef; // EXIT/USDC Stakers
     address feeSplitter; // Distribution to STO + BOOT and BLP stakers
     uint256 bootstrapPeriod; // Min duration of first chicken-in
+    uint256 bootstrapTarget;
+    uint256 liquidityPerUsd; // Amount of LP per USD that is minted passed the upper range of the 500-10000 pool
+    uint256 exitDiscount;
     uint256 accrualParameter; // The number of seconds it takes to accrue 50% of the cap, represented as an 18 digit fixed-point number.
-    uint256 lpPerUSD; // Amount of LP per USD that is minted on the 500 - 10000 Range Pool
   }
 
   struct BondData {
@@ -77,6 +79,7 @@ contract Exit10 is UniswapBase {
   uint128 private constant MAX_UINT_128 = type(uint128).max;
   uint256 private constant DECIMAL_PRECISION = 1e18;
   uint256 private constant DEADLINE = 1e10;
+  uint256 private constant PERCENT_BASE = 100;
 
   BaseToken public immutable EXIT;
   BaseToken public immutable BLP;
@@ -89,8 +92,10 @@ contract Exit10 is UniswapBase {
 
   uint256 public immutable DEPLOYMENT_TIMESTAMP;
   uint256 public immutable BOOTSTRAP_PERIOD;
+  uint256 public immutable BOOTSTRAP_TARGET;
   uint256 public immutable ACCRUAL_PARAMETER;
-  uint256 public immutable LP_PER_USD;
+  uint256 public immutable LIQUIDITY_PER_USD;
+  uint256 public immutable EXIT_DISCOUNT;
 
   event BootstrapLock(
     address indexed recipient,
@@ -142,8 +147,15 @@ contract Exit10 is UniswapBase {
     FEE_SPLITTER = params_.feeSplitter;
 
     BOOTSTRAP_PERIOD = params_.bootstrapPeriod;
+    BOOTSTRAP_TARGET = params_.bootstrapTarget;
     ACCRUAL_PARAMETER = params_.accrualParameter * DECIMAL_PRECISION;
-    LP_PER_USD = params_.lpPerUSD;
+    LIQUIDITY_PER_USD = params_.liquidityPerUsd;
+    EXIT_DISCOUNT = params_.exitDiscount;
+
+    uint256 bootstrapTarget;
+    uint256 liquidityPerUsd; // Amount of LP per USD that is minted passed the upper range of the 500-10000 pool
+    uint256 exitDiscount;
+    uint256 accrualParameter;
 
     IERC20(IUniswapV3Pool(POOL).token0()).approve(NPM, MAX_UINT_256);
     IERC20(IUniswapV3Pool(POOL).token1()).approve(NPM, MAX_UINT_256);

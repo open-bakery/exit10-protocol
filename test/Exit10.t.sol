@@ -44,6 +44,6 @@ contract Exit10Test is Test, ABaseExit10Test {
   function testAccrualSchedule() public {
     (uint256 bondId, ) = _skipBootAndCreateBond();
     skip(accrualParameter);
-    assertTrue(exit10.getAccruedAmount(bondId) == _liquidity() / 2);
+    assertEq(exit10.getAccruedAmount(bondId), _liquidity() / 2);
   }
 }

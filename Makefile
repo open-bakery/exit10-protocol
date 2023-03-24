@@ -70,7 +70,6 @@ trace1:
 
 test1:
 	forge test -vv --mc Exit10_convertBondTest --fork-url $(RPC_URL)
->>>>>>> 1b77606 (improved Exit10.exit10 test)
 
 system:
 	forge test -vv --mc SystemTest --fork-url $(RPC_URL)

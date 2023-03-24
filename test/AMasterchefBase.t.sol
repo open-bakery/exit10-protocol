@@ -53,34 +53,32 @@ contract AMasterchefBaseTest is ABaseTest {
   function _checkUserInfo(uint256 _pid, address _user, uint256 _amount, uint256 _rewardDebt) internal {
     (uint256 stakedAmount, uint256 rewardDebt) = masterchef.userInfo(_pid, _user);
     assertEq(_amount, stakedAmount, 'Check user amount');
-    console.log('_rewardDebt', _rewardDebt);
-    console.log('rewardDebt', rewardDebt);
     assertEq(_rewardDebt / masterchef.PRECISION(), rewardDebt, 'Check user rewardDebt');
   }
 
   function _checkPoolInfo(uint256 _pid, AMasterchefBase.PoolInfo memory _params) internal {
     (
-      address token,
-      uint256 allocPoint,
-      uint256 lastUpdateTime,
-      uint256 totalStaked,
-      uint256 accRewardPerShare,
-      uint256 accUndistributedReward
+      address token_,
+      uint256 allocPoint_,
+      uint256 lastUpdateTime_,
+      uint256 totalStaked_,
+      uint256 accRewardPerShare_,
+      uint256 accUndistributedReward_
     ) = masterchef.poolInfo(_pid);
 
-    assertEq(token, _params.token, 'Check pool info token');
-    assertEq(allocPoint, _params.allocPoint, 'Check pool info allocPoint');
-    assertEq(lastUpdateTime, _params.lastUpdateTime, 'Check pool info lastUpdateTime');
-    assertEq(totalStaked, _params.totalStaked, 'Check pool info totalStaked');
-    assertEq(accRewardPerShare, _params.accRewardPerShare, 'Check pool info accRewardPerShare');
-    assertEq(accUndistributedReward, _params.accUndistributedReward, 'Check pool info accUndistributedReward');
+    assertEq(token_, _params.token, 'Check pool info token');
+    assertEq(allocPoint_, _params.allocPoint, 'Check pool info allocPoint');
+    assertEq(lastUpdateTime_, _params.lastUpdateTime, 'Check pool info lastUpdateTime');
+    assertEq(totalStaked_, _params.totalStaked, 'Check pool info totalStaked');
+    assertEq(accRewardPerShare_, _params.accRewardPerShare, 'Check pool info accRewardPerShare');
+    assertEq(accUndistributedReward_, _params.accUndistributedReward, 'Check pool info accUndistributedReward');
   }
 
-  function _poolStaked(uint256 _pid) internal returns (uint256 totalStaked) {
+  function _poolStaked(uint256 _pid) internal view returns (uint256 totalStaked) {
     (, , , totalStaked, , ) = masterchef.poolInfo(_pid);
   }
 
-  function _poolStaked() internal returns (uint256) {
+  function _poolStaked() internal view returns (uint256) {
     return _poolStaked(0);
   }
 
@@ -88,7 +86,7 @@ contract AMasterchefBaseTest is ABaseTest {
     _checkPoolInfo(0, _params);
   }
 
-  function _rewardByDuration(uint256 _duration) internal returns (uint256) {
+  function _rewardByDuration(uint256 _duration) internal view returns (uint256) {
     return (masterchef.rewardRate() * _duration) / masterchef.PRECISION();
   }
 
@@ -139,10 +137,10 @@ contract AMasterchefBaseTest is ABaseTest {
     masterchef.withdraw(0, 0);
   }
 
-  function _jump(uint256 _jump) internal returns (uint256) {
-    require(_jump < rewardDuration, 'Do not jump too much');
-    jump = _jump;
-    skip(_jump);
-    return _jump;
+  function _jump(uint256 _time) internal returns (uint256) {
+    require(_time < rewardDuration, 'Do not jump too much');
+    jump = _time;
+    skip(_time);
+    return _time;
   }
 }

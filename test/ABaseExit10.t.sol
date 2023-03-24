@@ -282,8 +282,8 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
     assertEq(_balance1(), _amount1, 'Check my balance token1');
   }
 
-  function _getTokensBalance() internal view returns (uint256 _balance0, uint256 _balance1) {
-    (_balance0, _balance1) = _getTokensBalance(token0, token1);
+  function _getTokensBalance() internal view returns (uint256 _bal0, uint256 _bal1) {
+    (_bal0, _bal1) = _getTokensBalance(token0, token1);
   }
 
   function _balance0() internal view returns (uint256) {

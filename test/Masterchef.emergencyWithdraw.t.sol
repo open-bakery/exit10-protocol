@@ -10,7 +10,6 @@ import './AMasterchefBase.t.sol';
 contract Masterchef_emergencyWithdrawTest is AMasterchefBaseTest {
   function test_emergencyWithdraw() public {
     uint256 amount1 = 33 ether;
-    uint256 amount2 = 22 ether;
 
     uint256 token1BalanceBefore = _balance(token1);
 

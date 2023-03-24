@@ -28,7 +28,6 @@ contract Masterchef_depositTest is AMasterchefBaseTest {
     uint256 amount1 = 36 ether;
     uint256 amount2 = 23 ether;
     uint256 amount3 = 7 ether;
-    uint256 accReward = 0;
 
     ERC20(token1).transfer(alice, 100 ether);
     ERC20(token1).transfer(bob, 100 ether);
@@ -55,7 +54,6 @@ contract Masterchef_depositTest is AMasterchefBaseTest {
     vm.prank(charlie);
     _dummyWithdraw();
     (, , , , uint256 accRewardPerShare, ) = masterchef.poolInfo(0);
-    console.log('acc1', accRewardPerShare);
     _checkUserInfo(0, alice, amount1, 0);
     _checkUserInfo(0, bob, amount2, 0);
 
@@ -76,7 +74,6 @@ contract Masterchef_depositTest is AMasterchefBaseTest {
     _withdraw(1);
     (, , , , uint256 accRewardPerShare2, ) = masterchef.poolInfo(0);
     assertGt(accRewardPerShare2, accRewardPerShare);
-    console.log('acc3', accRewardPerShare);
     _checkUserInfo(0, alice, amount1, amount1 * accRewardPerShare);
     _checkUserInfo(0, bob, amount2 - amount3, (amount2 - amount3) * accRewardPerShare);
   }

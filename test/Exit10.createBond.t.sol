@@ -90,7 +90,7 @@ contract Exit10_createBondTest is Exit10Test {
       })
     );
 
-    assertTrue(nft.ownerOf(bondId) == address(0xdead), 'Check NFT owner');
+    assertEq(nft.ownerOf(bondId), address(0xdead), 'Check NFT owner');
   }
 
   function test_createBond_WithBootstrap() public {

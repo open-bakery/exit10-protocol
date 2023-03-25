@@ -4,9 +4,8 @@ import { Test } from 'forge-std/Test.sol';
 import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import { ABaseExit10Test } from './ABaseExit10.t.sol';
 import { Exit10, UniswapBase } from '../src/Exit10.sol';
-import './Exit10.t.sol';
 
-contract Exit10_exit10Test is Exit10Test {
+contract Exit10_exit10Test is ABaseExit10Test {
   // todo: test what happens if no bootstrap / no bonds
 
   function test_exit10_RevertIf_NotOutOfRange() public {

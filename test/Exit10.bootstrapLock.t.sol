@@ -4,9 +4,8 @@ import { Test } from 'forge-std/Test.sol';
 import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import { ABaseExit10Test } from './ABaseExit10.t.sol';
 import { Exit10, UniswapBase } from '../src/Exit10.sol';
-import './Exit10.t.sol';
 
-contract Exit10_bootstrapLockTest is Exit10Test {
+contract Exit10_bootstrapLockTest is ABaseExit10Test {
   function test_bootstrapLock() public {
     (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) = exit10.bootstrapLock(
       _addLiquidityParams(10000_000000, 10 ether)

@@ -4,10 +4,8 @@ import { Test } from 'forge-std/Test.sol';
 import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import { ABaseExit10Test } from './ABaseExit10.t.sol';
 import { Exit10, UniswapBase } from '../src/Exit10.sol';
-import './Exit10.t.sol';
-import 'forge-std/console.sol';
 
-contract Exit10_cancelBondTest is Exit10Test {
+contract Exit10_cancelBondTest is ABaseExit10Test {
   // todo test canceling bond if there are more bonds in-sytem
 
   function test_cancelBond() public {

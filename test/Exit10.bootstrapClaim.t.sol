@@ -16,7 +16,7 @@ contract Exit10_bootstrapClaimTest is Exit10Test {
     exit10.exit10();
     (uint256 pending, uint256 reserve, , uint256 bootstrap) = exit10.getBuckets();
 
-    assertEq(_liquidity(), pending + reserve, 'Check liquidity position');
+    assertEq(_getLiquidity(), pending + reserve, 'Check liquidity position');
 
     uint256 currentBalanceUSDC = _balance0();
     uint256 bootBalance = _balance(boot);

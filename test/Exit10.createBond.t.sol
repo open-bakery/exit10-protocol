@@ -24,16 +24,16 @@ contract Exit10_createBondTest is Exit10Test {
       _addLiquidityParams(10000_000000, 10 ether)
     );
 
-    assertEq(_liquidity(), liquidityAdded, 'Liquidity added returned');
-    _checkBondData(bondId, _liquidity(), 0, block.timestamp, 0, uint8(Exit10.BondStatus.active));
-    assertGt(_liquidity(), 0, 'Check liquidity');
+    assertEq(_getLiquidity(), liquidityAdded, 'Liquidity added returned');
+    _checkBondData(bondId, _getLiquidity(), 0, block.timestamp, 0, uint8(Exit10.BondStatus.active));
+    assertGt(_getLiquidity(), 0, 'Check liquidity');
     assertEq(nft.ownerOf(bondId), address(this), 'Check NFT owner');
     assertEq(_balance0(), initialBalance - amountAdded0, 'Token0 balance after');
     assertEq(_balance1(), initialBalance - amountAdded1, 'Token1 balance after');
 
     _checkBalancesExit10(0, 0);
     _checkBalances(initialBalance - amountAdded0, initialBalance - amountAdded1);
-    _checkBuckets(_liquidity(), 0, 0, 0);
+    _checkBuckets(_getLiquidity(), 0, 0, 0);
   }
 
   function test_createBond_WithEther() public {
@@ -99,11 +99,11 @@ contract Exit10_createBondTest is Exit10Test {
 
     (uint256 bondId, ) = _createBond(10000_000000, 10 ether);
 
-    _checkBondData(bondId, _liquidity() - liquidityAdded, 0, block.timestamp, 0, uint8(Exit10.BondStatus.active));
-    assertGt(_liquidity(), 0, 'Check liquidity');
+    _checkBondData(bondId, _getLiquidity() - liquidityAdded, 0, block.timestamp, 0, uint8(Exit10.BondStatus.active));
+    assertGt(_getLiquidity(), 0, 'Check liquidity');
     assertEq(nft.ownerOf(bondId), address(this), 'Check NFT owner');
     _checkBalancesExit10(0, 0);
-    _checkBuckets(uint256(_liquidity()) - liquidityAdded, 0, 0, liquidityAdded);
+    _checkBuckets(uint256(_getLiquidity()) - liquidityAdded, 0, 0, liquidityAdded);
   }
 
   // todo test fees are claimed and distributed on createBond

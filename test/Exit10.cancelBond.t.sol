@@ -13,7 +13,7 @@ contract Exit10_cancelBondTest is Exit10Test {
   function test_cancelBond() public {
     (uint256 bondId, uint256 bondAmount) = _skipBootAndCreateBond();
 
-    uint256 liquidity = _liquidity();
+    uint256 liquidity = _getLiquidity();
     uint256 startTime = block.timestamp;
     skip(1 days);
     uint256 endTime = block.timestamp;
@@ -22,7 +22,7 @@ contract Exit10_cancelBondTest is Exit10Test {
 
     exit10.cancelBond(bondId, _removeLiquidityParams(bondAmount));
 
-    assertEq(_liquidity(), 0, 'Check liquidity');
+    assertEq(_getLiquidity(), 0, 'Check liquidity');
     assertGt(_balance0(), balanceBefore0, 'Check balance token0');
     assertGt(_balance1(), balanceBefore1, 'Check balance token1');
     _checkBalancesExit10(0, 0);

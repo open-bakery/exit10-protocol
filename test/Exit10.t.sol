@@ -36,13 +36,13 @@ contract Exit10Test is Test, ABaseExit10Test {
     assertEq(exit10.FEE_SPLITTER(), address(feeSplitter), 'setup FEE_SPLITTER');
 
     assertEq(exit10.DEPLOYMENT_TIMESTAMP(), block.timestamp, 'setup DEPLOYMENT_TIMESTAMP');
-    assertEq(exit10.BOOTSTRAP_PERIOD(), bootstrapPeriod, 'setup BOOTSTRAP_PERIOD');
+    assertEq(exit10.BOOTSTRAP_PERIOD(), bootstrapPeriod, 'setup bootstrapPeriod');
     assertEq(exit10.ACCRUAL_PARAMETER(), accrualParameter * 1e18, 'setup ACCRUAL_PARAMETER');
   }
 
   function testAccrualSchedule() public {
     (uint256 bondId, ) = _skipBootAndCreateBond();
     skip(accrualParameter);
-    assertEq(exit10.getAccruedAmount(bondId), _liquidity() / 2);
+    assertEq(exit10.getAccruedAmount(bondId), _getLiquidity() / 2);
   }
 }

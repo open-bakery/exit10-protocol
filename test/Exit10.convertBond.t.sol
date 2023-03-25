@@ -7,19 +7,19 @@ import { Exit10, UniswapBase } from '../src/Exit10.sol';
 import './Exit10.t.sol';
 
 contract Exit10_convertBondTest is Exit10Test {
-  function testConvertBond() public {
+  function test_ConvertBond() public {
     (uint256 bondId, uint256 bondAmount) = _skipBootAndCreateBond();
     uint64 startTime = uint64(block.timestamp);
-    uint256 liquidity = _liquidity();
+    uint256 liquidity = _getLiquidity();
     skip(accrualParameter); // skips to half
 
     exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
 
     uint64 endTime = uint64(block.timestamp);
-    uint256 exitBucket = _liquidity() - (liquidity / 2);
+    uint256 exitBucket = _getLiquidity() - (liquidity / 2);
 
     assertEq(_balance(blp), (liquidity / 2) * exit10.TOKEN_MULTIPLIER(), 'BLP balance');
-    assertEq(_balance(exit), _applyDiscount((exitBucket * 1e18) / liquidityPerUsd, 500), 'Check exit bucket');
+    assertEq(_balance(exit), _getDiscountedExitAmount(liquidity / 2, exitDiscount), 'Check exit bucket');
     assertEq(_balance(blp), (liquidity / 2) * exit10.TOKEN_MULTIPLIER(), 'BLP balance');
 
     _checkBalancesExit10(0, 0);

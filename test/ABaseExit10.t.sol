@@ -27,32 +27,37 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
   ERC20 token0;
   ERC20 token1;
 
-  address weth = vm.envAddress('WETH');
-  address usdc = vm.envAddress('USDC');
   address feeSplitter;
   address lp; // EXIT/USDC LP Uniswap v2
 
   uint256 initialBalance = 1_000_000_000 ether;
-  uint256 bootstrapPeriod = 2 weeks;
-  uint256 accrualParameter = 1 weeks;
+  uint256 deployTime;
+
+  address weth = vm.envAddress('WETH');
+  address usdc = vm.envAddress('USDC');
+  address uniswapV3Factory = vm.envAddress('UNISWAP_V3_FACTORY');
+  address nonfungiblePositionManager = vm.envAddress('UNISWAP_V3_NPM');
+  uint256 accrualParameter = vm.envUint('ACCRUAL_PARAMATER');
+  uint256 bootstrapPeriod = vm.envUint('BOOTSTRAP_PERIOD');
   uint256 bootstrapTarget = vm.envUint('BOOTSTRAP_TARGET');
   uint256 bootstrapCap = vm.envUint('BOOTSTRAP_CAP');
   uint256 liquidityPerUsd = vm.envUint('LIQUIDITY_PER_USDC');
   uint256 exitDiscount = vm.envUint('EXIT_DISCOUNT');
-  uint256 deployTime;
+
+  uint256 constant DECIMAL_PRECISION = 1e18;
+  uint256 constant USDC_DECIMALS = 1e6;
+  uint256 constant ORACLE_SECONDS = 60;
+  uint256 constant REWARDS_DURATION = 2 weeks;
 
   Masterchef masterchef0; // 50% BOOT 50% STO
   Masterchef masterchef1; // BLP
   MasterchefExit masterchefExit; // EXIT/USDC LP Uniswap v2
 
-  uint256 constant ORACLE_SECONDS = 60;
-  uint256 constant REWARDS_DURATION = 2 weeks;
-
   UniswapBase.BaseDeployParams baseParams =
     UniswapBase.BaseDeployParams({
       weth: weth,
-      uniswapFactory: vm.envAddress('UNISWAP_V3_FACTORY'),
-      nonfungiblePositionManager: vm.envAddress('UNISWAP_V3_NPM'),
+      uniswapFactory: uniswapV3Factory,
+      nonfungiblePositionManager: nonfungiblePositionManager,
       tokenIn: weth,
       tokenOut: usdc,
       fee: uint24(vm.envUint('FEE')),
@@ -119,6 +124,22 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
     masterchef1.setRewardDistributor(_rewardDistributor);
     masterchef0.renounceOwnership();
     masterchef1.renounceOwnership();
+  }
+
+  function _bootstrapLock(
+    uint256 _amount0,
+    uint256 _amount1
+  ) internal returns (uint256 _liquidityAdded, uint256 _amountAdded0, uint256 _amountAdded1) {
+    (, _liquidityAdded, _amountAdded0, _amountAdded1) = exit10.bootstrapLock(
+      UniswapBase.AddLiquidity({
+        depositor: address(this),
+        amount0Desired: _amount0,
+        amount1Desired: _amount1,
+        amount0Min: 0,
+        amount1Min: 0,
+        deadline: block.timestamp
+      })
+    );
   }
 
   function _skipBootAndCreateBond() internal returns (uint256 _bondId, uint128 _liquidityAdded) {
@@ -194,7 +215,7 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
     );
   }
 
-  function _liquidity() internal view returns (uint128 _liq) {
+  function _getLiquidity() internal view returns (uint128 _liq) {
     (, , , , , , , _liq, , , , ) = INPM(exit10.NPM()).positions(exit10.positionId());
   }
 
@@ -292,5 +313,59 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
 
   function _balance1() internal view returns (uint256) {
     return _balance(token1);
+  }
+
+  function _getDiscountedExitAmount(uint256 _liquidity, uint256 _discountPercentage) internal view returns (uint256) {
+    return _applyDiscount(_getExitAmount(_liquidity), _discountPercentage);
+  }
+
+  function _getExitAmount(uint256 _liquidity) internal view returns (uint256) {
+    (, , , uint256 exitBucket) = exit10.getBuckets();
+    uint256 percentFromTaget = _getPercentFromTarget(_liquidity) <= 5000 ? 5000 : _getPercentFromTarget(_liquidity);
+    uint256 projectedLiquidityPerExit = (liquidityPerUsd * percentFromTaget) / PERCENT_BASE;
+    uint256 actualLiquidityPerExit = _getActualLiquidityPerExit(exitBucket);
+    uint256 liquidityPerExit = actualLiquidityPerExit > projectedLiquidityPerExit
+      ? actualLiquidityPerExit
+      : projectedLiquidityPerExit;
+    // console.log('Projected price: ', (projectedLiquidityPerExit * 1e6) / liquidityPerUsd);
+    // console.log('Actual price: ', (actualLiquidityPerExit * 1e6) / liquidityPerUsd);
+    return ((_liquidity * DECIMAL_PRECISION) / liquidityPerExit);
+  }
+
+  function _liquidityPerUsd(uint256 _liquidity, uint256 _amount0, uint256 _amount1) internal view returns (uint256) {
+    uint256 wethAmountInUSD = (_amount1 * _returnPriceInUSD()) / DECIMAL_PRECISION;
+    uint256 totalAmount = wethAmountInUSD + _amount0;
+    return (_liquidity * USDC_DECIMALS) / totalAmount;
+  }
+
+  function _getTotalDepositedUSD(uint256 _amount0, uint256 _amount1) internal view returns (uint256) {
+    uint256 wethAmountInUSD = (_amount1 * _returnPriceInUSD()) / DECIMAL_PRECISION;
+    return wethAmountInUSD + _amount0;
+  }
+
+  function _getPercentFromTarget(uint256 _amountBootstrapped) internal view returns (uint256) {
+    return (_amountBootstrapped * PERCENT_BASE) / _getLiquidityForBootsrapTarget();
+  }
+
+  function _getLiquidityForBootsrapTarget() internal view returns (uint256) {
+    return (bootstrapTarget * liquidityPerUsd) / USDC_DECIMALS;
+  }
+
+  function _getActualLiquidityPerExit(uint256 _exitBucket) internal view returns (uint256) {
+    uint256 exitTokenShareOfBucket = (_exitBucket * 7000) / PERCENT_BASE;
+    return (exitTokenShareOfBucket * DECIMAL_PRECISION) / exit10.MAX_EXIT_SUPPLY();
+  }
+
+  function _getFinalLiquidityFromAmount(uint256 _amount) internal view returns (uint256) {
+    return (_amount * liquidityPerUsd) / USDC_DECIMALS;
+  }
+
+  function _returnPriceInUSD() internal view returns (uint256) {
+    uint160 sqrtPriceX96;
+    (sqrtPriceX96, , , , , , ) = exit10.POOL().slot0();
+    uint256 a = uint256(sqrtPriceX96) * uint256(sqrtPriceX96) * USDC_DECIMALS;
+    uint256 b = 1 << 192;
+    uint256 uintPrice = a / b;
+    return (1 ether * 1e6) / uintPrice;
   }
 }

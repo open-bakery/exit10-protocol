@@ -40,7 +40,7 @@ contract DepositHelperTest is Test, ABaseExit10Test {
     _checkBalances(address(depositHelper), usdc, weth, 0, 0);
     _checkBuckets(0, 0, 0, liquidityAdded);
 
-    assertTrue(_liquidity() == liquidityAdded, 'Check position created');
+    assertTrue(_getLiquidity() == liquidityAdded, 'Check position created');
     assertTrue(
       ERC20(exit10.BOOT()).balanceOf(address(this)) == liquidityAdded * exit10.TOKEN_MULTIPLIER(),
       'Check liquidity equals boot amount'
@@ -77,7 +77,7 @@ contract DepositHelperTest is Test, ABaseExit10Test {
     _checkBuckets(liquidityAdded, 0, 0, 0);
     _checkBondData(bondId, liquidityAdded, 0, block.timestamp, 0, uint8(Exit10.BondStatus.active));
 
-    assertTrue(_liquidity() == liquidityAdded, 'Check position created');
+    assertTrue(_getLiquidity() == liquidityAdded, 'Check position created');
     assertTrue(address(this).balance == preBalanceEth - etherAmount, 'Check Eth deposit');
     assertTrue(amountAdded1 != 0, 'Check amount1 added');
     assertTrue(amountAdded0 != 0, 'Check amount0 added');

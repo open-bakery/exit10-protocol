@@ -33,7 +33,7 @@ contract Exit10_exit10Test is Exit10Test {
     _checkBalancesExit10(0, 0);
 
     _eth10k();
-    uint128 liquidityBeforeExit = _liquidity();
+    uint128 liquidityBeforeExit = _getLiquidity();
     exit10.exit10();
     uint256 AcquiredUSD = _balance(token0, address(exit10)) + _balance(token0, address(sto));
     uint256 exitLiquidityPlusBootstrap = liquidityBeforeExit - reserve;
@@ -42,7 +42,7 @@ contract Exit10_exit10Test is Exit10Test {
     uint256 share = exitLiquidityUSD / 10;
 
     assertTrue(exit10.inExitMode(), 'Check inExitMode');
-    assertEq(_liquidity() - pending, reserve, 'Check reserve amount');
+    assertEq(_getLiquidity() - pending, reserve, 'Check reserve amount');
     assertGt(_balance(token0, address(exit10)), 0, 'Check acquired USD > 0');
     assertEq(exit + bootstrap, exitLiquidityPlusBootstrap, 'Check Exit Bucket');
     assertEq(exit10.bootstrapRewardsPlusRefund(), exitBootstrapUSD + share, 'Check Bootstrap USD share amount');

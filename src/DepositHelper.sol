@@ -105,18 +105,20 @@ contract DepositHelper {
       (_initialAmount0, _initialAmount1) = _processEth(_token0, _token1, _initialAmount0, _initialAmount1, msg.value);
     }
 
-    _approveTokens(_token0, _token1, UNISWAP_V3_ROUTER, _initialAmount0, _initialAmount1);
+    uint256 amountOut = 0;
+    if (_swapParams.amountIn != 0) {
+      _approveTokens(_token0, _token1, UNISWAP_V3_ROUTER, _initialAmount0, _initialAmount1);
 
-    uint256 amountOut = IUniswapV3Router(UNISWAP_V3_ROUTER).exactInputSingle(_swapParams);
+      amountOut = IUniswapV3Router(UNISWAP_V3_ROUTER).exactInputSingle(_swapParams);
 
-    if (_swapParams.tokenIn == _token0) {
-      _initialAmount0 -= _swapParams.amountIn;
-      _initialAmount1 += amountOut;
-    } else {
-      _initialAmount1 -= _swapParams.amountIn;
-      _initialAmount0 += amountOut;
+      if (_swapParams.tokenIn == _token0) {
+        _initialAmount0 -= _swapParams.amountIn;
+        _initialAmount1 += amountOut;
+      } else {
+        _initialAmount1 -= _swapParams.amountIn;
+        _initialAmount0 += amountOut;
+      }
     }
-
     _approveTokens(_token0, _token1, EXIT_10, _initialAmount0, _initialAmount1);
 
     _params = UniswapBase.AddLiquidity({

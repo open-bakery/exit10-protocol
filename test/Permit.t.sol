@@ -7,7 +7,9 @@ import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import '../src/BaseToken.sol';
 
 contract PermitTest is Test {
-  address alice = vm.envAddress('PUBLIC_KEY_ANVIL');
+  address alice = vm.envAddress('ALICE_ADDRESS');
+  uint256 aliceKey = vm.envUint('ALICE_KEY');
+
   address bob = address(0xb);
   BaseToken token;
 
@@ -21,8 +23,7 @@ contract PermitTest is Test {
     address spender = bob;
     uint256 amount = 100 ether;
     uint256 deadline = block.timestamp;
-    uint256 sk = vm.envUint('PRIVATE_KEY_ANVIL');
-    _permit(sk, token, owner, spender, amount, deadline);
+    _permit(aliceKey, token, owner, spender, amount, deadline);
     assertTrue(token.allowance(alice, bob) == 100 ether, 'Check allowance');
   }
 

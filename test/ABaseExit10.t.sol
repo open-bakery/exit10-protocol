@@ -37,7 +37,7 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
   address usdc = vm.envAddress('USDC');
   address uniswapV3Factory = vm.envAddress('UNISWAP_V3_FACTORY');
   address nonfungiblePositionManager = vm.envAddress('UNISWAP_V3_NPM');
-  uint256 accrualParameter = vm.envUint('ACCRUAL_PARAMATER');
+  uint256 accrualParameter = vm.envUint('ACCRUAL_PARAMETER');
   uint256 bootstrapPeriod = vm.envUint('BOOTSTRAP_PERIOD');
   uint256 bootstrapTarget = vm.envUint('BOOTSTRAP_TARGET');
   uint256 bootstrapCap = vm.envUint('BOOTSTRAP_CAP');

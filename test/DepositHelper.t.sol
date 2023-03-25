@@ -8,8 +8,6 @@ import { Exit10, UniswapBase } from '../src/Exit10.sol';
 import { DepositHelper } from '../src/DepositHelper.sol';
 import { IUniswapV3Router } from '../src/interfaces/IUniswapV3Router.sol';
 
-import 'forge-std/console.sol';
-
 contract DepositHelperTest is Test, ABaseExit10Test {
   DepositHelper depositHelper;
 

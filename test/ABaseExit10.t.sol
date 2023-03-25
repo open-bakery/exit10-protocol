@@ -327,8 +327,6 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
     uint256 liquidityPerExit = actualLiquidityPerExit > projectedLiquidityPerExit
       ? actualLiquidityPerExit
       : projectedLiquidityPerExit;
-    // console.log('Projected price: ', (projectedLiquidityPerExit * 1e6) / liquidityPerUsd);
-    // console.log('Actual price: ', (actualLiquidityPerExit * 1e6) / liquidityPerUsd);
     return ((_liquidity * DECIMAL_PRECISION) / liquidityPerExit);
   }
 

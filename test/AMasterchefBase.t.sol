@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import '../src/BaseToken.sol';
 import '../src/Masterchef.sol';
 import 'forge-std/Test.sol';
-import 'forge-std/console.sol';
 import './ABase.t.sol';
 
 contract AMasterchefBaseTest is ABaseTest {

@@ -4,17 +4,15 @@ pragma solidity ^0.8.0;
 import '../src/BaseToken.sol';
 import '../src/MasterchefExit.sol';
 import 'forge-std/Test.sol';
+import './ABase.t.sol';
 
-contract MasterchefExitTest is Test {
+contract MasterchefExitTest is ABaseTest {
   MasterchefExit public mc;
   uint256 public rewardDuration;
   BaseToken public stakeToken;
   BaseToken public rewardToken;
   uint256 public rewardAmount = 10_000 ether;
   uint256 public stakeAmount = 100 ether;
-  address alice = address(0x0a);
-  address bob = address(0x0b);
-  address charlie = address(0x0c);
 
   function setUp() public {
     rewardToken = new BaseToken('Exit Liquidity', 'EXIT');

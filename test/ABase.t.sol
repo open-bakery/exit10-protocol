@@ -12,6 +12,11 @@ abstract contract ABaseTest is Test {
   uint256 constant PERCENT_BASE = 10000;
   address constant ZERO_ADDRESS = address(0);
 
+  address me = address(this);
+  address alice = address(0x0a);
+  address bob = address(0x0b);
+  address charlie = address(0x0c);
+
   IUniswapV2Factory immutable UNISWAP_V2_FACTORY = IUniswapV2Factory(vm.envAddress('UNISWAP_V2_FACTORY'));
   IUniswapV2Router immutable UNISWAP_V2_ROUTER = IUniswapV2Router(vm.envAddress('UNISWAP_V2_ROUTER'));
   IUniswapV3Router immutable UNISWAP_V3_ROUTER = IUniswapV3Router(vm.envAddress('UNISWAP_V3_ROUTER'));

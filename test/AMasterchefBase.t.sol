@@ -13,10 +13,6 @@ contract AMasterchefBaseTest is ABaseTest {
   BaseToken rewardToken;
   Masterchef masterchef;
 
-  address me = address(this);
-  address alice = address(0x0a);
-  address bob = address(0x0b);
-  address charlie = address(0x0c);
   address distributor = address(0xdd);
 
   uint256 tokenSupply = 10_000 ether;

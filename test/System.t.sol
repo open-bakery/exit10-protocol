@@ -18,10 +18,6 @@ import '../src/BaseToken.sol';
 import './ABaseExit10.t.sol';
 
 contract SystemTest is Test, ABaseExit10Test {
-  address alice = address(0xa0);
-  address bob = address(0xb0);
-  address charlie = address(0xc0);
-
   mapping(address => string) userName;
 
   function setUp() public override {

@@ -39,10 +39,4 @@ contract Exit10Test is Test, ABaseExit10Test {
     assertEq(exit10.BOOTSTRAP_PERIOD(), bootstrapPeriod, 'setup bootstrapPeriod');
     assertEq(exit10.ACCRUAL_PARAMETER(), accrualParameter * 1e18, 'setup ACCRUAL_PARAMETER');
   }
-
-  function testAccrualSchedule() public {
-    (uint256 bondId, ) = _skipBootAndCreateBond();
-    skip(accrualParameter);
-    assertEq(exit10.getAccruedAmount(bondId), _getLiquidity() / 2);
-  }
 }

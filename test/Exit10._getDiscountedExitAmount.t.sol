@@ -5,21 +5,9 @@ import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import { ABaseExit10Test } from './ABaseExit10.t.sol';
 import { Exit10, UniswapBase } from '../src/Exit10.sol';
 
-contract ExitTokenMintProjectionTest is Test, ABaseExit10Test {
-  uint256 minAmountToken0 = 1;
-  uint256 maxAmountToken0 = _tokenAmount(usdc, 100_000_000_000);
-  uint256 minAmountToken1 = 100_000;
-  uint256 maxAmountToken1 = _tokenAmount(weth, 100_000_000_000);
-
-  uint256 bootstrapBucket;
-  uint256 exitBucket;
-  uint256 bootstrapRaiseFinalValueUSD;
-  uint256 discount;
-
+contract Exit10__getDiscountedExitAmountTest is Test, ABaseExit10Test {
   function setUp() public override {
     super.setUp();
-    bootstrapBucket = bootstrapTarget / 2;
-    exitBucket = _getFinalLiquidityFromAmount(_tokenAmount(usdc, 14_285_714));
   }
 
   function testExitMintProjection() public {

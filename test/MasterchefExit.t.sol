@@ -19,57 +19,110 @@ contract MasterchefExitTest is ABaseTest {
     stakeToken = new BaseToken('Stake Token', 'STK');
     rewardDuration = 4 weeks;
     mc = new MasterchefExit(address(rewardToken), rewardDuration);
-    mc.add(10, address(stakeToken));
     stakeToken.mint(address(this), stakeAmount);
     stakeToken.approve(address(mc), type(uint256).max);
     rewardToken.mint(address(mc), rewardAmount);
+  }
+
+  function test_updateRewards_RevertIf_NotOwner() public {
+    vm.prank(alice);
+    vm.expectRevert(bytes('Ownable: caller is not the owner'));
     mc.updateRewards(rewardAmount);
-    mc.deposit(0, stakeAmount);
   }
 
-  function testSetup() public {
-    assertTrue(rewardToken.balanceOf(address(mc)) == rewardAmount, 'Check balance reward');
-    assertTrue(mc.rewardRate() == ((rewardAmount * mc.PRECISION()) / mc.REWARDS_DURATION()), 'Check reward rate');
+  function test_updateRewards_RevertIf_AmountZero() public {
+    mc.add(10, address(stakeToken));
+    mc.updateRewards(rewardAmount);
+    vm.expectRevert(bytes('MasterchefExit: Can only deposit rewards once'));
+    mc.updateRewards(rewardAmount);
   }
 
-  function testRewards() public {
+  function test_updateRewards_RevertIf_PoolNotSetup() public {
+    vm.expectRevert(bytes('MasterchefExit: Must add a pool prior to adding rewards'));
+    mc.updateRewards(rewardAmount);
+  }
+
+  function test_updateRewards_RevertIf_UpdatingMoreThanOnce() public {
+    mc.add(10, address(stakeToken));
+    mc.updateRewards(rewardAmount);
+    vm.expectRevert(bytes('MasterchefExit: Can only deposit rewards once'));
+    mc.updateRewards(rewardAmount);
+  }
+
+  function test_updateRewards_RevertIf_NotEnoughRewardTokenBalance() public {
+    mc.add(10, address(stakeToken));
+    vm.expectRevert(bytes('MasterchefExit: Token balance not sufficient'));
+    mc.updateRewards(rewardAmount + 1);
+  }
+
+  function test_updateRewards() public {
+    mc.add(10, address(stakeToken));
+    mc.updateRewards(rewardAmount);
+    assertEq(mc.rewardRate(), (rewardAmount * mc.PRECISION()) / rewardDuration, 'Reward rate set');
+    assertEq(mc.periodFinish(), block.timestamp + rewardDuration, 'Period finish set');
+    assertEq(_balance(rewardToken, address(mc)), rewardAmount, 'Reward token transfered');
+  }
+
+  function test_rewards() public {
+    _init();
     uint256 interval = 1 days;
     skip(interval);
     uint256 expectedReward = (mc.rewardRate() * interval) / mc.PRECISION();
     mc.withdraw(0, 0);
-    _assertWithin(rewardToken.balanceOf(address(this)), expectedReward, 10);
+    _assertWithin(_balance(rewardToken), expectedReward, 10);
   }
 
-  function testDeleteRewards() public {
+  function test_deleteRewards_RevertIf_NotOwner() public {
+    _init();
+    vm.expectRevert(bytes('Ownable: caller is not the owner'));
+    vm.prank(alice);
+    mc.stopRewards(rewardAmount);
+  }
+
+  function test_deleteRewards() public {
+    _init();
     uint256 interval = 1 days;
     skip(interval);
     uint256 expectedReward = (mc.rewardRate() * interval) / mc.PRECISION();
     rewardToken.burn(address(mc), rewardAmount - expectedReward);
     mc.stopRewards(rewardAmount);
+
     skip(7 days);
     mc.withdraw(0, 0);
     _assertWithin(rewardToken.balanceOf(address(this)), expectedReward, 10);
     _depositAs(alice, stakeAmount);
+
     skip(7 days);
     _withdrawAs(alice, stakeAmount);
-    assertTrue(rewardToken.balanceOf(alice) == 0, 'Check alice balance');
-    assertTrue(rewardToken.totalSupply() == expectedReward, 'Check total supply');
+    assertEq(_balance(rewardToken, alice), 0, 'Check alice balance');
+    assertEq(rewardToken.totalSupply(), expectedReward, 'Check total supply');
   }
 
   function testDeleteRewardsTwoDepositors() public {
+    _init();
     uint256 interval = 1 days;
     skip(interval);
-    uint256 expectedIntervalReward = (mc.rewardRate() * interval) / mc.PRECISION();
+
+    uint256 intervalReward = (mc.rewardRate() * interval) / mc.PRECISION();
+
     _depositAs(alice, stakeAmount);
     skip(interval);
-    rewardToken.burn(address(mc), rewardAmount - expectedIntervalReward * 2);
+
+    rewardToken.burn(address(mc), rewardAmount - intervalReward * 2);
     mc.stopRewards(rewardAmount);
+
     skip(7 days);
     mc.withdraw(0, 0);
-    _assertWithin(rewardToken.balanceOf(address(this)), expectedIntervalReward + expectedIntervalReward / 2, 10);
+    _assertWithin(_balance(rewardToken), intervalReward + intervalReward / 2, 10);
     _withdrawAs(alice, stakeAmount);
-    _assertWithin(rewardToken.balanceOf(alice), expectedIntervalReward / 2, 10);
-    assertTrue(rewardToken.totalSupply() == expectedIntervalReward * 2, 'Check total supply');
+    _assertWithin(_balance(rewardToken, alice), intervalReward / 2, 10);
+    assertEq(rewardToken.totalSupply(), intervalReward * 2, 'Check total supply');
+  }
+
+  function _init() internal {
+    mc.add(10, address(stakeToken));
+    mc.updateRewards(rewardAmount);
+    mc.deposit(0, stakeAmount);
   }
 
   function _depositAs(address _user, uint256 _amount) internal {

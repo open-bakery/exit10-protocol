@@ -155,16 +155,16 @@ contract FeeSplitterTest is ABaseTest {
     uint256 _remainingBucketsTokenOut,
     uint256 _remainingBucketsTokenIn
   ) internal {
-    assertTrue(_pendingBucketTokenOut == feeSplitter.pendingBucketTokenOut(), 'Check pending bucket token out');
-    assertTrue(_pendingBucketTokenIn == feeSplitter.pendingBucketTokenIn(), 'Check pending bucket token in');
-    assertTrue(_remainingBucketsTokenOut == feeSplitter.remainingBucketsTokenOut(), 'Check remaining bucket token out');
-    assertTrue(_remainingBucketsTokenIn == feeSplitter.remainingBucketsTokenIn(), 'Check remaining bucket token in');
+    assertEq(_pendingBucketTokenOut, feeSplitter.pendingBucketTokenOut(), 'Check pending bucket token out');
+    assertEq(_pendingBucketTokenIn, feeSplitter.pendingBucketTokenIn(), 'Check pending bucket token in');
+    assertEq(_remainingBucketsTokenOut, feeSplitter.remainingBucketsTokenOut(), 'Check remaining bucket token out');
+    assertEq(_remainingBucketsTokenIn, feeSplitter.remainingBucketsTokenIn(), 'Check remaining bucket token in');
   }
 
   function _checkBalances(address _target, uint256 _amountTokenOut, uint256 _amountTokenIn) internal {
     uint roundAmount = 100;
-    assertTrue(_amountTokenOut / roundAmount == _balance(USDC, _target) / roundAmount, 'Check balance token out');
-    assertTrue(_amountTokenIn / roundAmount == _balance(WETH, _target) / roundAmount, 'Check balance token in');
+    assertEq(_amountTokenOut / roundAmount, _balance(USDC, _target) / roundAmount, 'Check balance token out');
+    assertEq(_amountTokenIn / roundAmount, _balance(WETH, _target) / roundAmount, 'Check balance token in');
   }
 
   function _usdcAmount(uint256 _amount) internal view returns (uint256) {

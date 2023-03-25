@@ -24,7 +24,7 @@ contract PermitTest is Test {
     uint256 amount = 100 ether;
     uint256 deadline = block.timestamp;
     _permit(aliceKey, token, owner, spender, amount, deadline);
-    assertTrue(token.allowance(alice, bob) == 100 ether, 'Check allowance');
+    assertEq(token.allowance(alice, bob), 100 ether, 'Check allowance');
   }
 
   // Resources:

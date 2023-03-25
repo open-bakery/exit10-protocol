@@ -123,9 +123,9 @@ abstract contract ABaseTest is Test {
   function _assertEqRoughly(uint256 a, uint256 b, string memory err) internal {
     uint256 precision = 1_000_000;
     if (a > b) {
-      assertTrue(a - b < precision, err);
+      assertLt(a - b, precision, err);
     } else {
-      assertTrue(b - a < precision, err);
+      assertLt(b - a, precision, err);
     }
   }
 }

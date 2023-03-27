@@ -6,13 +6,6 @@ import { ABaseExit10Test } from './ABaseExit10.t.sol';
 import { Exit10, UniswapBase } from '../src/Exit10.sol';
 
 contract Exit10_bootstrapLockCappedTest is ABaseExit10Test {
-  uint256 bootstrapCap = 10000000000000;
-
-  function setUp() public override {
-    vm.setEnv('BOOTSTRAP_CAP', '10000000000000'); // arbitrary liquidiy we'll cross in the test
-    super.setUp();
-  }
-
   function test_bootstrapLock_capped() public {
     // liquidity that would be normally added vs cap:
     // 56708918664216
@@ -26,14 +19,16 @@ contract Exit10_bootstrapLockCappedTest is ABaseExit10Test {
       _addLiquidityParams(amount0, amount1)
     );
 
-    assertEq(liquidityAdded, bootstrapCap);
+    assertEq(liquidityAdded, _getBootstrapCap());
     assertTrue(exit10.isBootstrapCapReached());
     assertLt(amountAdded0, amount0);
     assertLt(amountAdded1, amount1);
 
     assertEq(_balance(usdc), balanceBefore0 - amountAdded0);
     assertEq(_balance(weth), balanceBefore1 - amountAdded1);
+  }
 
-    vm.setEnv('BOOTSTRAP_CAP', '0');
+  function _getBootstrapCap() internal view override returns (uint256) {
+    return 10000000000000;
   }
 }

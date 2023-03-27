@@ -89,7 +89,7 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
       feeSplitter: feeSplitter,
       bootstrapPeriod: bootstrapPeriod,
       bootstrapTarget: bootstrapTarget,
-      bootstrapCap: vm.envUint('BOOTSTRAP_CAP'),
+      bootstrapCap: _getBootstrapCap(),
       accrualParameter: accrualParameter,
       liquidityPerUsd: liquidityPerUsd,
       exitDiscount: exitDiscount
@@ -365,5 +365,9 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
     uint256 b = 1 << 192;
     uint256 uintPrice = a / b;
     return (1 ether * 1e6) / uintPrice;
+  }
+
+  function _getBootstrapCap() internal view virtual returns (uint256) {
+    return vm.envUint('BOOTSTRAP_CAP');
   }
 }

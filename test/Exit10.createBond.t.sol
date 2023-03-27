@@ -53,7 +53,6 @@ contract Exit10_createBondTest is ABaseExit10Test {
   }
 
   function test_createBond_WithEtherAndWeth() public {
-    uint256 initialEthBalance = address(this).balance;
     _skipBootstrap();
     uint256 depositToken0 = _tokenAmount(token0, 10_000);
     uint256 depositToken1 = 5 ether;

@@ -63,7 +63,7 @@ abstract contract AMasterchefBase is Ownable {
   }
 
   function add(uint256 allocPoint, address token) external onlyOwner {
-    require(poolToken[address(token)] == false, 'Masterchef: Token already added');
+    require(!poolToken[address(token)], 'Masterchef: Token already added');
     require(token != REWARD_TOKEN, 'Masterchef: Staking reward token not supported');
     require(allocPoint != 0, 'Masterchef: Allocation must be non zero');
 

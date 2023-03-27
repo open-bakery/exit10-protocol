@@ -100,9 +100,11 @@ contract DepositHelperTest is Test, ABaseExit10Test {
     uint256 ethBalanceBefore = _ethBalance();
     uint256 wethBalanceBefore = _balance(weth);
 
-    (, uint128 liquidityAdded, uint256 addedUsdc, uint256 addedWeth) = depositHelper.swapAndBootstrapLock{
-      value: etherAmount
-    }(depositUsdc * 100, depositWeth, _getSwapParams(usdc, weth, swapAmount));
+    (, , , uint256 addedWeth) = depositHelper.swapAndBootstrapLock{ value: etherAmount }(
+      depositUsdc * 100,
+      depositWeth,
+      _getSwapParams(usdc, weth, swapAmount)
+    );
 
     assertGt(addedWeth, depositWeth + etherAmount, 'WETH_ETH added more than put in');
     // ether sent as value was all converted to weth, all eth + weth was used.
@@ -150,7 +152,6 @@ contract DepositHelperTest is Test, ABaseExit10Test {
     _createBondVanilla(); // vanilla bootstrap lock to compare with
 
     uint256 liquidityBefore = _getLiquidity();
-    uint256 bootBefore = _balance(boot);
 
     (uint256 bondId, uint128 liquidityAdded, uint256 addedUsdc, uint256 addedWeth) = depositHelper.swapAndCreateBond(
       depositUsdc + swapAmount * 2,

@@ -178,7 +178,10 @@ contract Exit10 is UniswapBase {
 
     if (BOOTSTRAP_CAP != 0) {
       if (bootstrapBucket > BOOTSTRAP_CAP) {
-        uint256 diff = BOOTSTRAP_CAP - bootstrapBucket;
+        uint256 diff;
+        unchecked {
+          diff = BOOTSTRAP_CAP - bootstrapBucket;
+        }
         (uint256 amountRemoved0, uint256 amountRemoved1) = _decreaseLiquidity(
           UniswapBase.RemoveLiquidity({ liquidity: uint128(diff), amount0Min: 0, amount1Min: 0, deadline: DEADLINE })
         );

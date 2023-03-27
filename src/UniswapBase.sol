@@ -71,7 +71,19 @@ contract UniswapBase {
       ? _processEth(token0, token1, _params.amount0Desired, _params.amount1Desired, msg.value)
       : (_params.amount0Desired, _params.amount1Desired);
 
-    if (positionId == 0) {
+    if (positionId != 0) {
+      (_liquidityAdded, _amountAdded0, _amountAdded1) = INPM(NPM).increaseLiquidity(
+        INPM.IncreaseLiquidityParams({
+          tokenId: positionId,
+          amount0Desired: _params.amount0Desired,
+          amount1Desired: _params.amount1Desired,
+          amount0Min: _params.amount0Min,
+          amount1Min: _params.amount1Min,
+          deadline: _params.deadline
+        })
+      );
+      _tokenId = positionId;
+    } else {
       (_tokenId, _liquidityAdded, _amountAdded0, _amountAdded1) = INPM(NPM).mint(
         INPM.MintParams({
           token0: token0,
@@ -88,18 +100,6 @@ contract UniswapBase {
         })
       );
       positionId = _tokenId;
-    } else {
-      (_liquidityAdded, _amountAdded0, _amountAdded1) = INPM(NPM).increaseLiquidity(
-        INPM.IncreaseLiquidityParams({
-          tokenId: positionId,
-          amount0Desired: _params.amount0Desired,
-          amount1Desired: _params.amount1Desired,
-          amount0Min: _params.amount0Min,
-          amount1Min: _params.amount1Min,
-          deadline: _params.deadline
-        })
-      );
-      _tokenId = positionId;
     }
   }
 

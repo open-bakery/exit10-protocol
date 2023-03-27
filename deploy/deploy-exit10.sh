@@ -72,6 +72,7 @@ cast send "$MASTERCHEF_EXIT" "renounceOwnership()"
 
 echo "TRANSFER OWNERSHIPS"
 cast send "$BOOT" "transferOwnership(address)" "$EXIT10"
+cast send "$STO" "transferOwnership(address)" "$EXIT10"
 cast send "$BLP" "transferOwnership(address)" "$EXIT10"
 cast send "$EXIT" "transferOwnership(address)" "$EXIT10"
 

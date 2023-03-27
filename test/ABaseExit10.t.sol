@@ -105,6 +105,7 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
     _setMasterchefs(feeSplitter);
 
     boot.transferOwnership(address(exit10));
+    sto.transferOwnership(address(exit10));
     blp.transferOwnership(address(exit10));
     exit.transferOwnership(address(exit10));
 
@@ -114,6 +115,9 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
     _maxApprove(weth, usdc, address(UNISWAP_V3_ROUTER));
     _mintAndApprove(address(token0), initialBalance, address(exit10));
     _mintAndApprove(address(token1), initialBalance, address(exit10));
+
+    _mintAndApprove(alice, address(token0), initialBalance, address(exit10));
+    _mintAndApprove(alice, address(token1), initialBalance, address(exit10));
   }
 
   function _setMasterchefs(address _rewardDistributor) internal {
@@ -153,6 +157,10 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
 
   function _createBond() internal returns (uint256 _bondId, uint128 _liquidityAdded) {
     return _createBond(10000_000000, 10 ether);
+  }
+
+  function _createBond(address _as) internal returns (uint256 _bondId, uint128 _liquidityAdded) {
+    (_bondId, _liquidityAdded, , ) = exit10.createBond(_addLiquidityParams(_as, 10000_000000, 10 ether));
   }
 
   function _skipBootstrap() internal {

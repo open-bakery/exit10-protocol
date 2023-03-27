@@ -7,9 +7,7 @@ import { BaseToken } from './BaseToken.sol';
 contract STOToken is BaseToken, MerkleDistributor {
   uint256 public constant MAX_SUPPLY = 300_000 ether;
 
-  constructor(bytes32 merkleRoot_) BaseToken('Share Token', 'STO') MerkleDistributor(address(this), merkleRoot_) {
-    renounceOwnership();
-  }
+  constructor(bytes32 merkleRoot_) BaseToken('Share Token', 'STO') MerkleDistributor(address(this), merkleRoot_) {}
 
   function claim(uint256 index, address account, uint256 amount, bytes32[] calldata merkleProof) public override {
     if (isClaimed(index)) revert AlreadyClaimed();

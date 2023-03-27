@@ -8,6 +8,7 @@ import { Ownable } from '@openzeppelin/contracts/access/Ownable.sol';
 abstract contract AMasterchefBase is Ownable {
   using SafeERC20 for IERC20;
 
+  event SetRewardDistributor(address indexed caller, address indexed rewardDistributor);
   event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
   event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
   event Claim(address indexed user, uint256 indexed pid, uint256 amount);
@@ -28,6 +29,9 @@ abstract contract AMasterchefBase is Ownable {
     uint256 accUndistributedReward;
   }
 
+  /// @notice Address authorized to distribute the rewards.
+  address public rewardDistributor;
+
   uint256 public constant PRECISION = 1e20;
   uint256 public immutable REWARDS_DURATION;
   address public immutable REWARD_TOKEN;
@@ -41,10 +45,21 @@ abstract contract AMasterchefBase is Ownable {
   mapping(uint256 => mapping(address => UserInfo)) public userInfo;
   mapping(address => bool) private poolToken;
 
+  modifier onlyAuthorized() {
+    require(msg.sender == rewardDistributor, 'Masterchef: Caller not authorized');
+    _;
+  }
+
   constructor(address rewardToken_, uint256 rewardsDuration_) {
     REWARD_TOKEN = rewardToken_;
     REWARDS_DURATION = rewardsDuration_;
     periodFinish = block.timestamp + rewardsDuration_;
+  }
+
+  function setRewardDistributor(address rd) external onlyOwner {
+    require(rewardDistributor == address(0), 'Masterchef: Reward distributor already set');
+    rewardDistributor = rd;
+    emit SetRewardDistributor(msg.sender, rd);
   }
 
   function add(uint256 allocPoint, address token) external onlyOwner {
@@ -128,7 +143,7 @@ abstract contract AMasterchefBase is Ownable {
 
   /// @notice Updates rewardRate.
   /// Must add and evenly distribute rewards through the rewardsDuration.
-  function updateRewards(uint256 amount) external virtual onlyOwner {
+  function updateRewards(uint256 amount) external virtual onlyAuthorized {
     require(totalAllocPoint != 0, 'Masterchef: Must initiate a pool before updating rewards');
     IERC20(REWARD_TOKEN).safeTransferFrom(msg.sender, address(this), amount);
 

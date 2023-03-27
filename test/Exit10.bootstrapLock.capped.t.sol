@@ -28,7 +28,7 @@ contract Exit10_bootstrapLockCappedTest is ABaseExit10Test {
     assertEq(_balance(weth), balanceBefore1 - amountAdded1);
   }
 
-  function _getBootstrapCap() internal view override returns (uint256) {
+  function _getBootstrapCap() internal pure override returns (uint256) {
     return 10000000000000;
   }
 }

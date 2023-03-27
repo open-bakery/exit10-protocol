@@ -6,36 +6,36 @@ import { ABaseExit10Test } from './ABaseExit10.t.sol';
 import { Exit10, UniswapBase } from '../src/Exit10.sol';
 
 contract Exit10__getDiscountedExitAmountTest is Test, ABaseExit10Test {
+  uint256 liquidityPerUsd_;
+  uint256 bootstrapBucket;
+  uint256 exitBucket;
+
   function setUp() public override {
     super.setUp();
   }
 
-  function testExitMintProjection() public {
-    uint256 liquidityAdded;
-    uint256 amountAdded0;
-    uint256 amountAdded1;
-    uint256 amount0 = 8_500_000 * USDC_DECIMALS;
-    uint256 amount1 = 8000 ether;
+  function test_addPercentToAmount() public {
+    uint256 amount = 100;
+    uint256 percent = 2000;
+    assertEq(_addPercentToAmount(amount, percent), 120);
+  }
 
-    console.log('Current ETH price: ', _returnPriceInUSD());
-    console.log('Total target liquidity: ', _getLiquidityForBootsrapTarget());
+  function _getExitAmount(uint256 _liquidity) internal view virtual override returns (uint256) {
+    uint256 percentFromTaget = _getPercentFromTarget(_liquidity) <= 5000 ? 5000 : _getPercentFromTarget(_liquidity);
+    uint256 projectedLiquidityPerExit = (liquidityPerUsd_ * percentFromTaget) / PERCENT_BASE;
+    uint256 actualLiquidityPerExit = _getActualLiquidityPerExit(exitBucket);
+    uint256 liquidityPerExit = actualLiquidityPerExit > projectedLiquidityPerExit
+      ? actualLiquidityPerExit
+      : projectedLiquidityPerExit;
+    return ((_liquidity * DECIMAL_PRECISION) / liquidityPerExit);
+  }
 
-    (liquidityAdded, amountAdded0, amountAdded1) = _bootstrapLock(amount0, amount1);
+  function _getActualLiquidityPerExit(uint256 _exitBucket) internal view virtual override returns (uint256) {
+    uint256 exitTokenShareOfBucket = (_exitBucket * 7000) / PERCENT_BASE;
+    return (exitTokenShareOfBucket * DECIMAL_PRECISION) / exit10.MAX_EXIT_SUPPLY();
+  }
 
-    console.log('Total liquidity added: ', liquidityAdded);
-    console.log('Percentage from target: ', _getPercentFromTarget(liquidityAdded));
-    console.log('Total deposited: ', _getTotalDepositedUSD(amountAdded0, amountAdded1));
-    console.log('Total exited minted: ', _getDiscountedExitAmount(liquidityAdded, exitDiscount));
-
-    _swap(address(token0), address(token1), 500_000_000 * USDC_DECIMALS);
-
-    console.log('Liquidity per USDC: ', _liquidityPerUsd(liquidityAdded, amountAdded0, amountAdded1));
-
-    (liquidityAdded, amountAdded0, amountAdded1) = _bootstrapLock(amount0, amount1);
-    exit10.exit10();
-
-    console.log('Total value claimed from bootstrap: ', exit10.bootstrapClaim());
-    console.log('Current ETH price: ', _returnPriceInUSD());
-    console.log('Target bootstrap liquidity: ', _getLiquidityForBootsrapTarget());
+  function _getPercentFromTarget(uint256 _liquidity) internal view virtual override returns (uint256) {
+    return (_liquidity * PERCENT_BASE) / bootstrapBucket;
   }
 }

@@ -453,7 +453,7 @@ contract Exit10 is UniswapBase {
   }
 
   function _getDiscountedExitAmount(uint256 _liquidity, uint256 _discountPercentage) internal view returns (uint256) {
-    return _applyDiscount(_getExitAmount(_liquidity), _discountPercentage);
+    return _addPercentToAmount(_getExitAmount(_liquidity), _discountPercentage);
   }
 
   function _getExitAmount(uint256 _liquidity) internal view returns (uint256) {
@@ -563,8 +563,8 @@ contract Exit10 is UniswapBase {
     require(_liquidityA == _liquidityB, 'EXIT10: Incorrect liquidity amount');
   }
 
-  function _applyDiscount(uint256 _amount, uint256 _discountPercentage) internal pure returns (uint256) {
-    return _amount + ((_amount * _discountPercentage) / PERCENT_BASE);
+  function _addPercentToAmount(uint256 _amount, uint256 _percent) internal pure returns (uint256) {
+    return _amount + ((_amount * _percent) / PERCENT_BASE);
   }
 
   function _getActualLiquidityPerExit(uint256 _exitBucketAmount) internal pure returns (uint256) {

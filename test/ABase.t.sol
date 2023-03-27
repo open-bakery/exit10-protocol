@@ -88,8 +88,8 @@ abstract contract ABaseTest is Test {
     _balanceB = ERC20(_tokenB).balanceOf(address(this));
   }
 
-  function _applyDiscount(uint256 _amount, uint256 _discountPercentage) internal pure returns (uint256) {
-    return _amount + ((_amount * _discountPercentage) / PERCENT_BASE);
+  function _addPercentToAmount(uint256 _amount, uint256 _percentage) internal pure returns (uint256) {
+    return _amount + ((_amount * _percentage) / PERCENT_BASE);
   }
 
   function _getTokensBalance(

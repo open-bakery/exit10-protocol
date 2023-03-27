@@ -317,10 +317,10 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
   }
 
   function _getDiscountedExitAmount(uint256 _liquidity, uint256 _discountPercentage) internal view returns (uint256) {
-    return _applyDiscount(_getExitAmount(_liquidity), _discountPercentage);
+    return _addPercentToAmount(_getExitAmount(_liquidity), _discountPercentage);
   }
 
-  function _getExitAmount(uint256 _liquidity) internal view returns (uint256) {
+  function _getExitAmount(uint256 _liquidity) internal view virtual returns (uint256) {
     (, , , uint256 exitBucket) = exit10.getBuckets();
     uint256 percentFromTaget = _getPercentFromTarget(_liquidity) <= 5000 ? 5000 : _getPercentFromTarget(_liquidity);
     uint256 projectedLiquidityPerExit = (liquidityPerUsd * percentFromTaget) / PERCENT_BASE;
@@ -342,7 +342,7 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
     return wethAmountInUSD + _amount0;
   }
 
-  function _getPercentFromTarget(uint256 _amountBootstrapped) internal view returns (uint256) {
+  function _getPercentFromTarget(uint256 _amountBootstrapped) internal view virtual returns (uint256) {
     return (_amountBootstrapped * PERCENT_BASE) / _getLiquidityForBootsrapTarget();
   }
 
@@ -350,7 +350,7 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
     return (bootstrapTarget * liquidityPerUsd) / USDC_DECIMALS;
   }
 
-  function _getActualLiquidityPerExit(uint256 _exitBucket) internal view returns (uint256) {
+  function _getActualLiquidityPerExit(uint256 _exitBucket) internal view virtual returns (uint256) {
     uint256 exitTokenShareOfBucket = (_exitBucket * 7000) / PERCENT_BASE;
     return (exitTokenShareOfBucket * DECIMAL_PRECISION) / exit10.MAX_EXIT_SUPPLY();
   }

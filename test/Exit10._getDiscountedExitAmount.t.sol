@@ -7,14 +7,12 @@ import { Exit10, UniswapBase } from '../src/Exit10.sol';
 
 contract Exit10__getDiscountedExitAmountTest is Test, ABaseExit10Test {
   uint256 liquidityPerUsd_;
-  uint256 bootstrapBucket;
+  uint256 bootstrapTarget_;
   uint256 exitBucket;
 
   function setUp() public override {
     super.setUp();
-    liquidityPerUsd_ = 1e6;
-    bootstrapBucket = 100_000 * 1e16;
-    exitBucket = 100_000 * 1e16;
+    liquidityPerUsd_ = 2 * 1e6;
   }
 
   function test_addPercentToAmount() public {
@@ -25,8 +23,41 @@ contract Exit10__getDiscountedExitAmountTest is Test, ABaseExit10Test {
   }
 
   function test_getPercentFromTarget() public {
-    bootstrapBucket = 100_000;
+    bootstrapTarget_ = 100_000;
     assertEq(_getPercentFromTarget(100_000 / 2), 5000);
+  }
+
+  function test_getExitAmount_liquidityAboveTarget() public {
+    bootstrapTarget_ = 100_000 * 1e6;
+    exitBucket = 0;
+    uint256 liquidity = 120_000 * 1e6;
+    // 2 USD per liquidity
+    // 1.2 USD per Exit
+    // Liquidity = 120_000 / 2 = 60_000
+    // Exit = 60_000 / 1.2 = 50_000
+    assertEq(_getExitAmount(liquidity), 50_000 * 1e18);
+  }
+
+  function test_getExitAmount_liquidityBelowTarget() public {
+    bootstrapTarget_ = 100_000 * 1e6;
+    exitBucket = 0;
+    uint256 liquidity = 20_000 * 1e6;
+    // 2 USD per liquidity
+    // Minimum price 50 cents per Exit
+    // Liquidity = 20_000 / 2 = 10_000;
+    // Exit = 10_000 / 0.5 = 20_000
+    assertEq(_getExitAmount(liquidity), 20_000 * 1e18);
+  }
+
+  function test_getExitAmount_liquidityExitBucketAboveTarget() public {
+    bootstrapTarget_ = 100_000 * 1e6;
+    exitBucket = 20_000_000 * 1e6;
+    uint256 liquidity = 50_000 * 1e6;
+    // 2 USD per liquidity
+    // Price = 20M * 70% / 10,000,000 = 1.4 per Exit
+    // Liquidity = 50_000 / 2  = 25_000;
+    // Exit = 50_000 / 1.4 = 35_714_285714285714285714
+    assertEq(_getExitAmount(liquidity), 35_714_285714285714285714);
   }
 
   function _getExitAmount(uint256 _liquidity) internal view virtual override returns (uint256) {
@@ -45,6 +76,6 @@ contract Exit10__getDiscountedExitAmountTest is Test, ABaseExit10Test {
   }
 
   function _getPercentFromTarget(uint256 _liquidity) internal view virtual override returns (uint256) {
-    return (_liquidity * PERCENT_BASE) / bootstrapBucket;
+    return (_liquidity * PERCENT_BASE) / bootstrapTarget_;
   }
 }

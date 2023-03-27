@@ -470,7 +470,9 @@ contract Exit10 is UniswapBase {
   }
 
   function _getPercentFromTarget(uint256 _amountBootstrapped) internal view returns (uint256) {
-    return (_amountBootstrapped * PERCENT_BASE) / _getLiquidityForBootsrapTarget();
+    uint256 bootstrapTargetLiquidity = _getLiquidityForBootsrapTarget();
+    if (bootstrapTargetLiquidity == 0) return 0;
+    return (_amountBootstrapped * PERCENT_BASE) / bootstrapTargetLiquidity;
   }
 
   function _getLiquidityForBootsrapTarget() internal view returns (uint256) {

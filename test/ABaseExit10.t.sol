@@ -40,7 +40,6 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
   uint256 accrualParameter = vm.envUint('ACCRUAL_PARAMETER');
   uint256 bootstrapPeriod = vm.envUint('BOOTSTRAP_PERIOD');
   uint256 bootstrapTarget = vm.envUint('BOOTSTRAP_TARGET');
-  uint256 bootstrapCap = vm.envUint('BOOTSTRAP_CAP');
   uint256 liquidityPerUsd = vm.envUint('LIQUIDITY_PER_USDC');
   uint256 exitDiscount = vm.envUint('EXIT_DISCOUNT');
 
@@ -90,7 +89,7 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
       feeSplitter: feeSplitter,
       bootstrapPeriod: bootstrapPeriod,
       bootstrapTarget: bootstrapTarget,
-      bootstrapCap: bootstrapCap,
+      bootstrapCap: vm.envUint('BOOTSTRAP_CAP'),
       accrualParameter: accrualParameter,
       liquidityPerUsd: liquidityPerUsd,
       exitDiscount: exitDiscount

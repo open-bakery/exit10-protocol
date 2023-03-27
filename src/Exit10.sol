@@ -13,8 +13,6 @@ import { UniswapBase } from './UniswapBase.sol';
 import { MasterchefExit } from './MasterchefExit.sol';
 import { STOToken } from './STOToken.sol';
 
-//import 'forge-std/Test.sol';
-
 contract Exit10 is UniswapBase {
   using SafeERC20 for IERC20;
 
@@ -176,15 +174,20 @@ contract Exit10 is UniswapBase {
 
     bootstrapBucket += liquidityAdded;
 
+    uint256 amountRemoved0;
+    uint256 amountRemoved1;
     if (BOOTSTRAP_CAP != 0) {
       if (bootstrapBucket > BOOTSTRAP_CAP) {
         uint256 diff;
         unchecked {
-          diff = BOOTSTRAP_CAP - bootstrapBucket;
+          diff = bootstrapBucket - BOOTSTRAP_CAP;
         }
-        (uint256 amountRemoved0, uint256 amountRemoved1) = _decreaseLiquidity(
+        (amountRemoved0, amountRemoved1) = _decreaseLiquidity(
           UniswapBase.RemoveLiquidity({ liquidity: uint128(diff), amount0Min: 0, amount1Min: 0, deadline: DEADLINE })
         );
+        liquidityAdded -= uint128(diff);
+        amountAdded0 -= amountRemoved0;
+        amountAdded1 -= amountRemoved1;
         _collect(msg.sender, uint128(amountRemoved0), uint128(amountRemoved1));
         isBootstrapCapReached = true;
       }
@@ -193,7 +196,11 @@ contract Exit10 is UniswapBase {
     uint256 mintAmount = liquidityAdded * TOKEN_MULTIPLIER;
     BOOT.mint(params.depositor, mintAmount);
 
-    _safeTransferTokens(params.depositor, params.amount0Desired - amountAdded0, params.amount1Desired - amountAdded1);
+    _safeTransferTokens(
+      params.depositor,
+      params.amount0Desired - amountAdded0 - amountRemoved0,
+      params.amount1Desired - amountAdded1 - amountRemoved1
+    );
 
     emit BootstrapLock(params.depositor, liquidityAdded, amountAdded0, amountAdded1, mintAmount);
   }

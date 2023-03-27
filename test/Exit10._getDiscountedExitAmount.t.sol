@@ -12,12 +12,21 @@ contract Exit10__getDiscountedExitAmountTest is Test, ABaseExit10Test {
 
   function setUp() public override {
     super.setUp();
+    liquidityPerUsd_ = 1e6;
+    bootstrapBucket = 100_000 * 1e16;
+    exitBucket = 100_000 * 1e16;
   }
 
   function test_addPercentToAmount() public {
-    uint256 amount = 100;
-    uint256 percent = 2000;
-    assertEq(_addPercentToAmount(amount, percent), 120);
+    assertEq(_addPercentToAmount(100, 50000), 600);
+    assertEq(_addPercentToAmount(100, 5000), 150);
+    assertEq(_addPercentToAmount(100, 500), 105);
+    assertEq(_addPercentToAmount(100, 50), 100);
+  }
+
+  function test_getPercentFromTarget() public {
+    bootstrapBucket = 100_000;
+    assertEq(_getPercentFromTarget(100_000 / 2), 5000);
   }
 
   function _getExitAmount(uint256 _liquidity) internal view virtual override returns (uint256) {

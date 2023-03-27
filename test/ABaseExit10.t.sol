@@ -42,6 +42,7 @@ abstract contract ABaseExit10Test is Test, ABaseTest {
   uint256 bootstrapTarget = vm.envUint('BOOTSTRAP_TARGET');
   uint256 liquidityPerUsd = vm.envUint('LIQUIDITY_PER_USDC');
   uint256 exitDiscount = vm.envUint('EXIT_DISCOUNT');
+  uint256 bootstrapCap = vm.envUint('BOOTSTRAP_CAP');
 
   uint256 constant DECIMAL_PRECISION = 1e18;
   uint256 constant USDC_DECIMALS = 1e6;

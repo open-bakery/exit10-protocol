@@ -37,8 +37,20 @@ abstract contract ABaseTest is Test {
     _maxApprove(_token, _spender);
   }
 
+  function _mintAndApprove(address to, address _token, uint256 _amount, address _spender) internal {
+    deal(_token, to, _amount);
+    vm.prank(to);
+    _maxApprove(_token, _spender);
+  }
+
   function _mintAndApprove(ERC20 _token, uint256 _amount, address _spender) internal {
     deal(address(_token), address(this), _amount);
+    _maxApprove(address(_token), _spender);
+  }
+
+  function _mintAndApprove(address to, ERC20 _token, uint256 _amount, address _spender) internal {
+    deal(address(_token), to, _amount);
+    vm.prank(to);
     _maxApprove(address(_token), _spender);
   }
 

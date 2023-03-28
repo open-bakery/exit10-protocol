@@ -151,10 +151,6 @@ contract FeeSplitter is Ownable {
     emit Swap(_amount, _amountAcquired);
   }
 
-  function _safeTransferToken(address _token, address _recipient, uint256 _amount) internal {
-    if (_amount != 0) IERC20(_token).safeTransfer(_recipient, _amount);
-  }
-
   // returns _shareOfTotal/_total fraction of _value. The order of operation is reversed to keep precision
   function _calcPortionOfValue(uint256 _shareOfTotal, uint256 _total, uint256 _value) internal pure returns (uint256) {
     if (_total == 0) return 0;

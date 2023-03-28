@@ -510,7 +510,7 @@ contract Exit10 is UniswapBase {
 
   function _mintExitCapped(address recipient, uint256 amount) internal {
     uint256 newSupply = EXIT.totalSupply() + amount;
-    uint256 mintAmount = newSupply > MAX_EXIT_SUPPLY ? MAX_EXIT_SUPPLY - amount : amount;
+    uint256 mintAmount = newSupply > MAX_EXIT_SUPPLY ? MAX_EXIT_SUPPLY - EXIT.totalSupply() : amount;
     if (mintAmount != 0) EXIT.mint(recipient, mintAmount);
 
     emit MintExit(recipient, mintAmount);

@@ -88,37 +88,39 @@ contract FeeSplitter is Ownable {
     emit CollectFees(pendingBucket, remainingBuckets, amountTokenOut, amountTokenIn);
   }
 
-  function updateFees(uint256 amount) external returns (uint256 totalExchanged) {
+  function updateFees(uint256 swapAmountOut) external returns (uint256 totalExchangedIn) {
     uint256 balanceTokenOut = IERC20(Exit10(exit10).TOKEN_OUT()).balanceOf(address(this));
 
-    amount = Math.min(amount, balanceTokenOut);
+    swapAmountOut = Math.min(swapAmountOut, balanceTokenOut);
 
-    if (amount != 0) {
-      totalExchanged = _swap(amount);
+    if (swapAmountOut != 0) {
+      totalExchangedIn = _swap(swapAmountOut);
 
-      uint256 notExchanged;
-      uint256 notExchangedPendingShare;
+      uint256 notExchangedOut;
+      uint256 notExchangedPendingShareOut;
 
-      if (amount != balanceTokenOut) {
-        notExchanged = balanceTokenOut - amount;
-        notExchangedPendingShare = _calcPortionOfValue(
+      if (swapAmountOut != balanceTokenOut) {
+        unchecked {
+          notExchangedOut = balanceTokenOut - swapAmountOut;
+        }
+        notExchangedPendingShareOut = _calcPortionOfValue(
           pendingBucketTokenOut,
           pendingBucketTokenOut + remainingBucketsTokenOut,
-          notExchanged
+          notExchangedOut
         );
       }
 
-      uint256 exchangedPendingShare = _calcPortionOfValue(
-        pendingBucketTokenOut,
-        pendingBucketTokenOut + remainingBucketsTokenOut,
-        totalExchanged
+      uint256 exchangedPendingShareIn = _calcPortionOfValue(
+        pendingBucketTokenIn,
+        pendingBucketTokenIn + remainingBucketsTokenIn,
+        totalExchangedIn
       );
 
-      pendingBucketTokenIn += exchangedPendingShare;
-      remainingBucketsTokenIn += (totalExchanged - exchangedPendingShare);
+      pendingBucketTokenIn += exchangedPendingShareIn;
+      remainingBucketsTokenIn += (totalExchangedIn - exchangedPendingShareIn);
 
-      pendingBucketTokenOut = notExchangedPendingShare;
-      remainingBucketsTokenOut = notExchanged - notExchangedPendingShare;
+      pendingBucketTokenOut = notExchangedPendingShareOut;
+      remainingBucketsTokenOut = (notExchangedOut - notExchangedPendingShareOut);
     }
 
     uint256 mc0TokenIn = (pendingBucketTokenIn * 4) / 10; // 40%
@@ -130,7 +132,7 @@ contract FeeSplitter is Ownable {
     Masterchef(MASTERCHEF_0).updateRewards(mc0TokenIn);
     Masterchef(MASTERCHEF_1).updateRewards(mc1TokenIn);
 
-    emit UpdateFees(msg.sender, totalExchanged, mc0TokenIn, mc1TokenIn);
+    emit UpdateFees(msg.sender, totalExchangedIn, mc0TokenIn, mc1TokenIn);
   }
 
   function _swap(uint256 _amount) internal returns (uint256 _amountAcquired) {

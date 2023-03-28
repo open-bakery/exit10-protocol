@@ -65,14 +65,24 @@ contract FeeSplitter is Ownable {
   ) external onlyAuthorized {
     if (amountTokenOut != 0) {
       IERC20(Exit10(exit10).TOKEN_OUT()).safeTransferFrom(exit10, address(this), amountTokenOut);
-      pendingBucketTokenOut += _calcPortionOfValue(pendingBucket, pendingBucket + remainingBuckets, amountTokenOut);
-      remainingBucketsTokenOut += (amountTokenOut - pendingBucketTokenOut);
+      uint256 portionOfPendingBucketTokenOut = _calcPortionOfValue(
+        pendingBucket,
+        pendingBucket + remainingBuckets,
+        amountTokenOut
+      );
+      pendingBucketTokenOut += portionOfPendingBucketTokenOut;
+      remainingBucketsTokenOut += (amountTokenOut - portionOfPendingBucketTokenOut);
     }
 
     if (amountTokenIn != 0) {
       IERC20(Exit10(exit10).TOKEN_IN()).safeTransferFrom(exit10, address(this), amountTokenIn);
-      pendingBucketTokenIn += _calcPortionOfValue(pendingBucket, pendingBucket + remainingBuckets, amountTokenIn);
-      remainingBucketsTokenIn += (amountTokenIn - pendingBucketTokenIn);
+      uint256 portionOfPendingBucketTokenIn = _calcPortionOfValue(
+        pendingBucket,
+        pendingBucket + remainingBuckets,
+        amountTokenIn
+      );
+      pendingBucketTokenIn += portionOfPendingBucketTokenIn;
+      remainingBucketsTokenIn += (amountTokenIn - portionOfPendingBucketTokenIn);
     }
 
     emit CollectFees(pendingBucket, remainingBuckets, amountTokenOut, amountTokenIn);

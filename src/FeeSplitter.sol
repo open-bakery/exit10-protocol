@@ -30,7 +30,7 @@ contract FeeSplitter is Ownable {
   event CollectFees(uint256 pendingBucket, uint256 remainingBuckets, uint256 amountTokenOut, uint256 amountTokenIn);
   event UpdateFees(
     address indexed caller,
-    uint256 exchangedAmount,
+    uint256 amountExchangedIn,
     uint256 rewardsMasterchef0,
     uint256 rewardsMasterchef1
   );

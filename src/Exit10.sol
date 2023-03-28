@@ -301,7 +301,7 @@ contract Exit10 is UniswapBase {
     // Stop and burn Exit rewards.
     EXIT.burn(MASTERCHEF, MasterchefExit(MASTERCHEF).stopRewards(LP_EXIT_REWARD));
     exitTokenSupplyFinal = EXIT.totalSupply();
-    exitBucketFinal = uint128(_liquidityAmount() - (pendingBucket + reserveBucket));
+    exitBucketFinal = _liquidityAmount() - (pendingBucket + reserveBucket);
     uint256 exitBucketRewards;
 
     RemoveLiquidity memory rmParams = RemoveLiquidity({

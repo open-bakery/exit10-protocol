@@ -66,7 +66,7 @@ trace:
 	forge test -vvv --mc DepositHelperTest --fork-url $(RPC_URL)
 
 trace1:
-	forge test -vv --mc Exit10__getDiscountedExitAmountTest --fork-url $(RPC_URL)
+	forge test -vvv --mt test_addLiquidityBypass --fork-url $(RPC_URL)
 
 test1:
 	forge test -vv --mc Exit10_convertBondTest --fork-url $(RPC_URL)

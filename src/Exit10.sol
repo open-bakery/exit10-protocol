@@ -293,7 +293,9 @@ contract Exit10 is UniswapBase {
   }
 
   function exit10() external {
+    _requireNoExitMode();
     _requireOutOfTickRange();
+
     claimAndDistributeFees();
 
     inExitMode = true;
@@ -305,14 +307,14 @@ contract Exit10 is UniswapBase {
     bootstrapBucketFinal = bootstrapBucket;
     bootstrapBucket = 0;
 
-    uint256 exitBucketRewards;
-
     RemoveLiquidity memory rmParams = RemoveLiquidity({
       liquidity: uint128(exitBucketFinal),
       amount0Min: 0,
       amount1Min: 0,
       deadline: DEADLINE
     });
+
+    uint256 exitBucketRewards;
 
     if (POOL.token1() == TOKEN_IN) {
       (exitBucketRewards, ) = _decreaseLiquidity(rmParams);

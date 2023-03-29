@@ -423,33 +423,33 @@ contract Exit10 is UniswapBase {
 
     if (amountCollected0 + amountCollected1 == 0) return;
 
-    if (_liquidityAmount() != 0) {
-      uint256 bootstrapFees0 = (bootstrapBucket * amountCollected0) / _liquidityAmount();
-      uint256 bootstrapFees1 = (bootstrapBucket * amountCollected1) / _liquidityAmount();
+    if (!inExitMode) {
+      if (_liquidityAmount() != 0) {
+        uint256 bootstrapFees0 = (bootstrapBucket * amountCollected0) / _liquidityAmount();
+        uint256 bootstrapFees1 = (bootstrapBucket * amountCollected1) / _liquidityAmount();
 
-      if (bootstrapFees0 != 0 && bootstrapFees1 != 0) {
-        try
-          INPM(NPM).increaseLiquidity(
-            INPM.IncreaseLiquidityParams({
-              tokenId: positionId,
-              amount0Desired: bootstrapFees0,
-              amount1Desired: bootstrapFees1,
-              amount0Min: 0,
-              amount1Min: 0,
-              deadline: DEADLINE
-            })
-          )
-        returns (uint128, uint256 amountAdded0, uint256 amountAdded1) {
-          unchecked {
-            amountCollected0 -= amountAdded0;
-            amountCollected1 -= amountAdded1;
+        if (bootstrapFees0 != 0 && bootstrapFees1 != 0) {
+          try
+            INPM(NPM).increaseLiquidity(
+              INPM.IncreaseLiquidityParams({
+                tokenId: positionId,
+                amount0Desired: bootstrapFees0,
+                amount1Desired: bootstrapFees1,
+                amount0Min: 0,
+                amount1Min: 0,
+                deadline: DEADLINE
+              })
+            )
+          returns (uint128, uint256 amountAdded0, uint256 amountAdded1) {
+            unchecked {
+              amountCollected0 -= amountAdded0;
+              amountCollected1 -= amountAdded1;
+            }
+          } catch {
+            return;
           }
-        } catch {
-          return;
         }
       }
-    }
-    if (!inExitMode) {
       FeeSplitter(FEE_SPLITTER).collectFees(
         pendingBucket,
         bootstrapBucket + reserveBucket + _exitBucket(),
@@ -457,7 +457,7 @@ contract Exit10 is UniswapBase {
         amountCollected1
       );
     } else {
-      // Send any new fees to Protocol Guild
+      // In case liquidity from Pending + Reserve buckets goes back in range after Exit10
       _safeTransferTokens(PROTOCOL_GUILD, amountCollected0, amountCollected1);
     }
 
@@ -539,10 +539,8 @@ contract Exit10 is UniswapBase {
   }
 
   function _getAccruedLiquidity(BondData memory _params) internal view returns (uint256 accruedAmount) {
-    if (_params.startTime != 0) {
-      uint256 bondDuration = 1e18 * (block.timestamp - _params.startTime);
-      accruedAmount = (_params.bondAmount * bondDuration) / (bondDuration + ACCRUAL_PARAMETER);
-    }
+    uint256 bondDuration = 1e18 * (block.timestamp - _params.startTime);
+    accruedAmount = (_params.bondAmount * bondDuration) / (bondDuration + ACCRUAL_PARAMETER);
   }
 
   function _isBootstrapOngoing() internal view returns (bool) {

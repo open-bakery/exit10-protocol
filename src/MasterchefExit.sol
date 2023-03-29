@@ -24,10 +24,10 @@ contract MasterchefExit is AMasterchefBase {
     emit UpdateRewards(msg.sender, amount);
   }
 
-  function stopRewards(uint256 allocatedRewards) external onlyOwner returns (uint256 remainingRewards) {
+  function stopRewards(uint256 allocatedRewards) external onlyOwner returns (uint256 undistributedRewards) {
     if (block.timestamp < periodFinish) {
-      uint256 undistributedRewards = ((block.timestamp - (periodFinish - REWARDS_DURATION)) * rewardRate) / PRECISION;
-      remainingRewards = allocatedRewards - undistributedRewards;
+      uint256 distributedRewards = ((block.timestamp - (periodFinish - REWARDS_DURATION)) * rewardRate) / PRECISION;
+      undistributedRewards = allocatedRewards - distributedRewards;
       periodFinish = block.timestamp;
       emit StopRewards(undistributedRewards);
     } else emit StopRewards(0);

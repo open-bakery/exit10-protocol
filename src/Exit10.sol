@@ -232,7 +232,7 @@ contract Exit10 is UniswapBase {
     _requireCallerOwnsBond(bondID);
     BondData memory bond = idToBondData[bondID];
     _requireActiveStatus(bond.status);
-    _requireEqualLiquidity(bond.bondAmount, params.liquidity);
+    _requireEqualValues(bond.bondAmount, params.liquidity);
 
     claimAndDistributeFees();
 
@@ -255,7 +255,7 @@ contract Exit10 is UniswapBase {
     _requireCallerOwnsBond(bondID);
     BondData memory bond = idToBondData[bondID];
     _requireActiveStatus(bond.status);
-    _requireEqualLiquidity(bond.bondAmount, params.liquidity);
+    _requireEqualValues(bond.bondAmount, params.liquidity);
 
     claimAndDistributeFees();
 
@@ -571,8 +571,8 @@ contract Exit10 is UniswapBase {
     require(_status == BondStatus.active, 'EXIT10: Bond must be active');
   }
 
-  function _requireEqualLiquidity(uint256 _liquidityA, uint256 _liquidityB) internal pure {
-    require(_liquidityA == _liquidityB, 'EXIT10: Incorrect liquidity amount');
+  function _requireEqualValues(uint256 _valueA, uint256 _valueB) internal pure {
+    require(_valueA == _valueB, 'EXIT10: Amounts do not match');
   }
 
   function _addPercentToAmount(uint256 _amount, uint256 _percent) internal pure returns (uint256) {

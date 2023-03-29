@@ -219,6 +219,7 @@ contract Exit10 is UniswapBase {
     pendingBucket += liquidityAdded;
 
     _safeTransferTokens(params.depositor, params.amount0Desired - amountAdded0, params.amount1Desired - amountAdded1);
+
     emit CreateBond(params.depositor, bondID, liquidityAdded, amountAdded0, amountAdded1);
   }
 
@@ -230,6 +231,7 @@ contract Exit10 is UniswapBase {
     BondData memory bond = idToBondData[bondID];
     _requireActiveStatus(bond.status);
     _requireEqualLiquidity(bond.bondAmount, params.liquidity);
+
     claimAndDistributeFees();
 
     idToBondData[bondID].status = BondStatus.cancelled;
@@ -433,8 +435,10 @@ contract Exit10 is UniswapBase {
             })
           )
         returns (uint128, uint256 amountAdded0, uint256 amountAdded1) {
-          amountCollected0 -= amountAdded0;
-          amountCollected1 -= amountAdded1;
+          unchecked {
+            amountCollected0 -= amountAdded0;
+            amountCollected1 -= amountAdded1;
+          }
         } catch {
           return;
         }

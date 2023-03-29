@@ -343,7 +343,6 @@ contract Exit10 is UniswapBase {
   }
 
   function bootstrapClaim() external returns (uint256 claim) {
-    _requireExitMode();
     uint256 bootBalance = IERC20(BOOT).balanceOf(msg.sender);
     claim = _safeTokenClaim(
       BOOT,
@@ -361,7 +360,6 @@ contract Exit10 is UniswapBase {
   }
 
   function stoClaim() external {
-    _requireExitMode();
     uint256 stoBalance = IERC20(STO).balanceOf(msg.sender);
     uint256 claim = _safeTokenClaim(
       STO,
@@ -379,7 +377,6 @@ contract Exit10 is UniswapBase {
   }
 
   function exitClaim() external {
-    _requireExitMode();
     uint256 exitBalance = IERC20(EXIT).balanceOf(msg.sender);
     uint256 claim = _safeTokenClaim(
       EXIT,

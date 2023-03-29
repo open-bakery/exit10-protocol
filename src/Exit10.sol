@@ -49,6 +49,7 @@ contract Exit10 is UniswapBase {
   uint256 private pendingBucket;
   uint256 private reserveBucket;
   uint256 private bootstrapBucket;
+  uint256 private bootstrapBucketFinal;
   uint256 private exitBucketFinal;
 
   // EXIT TOKEN
@@ -250,11 +251,11 @@ contract Exit10 is UniswapBase {
     RemoveLiquidity memory params
   ) external returns (uint256 boostTokenAmount, uint256 exitTokenAmount) {
     _requireNoExitMode();
-
     _requireCallerOwnsBond(bondID);
     BondData memory bond = idToBondData[bondID];
     _requireActiveStatus(bond.status);
     _requireEqualLiquidity(bond.bondAmount, params.liquidity);
+
     claimAndDistributeFees();
 
     uint256 accruedLiquidity = _getAccruedLiquidity(bond);
@@ -299,6 +300,9 @@ contract Exit10 is UniswapBase {
     EXIT.burn(MASTERCHEF, MasterchefExit(MASTERCHEF).stopRewards(LP_EXIT_REWARD));
     exitTokenSupplyFinal = EXIT.totalSupply();
     exitBucketFinal = _liquidityAmount() - (pendingBucket + reserveBucket);
+    bootstrapBucketFinal = bootstrapBucket;
+    bootstrapBucket = 0;
+
     uint256 exitBucketRewards;
 
     RemoveLiquidity memory rmParams = RemoveLiquidity({
@@ -317,7 +321,7 @@ contract Exit10 is UniswapBase {
     }
 
     // Total initial deposits that needs to be returned to bootsrappers
-    uint256 bootstrapRefund = exitBucketFinal != 0 ? (bootstrapBucket * exitBucketRewards) / exitBucketFinal : 0;
+    uint256 bootstrapRefund = exitBucketFinal != 0 ? (bootstrapBucketFinal * exitBucketRewards) / exitBucketFinal : 0;
 
     (bootstrapRewardsPlusRefund, teamPlusBackersRewards, exitTokenRewardsFinal) = _calculateFinalShares(
       bootstrapRefund,
@@ -335,11 +339,12 @@ contract Exit10 is UniswapBase {
   }
 
   function bootstrapClaim() external returns (uint256 claim) {
+    _requireExitMode();
     uint256 bootBalance = IERC20(BOOT).balanceOf(msg.sender);
     claim = _safeTokenClaim(
       BOOT,
       bootBalance / TOKEN_MULTIPLIER,
-      bootstrapBucket,
+      bootstrapBucketFinal,
       bootstrapRewardsPlusRefund,
       bootstrapRewardsPlusRefundClaimed
     );
@@ -352,6 +357,7 @@ contract Exit10 is UniswapBase {
   }
 
   function stoClaim() external {
+    _requireExitMode();
     uint256 stoBalance = IERC20(STO).balanceOf(msg.sender);
     uint256 claim = _safeTokenClaim(
       STO,
@@ -369,6 +375,7 @@ contract Exit10 is UniswapBase {
   }
 
   function exitClaim() external {
+    _requireExitMode();
     uint256 exitBalance = IERC20(EXIT).balanceOf(msg.sender);
     uint256 claim = _safeTokenClaim(
       EXIT,

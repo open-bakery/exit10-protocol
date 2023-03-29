@@ -49,7 +49,6 @@ contract Exit10 is UniswapBase {
   uint256 private pendingBucket;
   uint256 private reserveBucket;
   uint256 private bootstrapBucket;
-  uint256 private bootstrapBucketFinal;
   uint256 private exitBucketFinal;
 
   // EXIT TOKEN
@@ -304,8 +303,6 @@ contract Exit10 is UniswapBase {
     EXIT.burn(MASTERCHEF, MasterchefExit(MASTERCHEF).stopRewards(LP_EXIT_REWARD));
     exitTokenSupplyFinal = EXIT.totalSupply();
     exitBucketFinal = _liquidityAmount() - (pendingBucket + reserveBucket);
-    bootstrapBucketFinal = bootstrapBucket;
-    bootstrapBucket = 0;
 
     RemoveLiquidity memory rmParams = RemoveLiquidity({
       liquidity: uint128(exitBucketFinal),
@@ -325,7 +322,7 @@ contract Exit10 is UniswapBase {
     }
 
     // Total initial deposits that needs to be returned to bootsrappers
-    uint256 bootstrapRefund = exitBucketFinal != 0 ? (bootstrapBucketFinal * exitBucketRewards) / exitBucketFinal : 0;
+    uint256 bootstrapRefund = exitBucketFinal != 0 ? (bootstrapBucket * exitBucketRewards) / exitBucketFinal : 0;
 
     (bootstrapRewardsPlusRefund, teamPlusBackersRewards, exitTokenRewardsFinal) = _calculateFinalShares(
       bootstrapRefund,
@@ -347,7 +344,7 @@ contract Exit10 is UniswapBase {
     claim = _safeTokenClaim(
       BOOT,
       bootBalance / TOKEN_MULTIPLIER,
-      bootstrapBucketFinal,
+      bootstrapBucket,
       bootstrapRewardsPlusRefund,
       bootstrapRewardsPlusRefundClaimed
     );

@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import { IERC20, SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
-import { Math } from '@openzeppelin/contracts/utils/math/Math.sol';
 import { INPM } from './interfaces/INonfungiblePositionManager.sol';
 import { IUniswapV3Pool } from './interfaces/IUniswapV3Pool.sol';
 import { INFT } from './interfaces/INFT.sol';
@@ -24,10 +23,10 @@ contract Exit10 is UniswapBase {
     address EXIT;
     address masterchef; // EXIT/USDC Stakers
     address feeSplitter; // Distribution to STO + BOOT and BLP stakers
-    uint256 bootstrapPeriod; // Min duration of first chicken-in
+    uint256 bootstrapPeriod;
     uint256 bootstrapTarget;
     uint256 bootstrapCap;
-    uint256 liquidityPerUsd; // Amount of LP per USD that is minted passed the upper range of the 500-10000 pool
+    uint256 liquidityPerUsd; // Amount of liquidity per USD that is minted passed the upper range of the 500-10000 pool
     uint256 exitDiscount;
     uint256 accrualParameter; // The number of seconds it takes to accrue 50% of the cap, represented as an 18 digit fixed-point number.
   }
@@ -71,21 +70,20 @@ contract Exit10 is UniswapBase {
   mapping(uint256 => BondData) private idToBondData;
   mapping(address => uint256) public bootstrapDeposit;
 
-  // --- Constants ---
   uint256 public constant TOKEN_MULTIPLIER = 1e8;
   uint256 public constant LP_EXIT_REWARD = 3_000_000 ether;
   uint256 public constant BONDERS_EXIT_REWARD = 7_000_000 ether;
   uint256 public constant MAX_EXIT_SUPPLY = LP_EXIT_REWARD + BONDERS_EXIT_REWARD;
-  uint256 private constant MAX_UINT_256 = type(uint256).max;
   uint128 private constant MAX_UINT_128 = type(uint128).max;
+  uint256 private constant MAX_UINT_256 = type(uint256).max;
   uint256 private constant DEADLINE = 1e10;
   uint256 private constant DECIMAL_PRECISION = 1e18;
   uint256 private constant PERCENT_BASE = 10000;
 
-  BaseToken public immutable EXIT;
-  BaseToken public immutable BLP;
-  BaseToken public immutable BOOT;
   BaseToken public immutable STO;
+  BaseToken public immutable BOOT;
+  BaseToken public immutable BLP;
+  BaseToken public immutable EXIT;
   INFT public immutable NFT;
 
   address public immutable MASTERCHEF;
@@ -131,24 +129,21 @@ contract Exit10 is UniswapBase {
     uint256 teamPlusBackersRewards,
     uint256 exitTokenRewards
   );
-  event BootstrapClaim(address indexed caller, uint256 amountBurned, uint256 amountClaimed);
-  event ExitClaim(address indexed caller, uint256 amountBurned, uint256 amountClaimed);
+  event ClaimRewards(address indexed caller, address indexed token, uint256 amountBurned, uint256 amountClaimed);
   event ClaimAndDistributeFees(address indexed caller, uint256 amountClaimed0, uint256 amountClaimed1);
   event MintExit(address indexed recipient, uint256 amount);
 
   constructor(BaseDeployParams memory baseParams_, DeployParams memory params_) UniswapBase(baseParams_) {
-    DEPLOYMENT_TIMESTAMP = block.timestamp;
-
-    NFT = INFT(params_.NFT);
-
     STO = STOToken(params_.STO);
     BOOT = BaseToken(params_.BOOT);
     BLP = BaseToken(params_.BLP);
     EXIT = BaseToken(params_.EXIT);
+    NFT = INFT(params_.NFT);
 
     MASTERCHEF = params_.masterchef;
     FEE_SPLITTER = params_.feeSplitter;
 
+    DEPLOYMENT_TIMESTAMP = block.timestamp;
     BOOTSTRAP_PERIOD = params_.bootstrapPeriod;
     BOOTSTRAP_TARGET = params_.bootstrapTarget;
     BOOTSTRAP_CAP = params_.bootstrapCap;
@@ -351,7 +346,7 @@ contract Exit10 is UniswapBase {
 
     _safeTransferToken(TOKEN_OUT, msg.sender, claim);
 
-    emit BootstrapClaim(msg.sender, bootBalance, claim);
+    emit ClaimRewards(msg.sender, address(BOOT), bootBalance, claim);
   }
 
   function stoClaim() external {
@@ -368,7 +363,7 @@ contract Exit10 is UniswapBase {
 
     _safeTransferToken(TOKEN_OUT, msg.sender, claim);
 
-    emit ExitClaim(msg.sender, stoBalance, claim);
+    emit ClaimRewards(msg.sender, address(STO), stoBalance, claim);
   }
 
   function exitClaim() external {
@@ -385,7 +380,7 @@ contract Exit10 is UniswapBase {
 
     _safeTransferToken(TOKEN_OUT, msg.sender, claim);
 
-    emit ExitClaim(msg.sender, exitBalance, claim);
+    emit ClaimRewards(msg.sender, address(EXIT), exitBalance, claim);
   }
 
   function getBondData(

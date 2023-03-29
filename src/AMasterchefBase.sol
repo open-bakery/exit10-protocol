@@ -138,7 +138,7 @@ abstract contract AMasterchefBase is Ownable {
 
     IERC20(pool.token).safeTransfer(address(msg.sender), _amount);
     emit EmergencyWithdraw(msg.sender, pid, _amount);
-    // No mass update dont update pending rewards
+    // No mass update don't update pending rewards
   }
 
   /// @notice Updates rewardRate.
@@ -171,7 +171,7 @@ abstract contract AMasterchefBase is Ownable {
   }
 
   function _updateUndistributedRewards(uint256 _amount) internal virtual {
-    //Updates pool to account for the previous rewardRate.
+    // Updates pool to account for the previous rewardRate.
     _massUpdatePools();
 
     uint256 amount = _amount * PRECISION;
@@ -236,7 +236,7 @@ abstract contract AMasterchefBase is Ownable {
     // If _updatePool has not been called since periodFinish
     if (_poolLastUpdateTime > periodFinish) return 0;
 
-    //If reward is not updated for longer than rewardsDuration periodFinish will be < than block.timestamp
+    // If reward is not updated for longer than rewardsDuration periodFinish will be < than block.timestamp
     uint256 lastTimeRewardApplicable = Math.min(block.timestamp, periodFinish);
 
     return

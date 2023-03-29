@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import { Math } from '@openzeppelin/contracts/utils/math/Math.sol';
-import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
-import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import { IUniswapV3Factory } from './interfaces/IUniswapV3Factory.sol';
 import { IUniswapV3Pool } from './interfaces/IUniswapV3Pool.sol';
 import { INPM } from './interfaces/INonfungiblePositionManager.sol';
@@ -61,7 +58,6 @@ contract UniswapBase {
     POOL = IUniswapV3Pool(FACTORY.getPool(params.tokenIn, params.tokenOut, params.fee));
   }
 
-  // jiri: don't return tokenId, it's never really used
   function _addLiquidity(
     AddLiquidity memory _params
   ) internal returns (uint256 _tokenId, uint128 _liquidityAdded, uint256 _amountAdded0, uint256 _amountAdded1) {
@@ -93,9 +89,9 @@ contract UniswapBase {
           tickUpper: TICK_UPPER, //Tick needs to exist (right spacing)
           amount0Desired: _params.amount0Desired,
           amount1Desired: _params.amount1Desired,
-          amount0Min: _params.amount0Min, // slippage check
-          amount1Min: _params.amount1Min, // slippage check
-          recipient: address(this), // receiver of ERC721
+          amount0Min: _params.amount0Min, // Slippage check
+          amount1Min: _params.amount1Min, // Slippage check
+          recipient: address(this), // Receiver of ERC721
           deadline: _params.deadline
         })
       );

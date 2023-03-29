@@ -71,6 +71,8 @@ contract Exit10 is UniswapBase {
   mapping(uint256 => BondData) private idToBondData;
   mapping(address => uint256) public bootstrapDeposit;
 
+  address public constant PROTOCOL_GUILD = 0xF29Ff96aaEa6C9A1fBa851f74737f3c069d4f1a9;
+
   uint256 public constant TOKEN_MULTIPLIER = 1e8;
   uint256 public constant LP_EXIT_REWARD = 3_000_000 ether;
   uint256 public constant BONDERS_EXIT_REWARD = 7_000_000 ether;
@@ -451,12 +453,17 @@ contract Exit10 is UniswapBase {
         }
       }
     }
-    FeeSplitter(FEE_SPLITTER).collectFees(
-      pendingBucket,
-      bootstrapBucket + reserveBucket + _exitBucket(),
-      amountCollected0,
-      amountCollected1
-    );
+    if (!inExitMode) {
+      FeeSplitter(FEE_SPLITTER).collectFees(
+        pendingBucket,
+        bootstrapBucket + reserveBucket + _exitBucket(),
+        amountCollected0,
+        amountCollected1
+      );
+    } else {
+      // Send any new fees to Protocol Guild
+      _safeTransferTokens(PROTOCOL_GUILD, amountCollected0, amountCollected1);
+    }
 
     emit ClaimAndDistributeFees(msg.sender, amountCollected0, amountCollected1);
   }

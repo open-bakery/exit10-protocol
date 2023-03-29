@@ -12,8 +12,8 @@ contract Exit10_bootstrapClaimTest is ABaseExit10Test {
     skip(accrualParameter);
     exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
     _eth10k();
-    exit10.exit10();
     (uint256 pending, uint256 reserve, , uint256 bootstrap) = exit10.getBuckets();
+    exit10.exit10();
 
     assertEq(_getLiquidity(), pending + reserve, 'Check liquidity position');
 

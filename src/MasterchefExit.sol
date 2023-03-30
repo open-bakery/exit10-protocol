@@ -21,11 +21,14 @@ contract MasterchefExit is AMasterchefBase {
 
   function stopRewards(uint256 allocatedRewards) external onlyOwner returns (uint256 undistributedRewards) {
     if (block.timestamp < periodFinish) {
-      uint256 distributedRewards = ((block.timestamp - (periodFinish - REWARDS_DURATION)) * rewardRate) / PRECISION;
-      undistributedRewards = allocatedRewards - distributedRewards;
+      unchecked {
+        uint256 rewardStartTime = periodFinish - REWARDS_DURATION;
+        uint256 distributedRewards = ((block.timestamp - rewardStartTime) * rewardRate) / PRECISION;
+        undistributedRewards = allocatedRewards - distributedRewards;
+      }
       periodFinish = block.timestamp;
-      emit StopRewards(undistributedRewards);
-    } else emit StopRewards(0);
+    }
+    emit StopRewards(undistributedRewards);
   }
 
   function _updateUndistributedRewards(uint256 _amount) internal override {
@@ -34,8 +37,8 @@ contract MasterchefExit is AMasterchefBase {
     if (block.timestamp < periodFinish) {
       uint256 amount = _amount * PRECISION;
       uint256 duration = periodFinish - block.timestamp;
-
       uint256 undistributedRewards = rewardRate * duration;
+
       amount += undistributedRewards;
       rewardRate = amount / duration;
     }

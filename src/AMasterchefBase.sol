@@ -29,9 +29,6 @@ abstract contract AMasterchefBase is Ownable {
     uint256 accUndistributedReward;
   }
 
-  /// @notice Address authorized to distribute the rewards.
-  address public rewardDistributor;
-
   uint256 public constant PRECISION = 1e20;
   uint256 public immutable REWARDS_DURATION;
   address public immutable REWARD_TOKEN;
@@ -40,6 +37,8 @@ abstract contract AMasterchefBase is Ownable {
   uint256 public totalClaimedRewards;
   uint256 public rewardRate;
   uint256 public periodFinish;
+
+  address public rewardDistributor;
 
   PoolInfo[] public poolInfo;
   mapping(uint256 => mapping(address => UserInfo)) public userInfo;
@@ -56,10 +55,10 @@ abstract contract AMasterchefBase is Ownable {
     periodFinish = block.timestamp + rewardsDuration_;
   }
 
-  function setRewardDistributor(address rd) external onlyOwner {
+  function setRewardDistributor(address rewardDistributorAddress) external onlyOwner {
     require(rewardDistributor == address(0), 'Masterchef: Reward distributor already set');
-    rewardDistributor = rd;
-    emit SetRewardDistributor(msg.sender, rd);
+    rewardDistributor = rewardDistributorAddress;
+    emit SetRewardDistributor(msg.sender, rewardDistributorAddress);
   }
 
   function add(uint256 allocPoint, address token) external onlyOwner {
@@ -88,13 +87,11 @@ abstract contract AMasterchefBase is Ownable {
   function deposit(uint256 pid, uint256 amount) external {
     PoolInfo storage pool = poolInfo[pid];
     UserInfo storage user = userInfo[pid][msg.sender];
-
-    // Updates the accRewardPerShare and accUndistributedReward if applicable.
     _updatePool(pid);
 
+    /// @dev Undistributed rewards to this pool are divided equally between all active pools.
     if (pool.totalStaked == 0) {
-      // Special case: no one was staking, the pool was accumulating rewards.
-      _updateUndistributedRewards(pool.accUndistributedReward);
+      _updateUndistributedRewards(pool.accUndistributedReward / PRECISION);
       pool.accUndistributedReward = 0;
     } else {
       _safeClaimRewards(pid, _getUserPendingReward(user.amount, user.rewardDebt, pool.accRewardPerShare));
@@ -113,7 +110,7 @@ abstract contract AMasterchefBase is Ownable {
     UserInfo storage user = userInfo[pid][msg.sender];
     _updatePool(pid);
 
-    amount = amount > user.amount ? user.amount : amount;
+    amount = Math.min(user.amount, amount);
 
     _safeClaimRewards(pid, _getUserPendingReward(user.amount, user.rewardDebt, pool.accRewardPerShare));
 
@@ -125,8 +122,7 @@ abstract contract AMasterchefBase is Ownable {
     emit Withdraw(msg.sender, pid, amount);
   }
 
-  // Withdraw ignoring rewards. EMERGENCY ONLY.
-  // !Caution this will clear all user's pending rewards!
+  /// @notice Caution this will clear any pending rewards without claiming them.
   function emergencyWithdraw(uint256 pid) external {
     PoolInfo storage pool = poolInfo[pid];
     UserInfo storage user = userInfo[pid][msg.sender];
@@ -141,7 +137,7 @@ abstract contract AMasterchefBase is Ownable {
     // No mass update don't update pending rewards
   }
 
-  /// @notice Updates rewardRate.
+  /// @notice Adds rewards to the pool and updates the reward rate.
   /// Must add and evenly distribute rewards through the rewardsDuration.
   function updateRewards(uint256 amount) external virtual onlyAuthorized {
     require(totalAllocPoint != 0, 'Masterchef: Must initiate a pool before updating rewards');
@@ -159,15 +155,13 @@ abstract contract AMasterchefBase is Ownable {
     PoolInfo storage pool = poolInfo[pid];
     UserInfo storage user = userInfo[pid][user_];
 
-    uint256 accRewardPerShare = pool.accRewardPerShare;
+    if (user.amount == 0) return 0;
 
-    if (pool.totalStaked != 0 && totalAllocPoint != 0) {
-      accRewardPerShare +=
-        (_getPoolRewardsSinceLastUpdate(pool.lastUpdateTime, pool.allocPoint) * PRECISION) /
-        pool.totalStaked;
-    }
+    uint256 accRewardPerShare = pool.accRewardPerShare +
+      _getPoolRewardsSinceLastUpdate(pool.lastUpdateTime, pool.allocPoint) /
+      pool.totalStaked;
 
-    return (user.amount * accRewardPerShare) / PRECISION - user.rewardDebt;
+    return _getUserPendingReward(user.amount, user.rewardDebt, accRewardPerShare);
   }
 
   function _updateUndistributedRewards(uint256 _amount) internal virtual {
@@ -180,11 +174,10 @@ abstract contract AMasterchefBase is Ownable {
       amount += undistributedRewards;
     }
     rewardRate = amount / REWARDS_DURATION;
-
     periodFinish = block.timestamp + REWARDS_DURATION;
   }
 
-  /// @notice Increases accRewardPerShare and accUndistributedReward since last update.
+  // Increases accRewardPerShare and accUndistributedReward since last update.
   // Every time there is an update on *stake amount* we should update THE pool.
   function _updatePool(uint256 _pid) internal {
     PoolInfo storage pool = poolInfo[_pid];
@@ -195,7 +188,7 @@ abstract contract AMasterchefBase is Ownable {
       if (pool.totalStaked == 0) {
         pool.accUndistributedReward += poolRewards;
       } else {
-        pool.accRewardPerShare += (poolRewards * PRECISION) / pool.totalStaked;
+        pool.accRewardPerShare += poolRewards / pool.totalStaked;
       }
     }
 
@@ -213,7 +206,6 @@ abstract contract AMasterchefBase is Ownable {
 
   function _safeClaimRewards(uint256 _pid, uint256 _amount) internal {
     if (_amount == 0) return;
-
     uint256 _claimable = Math.min(_amount, IERC20(REWARD_TOKEN).balanceOf(address(this)));
     totalClaimedRewards += _claimable;
     IERC20(REWARD_TOKEN).safeTransfer(msg.sender, _claimable);
@@ -239,8 +231,7 @@ abstract contract AMasterchefBase is Ownable {
     // If reward is not updated for longer than rewardsDuration periodFinish will be < than block.timestamp
     uint256 lastTimeRewardApplicable = Math.min(block.timestamp, periodFinish);
 
-    return
-      ((lastTimeRewardApplicable - _poolLastUpdateTime) * rewardRate * _poolAllocPoint) / totalAllocPoint / PRECISION;
+    return ((lastTimeRewardApplicable - _poolLastUpdateTime) * rewardRate * _poolAllocPoint) / totalAllocPoint;
   }
 
   function _getUserPendingReward(

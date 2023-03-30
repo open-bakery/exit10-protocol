@@ -7,7 +7,7 @@ import { IRewardDistributor } from './interfaces/IRewardDistributor.sol';
 contract Masterchef is AMasterchefBase {
   constructor(address rewardToken_, uint256 rewardsDuration_) AMasterchefBase(rewardToken_, rewardsDuration_) {}
 
-  function withdraw(uint256 pid, uint256 amount, uint256 swapAmountOut) public {
+  function withdraw(uint256 pid, uint256 amount, uint256 swapAmountOut) external {
     withdraw(pid, amount);
     IRewardDistributor(rewardDistributor).updateFees(swapAmountOut);
   }

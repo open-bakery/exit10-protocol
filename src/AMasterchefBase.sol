@@ -38,27 +38,14 @@ abstract contract AMasterchefBase is Ownable {
   uint256 public rewardRate;
   uint256 public periodFinish;
 
-  address public rewardDistributor;
-
   PoolInfo[] public poolInfo;
   mapping(uint256 => mapping(address => UserInfo)) public userInfo;
   mapping(address => bool) private poolToken;
-
-  modifier onlyAuthorized() {
-    require(msg.sender == rewardDistributor, 'Masterchef: Caller not authorized');
-    _;
-  }
 
   constructor(address rewardToken_, uint256 rewardsDuration_) {
     REWARD_TOKEN = rewardToken_;
     REWARDS_DURATION = rewardsDuration_;
     periodFinish = block.timestamp + rewardsDuration_;
-  }
-
-  function setRewardDistributor(address rewardDistributorAddress) external onlyOwner {
-    require(rewardDistributor == address(0), 'Masterchef: Reward distributor already set');
-    rewardDistributor = rewardDistributorAddress;
-    emit SetRewardDistributor(msg.sender, rewardDistributorAddress);
   }
 
   function add(uint256 allocPoint, address token) external onlyOwner {
@@ -139,7 +126,7 @@ abstract contract AMasterchefBase is Ownable {
 
   /// @notice Adds rewards to the pool and updates the reward rate.
   /// Must add and evenly distribute rewards through the rewardsDuration.
-  function updateRewards(uint256 amount) external virtual onlyAuthorized {
+  function updateRewards(uint256 amount) external virtual onlyOwner {
     require(totalAllocPoint != 0, 'Masterchef: Must initiate a pool before updating rewards');
     IERC20(REWARD_TOKEN).safeTransferFrom(msg.sender, address(this), amount);
 

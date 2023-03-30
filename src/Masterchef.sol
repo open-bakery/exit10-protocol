@@ -9,6 +9,6 @@ contract Masterchef is AMasterchefBase {
 
   function withdraw(uint256 pid, uint256 amount, uint256 swapAmountOut) external {
     withdraw(pid, amount);
-    IRewardDistributor(rewardDistributor).updateFees(swapAmountOut);
+    IRewardDistributor(owner()).updateFees(swapAmountOut);
   }
 }

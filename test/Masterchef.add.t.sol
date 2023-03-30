@@ -9,24 +9,32 @@ import './AMasterchefBase.t.sol';
 
 contract Masterchef_addTest is AMasterchefBaseTest {
   function test_add_RevertIf_AddingSameTokenTwice() public {
+    vm.startPrank(masterchef.owner());
     masterchef.add(10, token1);
     vm.expectRevert(bytes('Masterchef: Token already added'));
     masterchef.add(5, token1);
+    vm.stopPrank();
   }
 
   function test_add_RevertIf_UsingRewardToken() public {
+    vm.startPrank(masterchef.owner());
     vm.expectRevert(bytes('Masterchef: Staking reward token not supported'));
     masterchef.add(5, address(rewardToken));
+    vm.stopPrank();
   }
 
   function test_add_RevertIf_AllocPointZero() public {
+    vm.startPrank(masterchef.owner());
     vm.expectRevert(bytes('Masterchef: Allocation must be non zero'));
     masterchef.add(0, token1);
+    vm.stopPrank();
   }
 
   function test_add() public {
+    vm.startPrank(masterchef.owner());
     masterchef.add(10, token1);
     masterchef.add(30, token2);
+    vm.stopPrank();
 
     _checkPoolInfo(
       0,

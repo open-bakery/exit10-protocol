@@ -43,10 +43,10 @@ contract FeeSplitterTest is ABaseTest {
     feeSplitter = new FeeSplitter(masterchef0, masterchef1, swapper);
     feeSplitter.setExit10(me); // = address(this)
 
-    mc0.setRewardDistributor(address(feeSplitter));
-    mc1.setRewardDistributor(address(feeSplitter));
     mc0.add(10, address(0x01));
     mc1.add(10, address(0x01));
+    mc0.transferOwnership(address(feeSplitter));
+    mc1.transferOwnership(address(feeSplitter));
 
     _maxApprove(USDC, WETH, address(feeSplitter));
   }

@@ -13,7 +13,7 @@ contract Masterchef_updateRewardsTest is AMasterchefBaseTest {
   }
 
   function test_updateRewards_RevertIfNotDistriburtor() public {
-    vm.expectRevert(bytes('Masterchef: Caller not authorized'));
+    vm.expectRevert(bytes('Ownable: caller is not the owner'));
     vm.prank(alice);
     masterchef.updateRewards(100 ether);
   }

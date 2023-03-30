@@ -26,7 +26,7 @@ contract AMasterchefBaseTest is ABaseTest {
     token2 = address(new BaseToken('Stake Token 1', 'STK1'));
     rewardToken = new BaseToken('Reward Token', 'RWT');
     masterchef = new Masterchef(address(rewardToken), rewardDuration);
-    masterchef.setRewardDistributor(distributor);
+    masterchef.transferOwnership(distributor);
     _mintAndApprove(token1, tokenSupply, address(masterchef));
     _mintAndApprove(token2, tokenSupply, address(masterchef));
     _mintAndApprove(rewardToken, rewardTokenSupply, address(masterchef));
@@ -104,6 +104,7 @@ contract AMasterchefBaseTest is ABaseTest {
   }
 
   function _add() internal {
+    vm.prank(distributor);
     masterchef.add(allocPoint, token1);
   }
 

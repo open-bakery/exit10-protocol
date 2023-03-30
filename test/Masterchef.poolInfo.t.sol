@@ -59,9 +59,10 @@ contract MasterchefTest is AMasterchefBaseTest {
     uint256 allocPoint0 = 60;
     uint256 allocPoint1 = 40;
     uint256 totalAllocPoint = allocPoint0 + allocPoint1;
-
+    vm.startPrank(masterchef.owner());
     masterchef.add(allocPoint0, token1);
     masterchef.add(allocPoint1, token2);
+    vm.stopPrank();
     _updateRewards();
 
     uint256 deposit0 = 80 ether;

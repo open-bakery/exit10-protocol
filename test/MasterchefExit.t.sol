@@ -19,20 +19,20 @@ contract MasterchefExitTest is ABaseTest {
     stakeToken = new BaseToken('Stake Token', 'STK');
     rewardDuration = 4 weeks;
     mc = new MasterchefExit(address(rewardToken), rewardDuration);
-    mc.setRewardDistributor(address(this));
     stakeToken.mint(address(this), stakeAmount);
     stakeToken.approve(address(mc), type(uint256).max);
     rewardToken.mint(address(mc), rewardAmount);
   }
 
-  function test_updateRewards_RevertIf_NotAuthorized() public {
+  function test_updateRewards_RevertIf_NotOwner() public {
     vm.prank(alice);
-    vm.expectRevert(bytes('Masterchef: Caller not authorized'));
+    vm.expectRevert(bytes('Ownable: caller is not the owner'));
     mc.updateRewards(rewardAmount);
   }
 
   function test_updateRewards_RevertIf_AmountZero() public {
     mc.add(10, address(stakeToken));
+    vm.prank(mc.owner());
     mc.updateRewards(rewardAmount);
     vm.expectRevert(bytes('MasterchefExit: Can only deposit rewards once'));
     mc.updateRewards(rewardAmount);

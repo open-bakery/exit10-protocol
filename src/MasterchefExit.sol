@@ -1,19 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
-import 'forge-std/Test.sol';
-import { IERC20, SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import { IERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import { AMasterchefBase } from './AMasterchefBase.sol';
 
 contract MasterchefExit is AMasterchefBase {
-  using SafeERC20 for IERC20;
-
   constructor(address rewardToken_, uint256 rewardsDuration_) AMasterchefBase(rewardToken_, rewardsDuration_) {}
 
   event UpdateRewards(address indexed caller, uint256 amount);
   event StopRewards(uint256 undistributedRewards);
 
-  /// @notice Updates rewardRate.
-  /// Adds and evenly distributes rewards through the rewardsDuration.
   function updateRewards(uint256 amount) external override onlyAuthorized {
     require(amount != 0, 'MasterchefExit: Amount must not be zero');
     require(totalAllocPoint != 0, 'MasterchefExit: Must add a pool prior to adding rewards');
@@ -34,7 +29,6 @@ contract MasterchefExit is AMasterchefBase {
   }
 
   function _updateUndistributedRewards(uint256 _amount) internal override {
-    //Updates pool to account for the previous rewardRate.
     _massUpdatePools();
 
     if (block.timestamp < periodFinish) {

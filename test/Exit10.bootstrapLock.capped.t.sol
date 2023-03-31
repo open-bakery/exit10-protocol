@@ -16,12 +16,16 @@ contract Exit10_bootstrapLockCappedTest is ABaseExit10Test {
       _addLiquidityParams(amount0, amount1)
     );
 
-    assertEq(liquidityAdded, bootstrapCap);
+    assertEq(liquidityAdded, _getBootstrapCap());
     assertTrue(exit10.isBootstrapCapReached());
     assertLt(amountAdded0, amount0);
     assertLt(amountAdded1, amount1);
 
     assertEq(_balance(usdc), balanceBefore0 - amountAdded0);
     assertEq(_balance(weth), balanceBefore1 - amountAdded1);
+  }
+
+  function _getBootstrapCap() internal pure override returns (uint256) {
+    return 128759782890000000;
   }
 }

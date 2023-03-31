@@ -60,10 +60,10 @@ gas-report:
 	forge test -vv --mc Masterchef --gas-report --fork-url $(RPC_URL)
 
 tests:
-	forge test -vv  --nmc SystemTest --fork-url $(RPC_URL)
+	forge test -vv  --nmc SystemLogsTest --fork-url $(RPC_URL)
 
 trace:
-	forge test -vvv --mc DepositHelperTest --fork-url $(RPC_URL)
+	forge test -vvv --mc Exit10_bootstrapLockTest --fork-url $(RPC_URL)
 
 trace1:
 	forge test -vvv --mt test_addLiquidityBypass --fork-url $(RPC_URL)
@@ -71,8 +71,8 @@ trace1:
 test1:
 	forge test -vv --mc Exit10_convertBondTest --fork-url $(RPC_URL)
 
-system:
-	forge test -vv --mc SystemTest --fork-url $(RPC_URL)
+systemLogs:
+	forge test -vv --mc SystemLogsTest --fork-url $(RPC_URL)
 
 fuzz:
 	forge test --mc UnitTest --fork-url $(RPC_URL)

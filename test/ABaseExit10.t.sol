@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-import { Test } from 'forge-std/Test.sol';
 import { UniswapBase } from '../src/UniswapBase.sol';
 import { INPM } from '../src/interfaces/INonfungiblePositionManager.sol';
 import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
@@ -13,7 +12,7 @@ import { MasterchefExit } from '../src/Exit10.sol';
 import { Masterchef } from '../src/Masterchef.sol';
 import { Exit10 } from '../src/Exit10.sol';
 
-abstract contract ABaseExit10Test is Test, ABaseTest {
+abstract contract ABaseExit10Test is ABaseTest {
   Exit10 exit10;
   NFT nft;
   STOToken sto;

@@ -1,14 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-
-import { Test } from 'forge-std/Test.sol';
-import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
-
 import { BaseToken } from '../src/BaseToken.sol';
 import { FeeSplitter } from '../src/FeeSplitter.sol';
 import { Masterchef } from '../src/Masterchef.sol';
 import { ISwapper } from '../src/interfaces/ISwapper.sol';
-import './ABase.t.sol';
+import { ABaseTest } from './ABase.t.sol';
 
 contract FeeSplitterTest is ABaseTest {
   BaseToken STO = new BaseToken('Share Token', 'STO');

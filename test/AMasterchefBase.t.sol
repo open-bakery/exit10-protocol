@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
+import { BaseToken } from '../src/BaseToken.sol';
+import { AMasterchefBase, Masterchef } from '../src/Masterchef.sol';
+import { ABaseTest } from './ABase.t.sol';
 
-import '../src/BaseToken.sol';
-import '../src/Masterchef.sol';
-import 'forge-std/Test.sol';
-import './ABase.t.sol';
-
-contract AMasterchefBaseTest is ABaseTest {
+abstract contract AMasterchefBaseTest is ABaseTest {
   address token1;
   address token2;
   BaseToken rewardToken;

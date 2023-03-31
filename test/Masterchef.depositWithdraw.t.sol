@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-
-import '../src/BaseToken.sol';
-import '../src/Masterchef.sol';
-import 'forge-std/Test.sol';
-import './ABase.t.sol';
-import './AMasterchefBase.t.sol';
+import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
+import { AMasterchefBaseTest } from './AMasterchefBase.t.sol';
 
 contract Masterchef_depositTest is AMasterchefBaseTest {
   function test_depositWithdraw_TokenTransfered() public {

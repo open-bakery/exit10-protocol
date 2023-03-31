@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-
-import 'forge-std/Test.sol';
-import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
-
-import '../src/BaseToken.sol';
+import { Test } from 'forge-std/Test.sol';
+import { BaseToken } from '../src/BaseToken.sol';
 
 contract PermitTest is Test {
   address alice = vm.envAddress('ALICE_ADDRESS');
@@ -24,7 +21,7 @@ contract PermitTest is Test {
     uint256 amount = 100 ether;
     uint256 deadline = block.timestamp;
     _permit(aliceKey, token, owner, spender, amount, deadline);
-    assertEq(token.allowance(alice, bob), 100 ether, 'Check allowance');
+    assertEq(token.allowance(alice, bob), amount, 'Check allowance');
   }
 
   // Resources:

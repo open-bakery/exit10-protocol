@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-import { Test } from 'forge-std/Test.sol';
-import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import { ABaseExit10Test } from './ABaseExit10.t.sol';
-import { Exit10, UniswapBase } from '../src/Exit10.sol';
 
 contract Exit10_bootstrapLockTest is ABaseExit10Test {
   function test_bootstrapLock() public {
@@ -21,6 +18,11 @@ contract Exit10_bootstrapLockTest is ABaseExit10Test {
 
     _checkBalancesExit10(0, 0);
     _checkBuckets(0, 0, 0, liquidityAdded);
+  }
+
+  function test_bootstrapLock_withZeroAmounts() public {
+    vm.expectRevert();
+    exit10.bootstrapLock(_addLiquidityParams(0, 0));
   }
 
   function test_bootstrapLock_withEther() public {
@@ -41,16 +43,15 @@ contract Exit10_bootstrapLockTest is ABaseExit10Test {
     _checkBuckets(0, 0, 0, liquidityAdded);
   }
 
-  function test_bootstrap_withMinimumAmount() public {
+  function test_bootstrap_withMinimumAmount_suppressError() public {
     uint256 minToken = 1;
-    // jiri: what is this syntax doing?
     try exit10.bootstrapLock(_addLiquidityParams(minToken, minToken)) {} catch {
       return;
     }
     assertTrue(true);
   }
 
-  function test_bootstrapLock_RevertIf_bootstrapOver() public {
+  function test_bootstrapLock_revertIf_bootstrapOver() public {
     _skipBootstrap();
 
     vm.expectRevert(bytes('EXIT10: Bootstrap ended'));

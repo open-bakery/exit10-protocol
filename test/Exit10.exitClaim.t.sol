@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-import { Test, console } from 'forge-std/Test.sol';
-import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import { ABaseExit10Test } from './ABaseExit10.t.sol';
-import { Exit10, UniswapBase } from '../src/Exit10.sol';
 
 contract Exit10_exitClaimTest is ABaseExit10Test {
   function test_exitClaim() public {
@@ -22,7 +19,7 @@ contract Exit10_exitClaimTest is ABaseExit10Test {
     exit10.exit10();
     uint256 initialBalanceUSDC = _balance0();
     uint256 precision = 1e18;
-    uint256 exitTokenShare = (_balance(exit) * precision) / ERC20(exit).totalSupply();
+    uint256 exitTokenShare = (_balance(exit) * precision) / exit.totalSupply();
 
     // claim as alice first so that we don't start with zero
     vm.prank(alice);

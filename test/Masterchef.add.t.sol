@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-
-import '../src/BaseToken.sol';
-import '../src/Masterchef.sol';
-import 'forge-std/Test.sol';
-import './ABase.t.sol';
-import './AMasterchefBase.t.sol';
+import { AMasterchefBaseTest, AMasterchefBase } from './AMasterchefBase.t.sol';
 
 contract Masterchef_addTest is AMasterchefBaseTest {
   function test_add_RevertIf_AddingSameTokenTwice() public {

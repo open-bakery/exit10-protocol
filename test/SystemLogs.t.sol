@@ -1,23 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
+import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
+import { console } from 'forge-std/console.sol';
+import { Script } from 'forge-std/Script.sol';
+import { Strings } from '@openzeppelin/contracts/utils/Strings.sol';
+import { ABaseExit10Test } from './ABaseExit10.t.sol';
+import { AMasterchefBase } from './AMasterchefBase.t.sol';
 
-import 'forge-std/Test.sol';
-
-import '../src/interfaces/IUniswapV3Factory.sol';
-import '../src/interfaces/IUniswapV3Router.sol';
-import '@openzeppelin/contracts/utils/Strings.sol';
-
-import '../src/Exit10.sol';
-import '../src/FeeSplitter.sol';
-import '../src/Masterchef.sol';
-import '../src/MasterchefExit.sol';
-
-import '../src/NFT.sol';
-import '../src/BaseToken.sol';
-
-import './ABaseExit10.t.sol';
-
-contract SystemTest is Test, ABaseExit10Test {
+contract SystemLogsTest is ABaseExit10Test {
   mapping(address => string) userName;
 
   function setUp() public override {

@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-import { Test } from 'forge-std/Test.sol';
 import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import { IERC721 } from '@openzeppelin/contracts/token/ERC721/IERC721.sol';
 import { ABaseExit10Test } from './ABaseExit10.t.sol';
-import { Exit10, UniswapBase } from '../src/Exit10.sol';
+import { Exit10 } from '../src/Exit10.sol';
 import { DepositHelper } from '../src/DepositHelper.sol';
 import { IUniswapV3Router } from '../src/interfaces/IUniswapV3Router.sol';
 
-contract DepositHelperTest is Test, ABaseExit10Test {
+contract DepositHelperTest is ABaseExit10Test {
   DepositHelper depositHelper;
 
   uint256 depositWeth = _tokenAmount(weth, 2);

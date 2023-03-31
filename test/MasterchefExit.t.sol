@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-
-import '../src/BaseToken.sol';
-import '../src/MasterchefExit.sol';
-import 'forge-std/Test.sol';
-import './ABase.t.sol';
+import { BaseToken } from '../src/BaseToken.sol';
+import { MasterchefExit } from '../src/MasterchefExit.sol';
+import { ABaseTest } from './ABase.t.sol';
 
 contract MasterchefExitTest is ABaseTest {
   MasterchefExit public mc;

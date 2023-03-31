@@ -42,6 +42,9 @@ abstract contract ABaseExit10Test is ABaseTest {
   uint256 liquidityPerUsd = vm.envUint('LIQUIDITY_PER_USDC');
   uint256 exitDiscount = vm.envUint('EXIT_DISCOUNT');
   uint256 bootstrapCap = vm.envUint('BOOTSTRAP_CAP');
+  uint24 fee = uint24(vm.envUint('FEE'));
+  int24 tickLower = int24(vm.envInt('LOWER_TICK'));
+  int24 tickUpper = int24(vm.envInt('UPPER_TICK'));
 
   uint256 constant DECIMAL_PRECISION = 1e18;
   uint256 constant USDC_DECIMALS = 1e6;
@@ -59,9 +62,9 @@ abstract contract ABaseExit10Test is ABaseTest {
       nonfungiblePositionManager: nonfungiblePositionManager,
       tokenIn: weth,
       tokenOut: usdc,
-      fee: uint24(vm.envUint('FEE')),
-      tickLower: int24(vm.envInt('LOWER_TICK')),
-      tickUpper: int24(vm.envInt('UPPER_TICK'))
+      fee: fee,
+      tickLower: tickLower,
+      tickUpper: tickUpper
     });
 
   function setUp() public virtual {
@@ -141,6 +144,17 @@ abstract contract ABaseExit10Test is ABaseTest {
         deadline: block.timestamp
       })
     );
+  }
+
+  function _skipBootAndCreateBond(
+    uint256 _bootstrapDeposit0,
+    uint256 _bootstrapDeposit1,
+    uint256 _bondDeposit0,
+    uint256 _bondDeposit1
+  ) internal returns (uint256 _bondId, uint128 _liquidityAdded) {
+    exit10.bootstrapLock(_addLiquidityParams(_bootstrapDeposit0, _bootstrapDeposit1));
+    _skipBootstrap();
+    (_bondId, _liquidityAdded) = _createBond(_bondDeposit0, _bondDeposit1);
   }
 
   function _skipBootAndCreateBond() internal returns (uint256 _bondId, uint128 _liquidityAdded) {
@@ -229,7 +243,9 @@ abstract contract ABaseExit10Test is ABaseTest {
   }
 
   function _eth10k() internal {
-    _swap(exit10.TOKEN_OUT(), exit10.TOKEN_IN(), 200_000_000_000000);
+    do {
+      _swap(exit10.TOKEN_OUT(), exit10.TOKEN_IN(), 200_000_000_000000);
+    } while (_currentTick(exit10) >= tickLower);
   }
 
   function _checkBuckets(uint256 _pending, uint256 _reserve, uint256 _exit, uint256 _bootstrap) internal {

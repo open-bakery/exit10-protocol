@@ -25,8 +25,6 @@ contract Exit10_createBondTest is ABaseExit10Test {
     _checkBondData(bondId, _getLiquidity(), 0, block.timestamp, 0, uint8(Exit10.BondStatus.active));
     assertGt(_getLiquidity(), 0, 'Check liquidity');
     assertEq(nft.ownerOf(bondId), address(this), 'Check NFT owner');
-    assertEq(_balance0(), initialBalance - amountAdded0, 'Token0 balance after');
-    assertEq(_balance1(), initialBalance - amountAdded1, 'Token1 balance after');
 
     _checkBalancesExit10(0, 0);
     _checkBalances(initialBalance - amountAdded0, initialBalance - amountAdded1);

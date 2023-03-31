@@ -60,7 +60,7 @@ gas-report:
 	forge test -vv --mc Masterchef --gas-report --fork-url $(RPC_URL)
 
 tests:
-	forge test -vv  --nmc SystemLogsTest --fork-url $(RPC_URL)
+	forge test -vv  --nmc "SystemLogsTest|FuzzTest" --fork-url $(RPC_URL)
 
 trace:
 	forge test -vvv --mc Exit10_bootstrapLockTest --fork-url $(RPC_URL)
@@ -75,5 +75,5 @@ systemLogs:
 	forge test -vv --mc SystemLogsTest --fork-url $(RPC_URL)
 
 fuzz:
-	forge test --mc UnitTest --fork-url $(RPC_URL)
+	forge test -vvv --mc FuzzTest --fork-url $(RPC_URL)
 

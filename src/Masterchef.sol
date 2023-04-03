@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
-
 import { AMasterchefBase } from './AMasterchefBase.sol';
 import { IRewardDistributor } from './interfaces/IRewardDistributor.sol';
 

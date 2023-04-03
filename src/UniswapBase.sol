@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-
 import { IUniswapV3Factory } from './interfaces/IUniswapV3Factory.sol';
 import { IUniswapV3Pool } from './interfaces/IUniswapV3Pool.sol';
 import { INPM } from './interfaces/INonfungiblePositionManager.sol';

@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
-
 import { ERC721, ERC721Enumerable } from '@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol';
 import { Ownable } from '@openzeppelin/contracts/access/Ownable.sol';
 import { Exit10 } from './Exit10.sol';

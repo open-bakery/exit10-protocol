@@ -4,6 +4,12 @@ SD="$(dirname "$(readlink -f "$0")")"
 source "$SD/../.env"
 source "$SD/../config/local.ini"
 
+CONTRACTS="Exit10 DepositHelper"
+for contract in $CONTRACTS; do
+  echo "export const $contract = $(jq .abi "$SD/../out/$contract.sol/$contract.json") as const" > "$EXIT10_UI_PATH/src/abis/$contract.ts"
+done
+
+
 echo "export default {
   weth: '$WETH',
   usdc: '$USDC',
@@ -25,6 +31,7 @@ echo "export default {
   masterchefExit: '$MASTERCHEF_EXIT',
   feeSplitter: '$FEE_SPLITTER',
   exit10: '$EXIT10',
+  depositHelper: '$DEPOSIT_HELPER',
   exitLp: '$EXIT_LP',
 } as const;" > "$EXIT10_UI_PATH/src/const/knownAddresses/local.ts"
 

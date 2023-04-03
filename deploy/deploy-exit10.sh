@@ -41,6 +41,8 @@ EXIT10_DEPLOY_PARAMS="($NFT,$STO,$BOOT,$BLP,$EXIT,$MASTERCHEF_EXIT,$FEE_SPLITTER
 EXIT10=$(forge create "$SRC/Exit10.sol:Exit10" --unlocked --constructor-args "$EXIT10_BASE_PARAMS" "$EXIT10_DEPLOY_PARAMS" | extract_addr)
 echo "EXIT10: $EXIT10"
 
+DEPOSIT_HELPER=$(forge create "$SRC/DepositHelper.sol:DepositHelper" --unlocked --constructor-args "$UNISWAP_V3_ROUTER" "$EXIT10" "$WETH" | extract_addr)
+
 # Uniswap V2 Pool for EXIT/USDC
 cast send "$UNISWAP_V2_FACTORY" "createPair(address,address)" "$EXIT" "$USDC"
 
@@ -85,5 +87,6 @@ MASTERCHEF1=$MASTERCHEF1
 MASTERCHEF_EXIT=$MASTERCHEF_EXIT
 FEE_SPLITTER=$FEE_SPLITTER
 EXIT10=$EXIT10
+DEPOSIT_HELPER=$DEPOSIT_HELPER
 EXIT_LP=$EXIT_LP" >> "$SD/../config/local.ini"
 

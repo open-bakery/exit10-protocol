@@ -75,5 +75,5 @@ systemLogs:
 	forge test -vv --mc SystemLogsTest --fork-url $(RPC_URL)
 
 fuzz:
-	forge test -vvv --mc FuzzTest --fork-url $(RPC_URL)
+	forge test -vv --mc FuzzTest --fork-url $(RPC_URL)
 

@@ -157,6 +157,14 @@ abstract contract ABaseExit10Test is ABaseTest {
     (_bondId, _liquidityAdded) = _createBond(_bondDeposit0, _bondDeposit1);
   }
 
+  function _skipBootAndCreateBond(
+    uint256 _bondDeposit0,
+    uint256 _bondDeposit1
+  ) internal returns (uint256 _bondId, uint128 _liquidityAdded) {
+    _skipBootstrap();
+    (_bondId, _liquidityAdded) = _createBond(_bondDeposit0, _bondDeposit1);
+  }
+
   function _skipBootAndCreateBond() internal returns (uint256 _bondId, uint128 _liquidityAdded) {
     _skipBootstrap();
     (_bondId, _liquidityAdded) = _createBond();

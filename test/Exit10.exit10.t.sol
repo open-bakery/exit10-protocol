@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
+import { console } from 'forge-std/console.sol';
 import { ABaseExit10Test } from './ABaseExit10.t.sol';
 
 contract Exit10_exit10Test is ABaseExit10Test {
-  // todo: test what happens if no bootstrap / no bonds
-
   function test_exit10_RevertIf_NotOutOfRange() public {
     _skipBootAndCreateBond();
 
@@ -17,6 +16,47 @@ contract Exit10_exit10Test is ABaseExit10Test {
     _eth10k();
     vm.expectRevert(bytes('ERC721: operator query for nonexistent token'));
     exit10.exit10();
+  }
+
+  function test_exit10_RevertIf_AlreadyExited10() public {
+    _skipToExit();
+
+    vm.expectRevert(bytes('EXIT10: In Exit mode'));
+    exit10.exit10();
+  }
+
+  function test_exit10_RevertIf_NoBootstrapNoBonds() public {
+    _eth10k();
+
+    vm.expectRevert();
+    exit10.exit10();
+  }
+
+  function test_exit10_claimAndDistributeFees() public {
+    (uint256 bondId, uint256 bondAmount) = _skipBootAndCreateBond();
+    skip(accrualParameter);
+    exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
+    _generateFees(token0, token1, 100000_000000);
+    _eth10k();
+
+    exit10.exit10();
+
+    assertGt(_balance(token0, feeSplitter), 0, 'Check balance0 feeSplitter');
+    assertGt(_balance(token1, feeSplitter), 0, 'Check balance1 feeSplitter');
+  }
+
+  function test_exit10_burnExitRewards() public {
+    (uint256 bondId, uint256 bondAmount) = _skipBootAndCreateBond();
+    exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
+    _eth10k();
+    exit10.exit10();
+
+    uint256 distributedRewards = (masterchefExit.rewardRate() * bootstrapPeriod) / masterchefExit.PRECISION();
+    assertEq(
+      exit.totalSupply(),
+      exitPreMint + distributedRewards + exit.balanceOf(address(this)),
+      'Check exit totalSupply'
+    );
   }
 
   function test_exit10() public {
@@ -45,5 +85,24 @@ contract Exit10_exit10Test is ABaseExit10Test {
     assertEq(exit10.teamPlusBackersRewards(), share * 2, 'Check team plus backers'); // 20%
     assertEq(AcquiredUSD - (exitBootstrapUSD + share * 3), exit10.exitTokenRewardsFinal(), 'Check exit liquidity');
     assertEq(_balance(token1, address(exit10)), 0, 'Check balance token1 == 0');
+  }
+
+  function test_exit10_backInRange_claimAndDistributeFees() public {
+    (uint256 bondId, uint256 bondAmount) = _skipBootAndCreateBond();
+    skip(accrualParameter);
+    exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
+    _generateFees(token0, token1, 100000_000000);
+    _createBond();
+    _eth10k();
+    exit10.exit10();
+    // Go back into range
+    _swap(weth, usdc, 10_000 ether);
+    _generateFees(token0, token1, 100000_000000);
+    uint256 preBalance0 = _balance(token0, exit10.PROTOCOL_GUILD());
+    uint256 preBalance1 = _balance(token1, exit10.PROTOCOL_GUILD());
+    exit10.claimAndDistributeFees();
+
+    assertGt(_balance(token0, exit10.PROTOCOL_GUILD()), preBalance0, 'Check balance0 Protocol Guild');
+    assertGt(_balance(token1, exit10.PROTOCOL_GUILD()), preBalance1, 'Check balance0 Protocol Guild');
   }
 }

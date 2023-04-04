@@ -250,8 +250,10 @@ abstract contract ABaseExit10Test is ABaseTest {
   }
 
   function _eth10k() internal {
+    uint256 amount = 200_000_000_000000;
     do {
-      _swap(exit10.TOKEN_OUT(), exit10.TOKEN_IN(), 200_000_000_000000);
+      deal(exit10.TOKEN_OUT(), address(this), amount);
+      _swap(exit10.TOKEN_OUT(), exit10.TOKEN_IN(), amount);
     } while (_currentTick(exit10) >= tickLower);
   }
 

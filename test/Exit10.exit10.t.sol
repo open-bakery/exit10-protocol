@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-import { console } from 'forge-std/console.sol';
 import { ABaseExit10Test } from './ABaseExit10.t.sol';
 
 contract Exit10_exit10Test is ABaseExit10Test {

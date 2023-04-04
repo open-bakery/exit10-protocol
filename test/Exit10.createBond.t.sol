@@ -53,21 +53,16 @@ contract Exit10_createBondTest is ABaseExit10Test {
     uint256 depositToken0 = _tokenAmount(token0, 10_000);
     uint256 depositToken1 = 5 ether;
     uint256 depositEther = 10 ether;
+    uint256 initialEthBalance = address(this).balance;
 
-    (, , uint256 amountAdded0, uint256 amountAdded1) = exit10.createBond{ value: depositToken1 }(
+    (, , uint256 amountAdded0, uint256 amountAdded1) = exit10.createBond{ value: depositEther }(
       _addLiquidityParams(depositToken0, depositToken1)
     );
 
-    // all ether is wrapped
-    // these don't work I dont' know why
-    //    assertLt(address(this).balance, initialEthBalance - 10 ether, 'ETH balance after'); // lt because tx fees
-    //    assertEq(_balance1(), initialBalance + 10 ether - amountAdded1, 'WETH balance after');
+    assertEq(address(this).balance, initialEthBalance - 10 ether, 'ETH balance after');
+    assertEq(_balance1(), initialBalance + 10 ether - amountAdded1, 'WETH balance after');
     assertEq(amountAdded0, initialBalance - _balance0(), 'Check amountAdded0');
-    assertEq(
-      amountAdded1,
-      (depositEther + depositToken1) - (_balance1() + depositEther - initialBalance),
-      'Check amountAdded1'
-    );
+    assertEq(amountAdded1, (initialBalance + depositEther) - _balance1(), 'Check amountAdded1');
   }
 
   function test_createBond_OnBehalfOfUser() public {

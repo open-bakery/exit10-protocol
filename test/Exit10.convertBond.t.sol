@@ -54,4 +54,29 @@ contract Exit10_convertBondTest is ABaseExit10Test {
     vm.expectRevert(bytes('EXIT10: Bond must be active'));
     exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
   }
+
+  function test_convertBond_RevertIf_StatusInExitMode() public {
+    (uint256 bondId, uint256 bondAmount) = _skipBootAndCreateBond();
+    exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
+    _createBond();
+    _eth10k();
+    exit10.exit10();
+    vm.expectRevert(bytes('EXIT10: In Exit mode'));
+    exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
+  }
+
+  function test_convertBond_claimAndDistributeFees() public {
+    (uint256 bondId, uint256 bondAmount) = _skipBootAndCreateBond();
+    _generateFees(token0, token1, 100000_000000);
+    exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
+    assertGt(_balance(token0, feeSplitter), 0, 'Check balance0 feeSplitter');
+    assertGt(_balance(token1, feeSplitter), 0, 'Check balance1 feeSplitter');
+  }
+
+  function test_convertBond_mintMaxExitCap() public {
+    (uint256 bondId, uint256 bondAmount) = _skipBootAndCreateBond(100_000_000_000000, 1_000_000 ether);
+    exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
+    assertEq(exit.totalSupply(), exit10.MAX_EXIT_SUPPLY(), 'Check exit token capmint');
+    assertEq(exit.balanceOf(address(this)), exit10.BONDERS_EXIT_REWARD() - exitPreMint, 'Check exit balance');
+  }
 }

@@ -31,6 +31,7 @@ abstract contract ABaseExit10Test is ABaseTest {
 
   uint256 initialBalance = 1_000_000_000 ether;
   uint256 deployTime;
+  uint256 exitPreMint = 10 ether;
 
   address weth = vm.envAddress('WETH');
   address usdc = vm.envAddress('USDC');
@@ -101,8 +102,8 @@ abstract contract ABaseExit10Test is ABaseTest {
     exit10 = new Exit10(baseParams, params);
     nft.setExit10(address(exit10));
     FeeSplitter(feeSplitter).setExit10(address(exit10));
-    exit.mint(address(this), 1000 ether);
-    lp = _setUpExitLiquidity(usdc, address(exit), 10, 10);
+    exit.mint(address(this), exitPreMint);
+    lp = _setUpExitLiquidity(usdc, address(exit), 10_000000, exitPreMint);
     _setUpExitPool(exit10, lp);
     _setMasterchefs(feeSplitter);
 
@@ -211,15 +212,13 @@ abstract contract ABaseExit10Test is ABaseTest {
   function _setUpExitLiquidity(
     address _token0,
     address _token1,
-    uint256 _amountNoDecimal0,
-    uint256 _amountNoDecimal1
+    uint256 _amount0,
+    uint256 _amount1
   ) internal returns (address pair) {
-    uint amount0 = _tokenAmount(_token0, _amountNoDecimal0);
-    uint amount1 = _tokenAmount(_token1, _amountNoDecimal1);
-    deal(_token0, address(this), amount0);
-    deal(_token1, address(this), amount1);
+    deal(_token0, address(this), _amount0);
+    deal(_token1, address(this), _amount1);
     pair = UNISWAP_V2_FACTORY.createPair(_token0, _token1);
-    _addLiquidity(_token0, _token1, amount0, amount1);
+    _addLiquidity(_token0, _token1, _amount0, _amount1);
   }
 
   function _addLiquidity(

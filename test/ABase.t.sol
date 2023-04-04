@@ -69,6 +69,14 @@ abstract contract ABaseTest is Test {
     _swap(_tokenB, _tokenA, amountOut / 2);
   }
 
+  function _generateFees(ERC20 _tokenA, ERC20 _tokenB, uint256 _amountA) internal {
+    address tokenA = address(_tokenA);
+    address tokenB = address(_tokenB);
+    deal(tokenA, address(this), _amountA);
+    uint256 amountOut = _swap(tokenA, tokenB, _amountA);
+    _swap(tokenB, tokenA, amountOut / 2);
+  }
+
   function _swap(address _in, address _out, uint256 _amount) internal returns (uint256 _amountOut) {
     _amountOut = UNISWAP_V3_ROUTER.exactInputSingle(
       IUniswapV3Router.ExactInputSingleParams({

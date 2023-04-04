@@ -95,5 +95,12 @@ contract Exit10_createBondTest is ABaseExit10Test {
     _checkBuckets(uint256(_getLiquidity()) - liquidityAdded, 0, 0, liquidityAdded);
   }
 
-  // todo test fees are claimed and distributed on createBond
+  function test_createBond_claimAndDistributeFees() public {
+    exit10.bootstrapLock(_addLiquidityParams(1000000_000000, 1000 ether));
+    _skipBootstrap();
+    _generateFees(token0, token1, 100000_000000);
+    _createBond(10000_000000, 10 ether);
+    assertGt(_balance(token0, feeSplitter), 0, 'Check balance0 feeSplitter');
+    assertGt(_balance(token1, feeSplitter), 0, 'Check balance1 feeSplitter');
+  }
 }

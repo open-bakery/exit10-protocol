@@ -63,7 +63,7 @@ tests:
 	forge test -vv  --nmc "SystemLogsTest|FuzzTest" --fork-url $(RPC_URL)
 
 trace:
-	forge test -vvv --mc Exit10_exit10Test --fork-url $(RPC_URL)
+	forge test -vv --mc Exit10_claimAndDistributeFeesTest --fork-url $(RPC_URL)
 
 trace1:
 	forge test -vvv --mt test_addLiquidityBypass --fork-url $(RPC_URL)

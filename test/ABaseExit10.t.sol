@@ -51,6 +51,7 @@ abstract contract ABaseExit10Test is ABaseTest {
   uint256 constant USDC_DECIMALS = 1e6;
   uint256 constant ORACLE_SECONDS = 60;
   uint256 constant REWARDS_DURATION = 2 weeks;
+  uint256 constant REWARDS_DURATION_EXIT = 52 weeks * 2; // 2 years
 
   Masterchef masterchef0; // 50% BOOT 50% STO
   Masterchef masterchef1; // BLP
@@ -80,7 +81,7 @@ abstract contract ABaseExit10Test is ABaseTest {
     // Deploy dependency contracts
     masterchef0 = new Masterchef(weth, REWARDS_DURATION);
     masterchef1 = new Masterchef(weth, REWARDS_DURATION);
-    masterchefExit = new MasterchefExit(address(exit), REWARDS_DURATION);
+    masterchefExit = new MasterchefExit(address(exit), REWARDS_DURATION_EXIT);
 
     feeSplitter = address(new FeeSplitter(address(masterchef0), address(masterchef1), vm.envAddress('SWAPPER')));
     Exit10.DeployParams memory params = Exit10.DeployParams({

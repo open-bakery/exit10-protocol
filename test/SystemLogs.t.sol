@@ -4,7 +4,7 @@ import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import { console } from 'forge-std/console.sol';
 import { Script } from 'forge-std/Script.sol';
 import { Strings } from '@openzeppelin/contracts/utils/Strings.sol';
-import { ABaseExit10Test } from './ABaseExit10.t.sol';
+import { FeeSplitter, ABaseExit10Test } from './ABaseExit10.t.sol';
 import { AMasterchefBase } from './AMasterchefBase.t.sol';
 
 contract SystemLogsTest is ABaseExit10Test {
@@ -27,14 +27,25 @@ contract SystemLogsTest is ABaseExit10Test {
     masterchef0.withdraw(0, 0, ERC20(usdc).balanceOf(feeSplitter));
     _displayRewardBalanceMasterchefs();
     _displayTreasury();
-    skip(bootstrapPeriod);
+    _skip(bootstrapPeriod);
     uint bondId = _createBond(alice, _tokenAmount(usdc, 100_000), _tokenAmount(weth, 100));
-    skip(accrualParameter);
+    _skip(accrualParameter);
     _generateFees();
     _convertBond(bondId, alice);
     _displayTreasury();
     _lpExit(alice);
     _stake(alice, address(masterchefExit), 0, lp);
+    _skip(accrualParameter);
+    _claimExitRewards(alice);
+    _distributeRewardsToMasterchefs();
+  }
+
+  function _skip(uint256 _seconds) internal {
+    skip(_seconds);
+
+    _title('TIME TRAVEL');
+    console.log('Fastforward: ', _seconds);
+    _spacer();
   }
 
   function _generateFees() internal {
@@ -52,6 +63,22 @@ contract SystemLogsTest is ABaseExit10Test {
     _title('FEE DISTRIBUTION');
     console.log('Fee Splitter Balance of USDC: ', ERC20(usdc).balanceOf(feeSplitter));
     console.log('Fee Splitter Balance of WETH: ', ERC20(weth).balanceOf(feeSplitter));
+    _spacer();
+  }
+
+  function _distributeRewardsToMasterchefs() internal {
+    uint256 prevBalanceMc0 = ERC20(weth).balanceOf(address(masterchef0));
+    uint256 prevBalanceMc1 = ERC20(weth).balanceOf(address(masterchef1));
+    uint256 usdcToSell = ERC20(usdc).balanceOf(address(feeSplitter));
+    uint256 ETHAcquired = FeeSplitter(feeSplitter).updateFees(usdcToSell);
+    uint256 depositedRewardsMc0 = ERC20(weth).balanceOf(address(masterchef0)) - prevBalanceMc0;
+    uint256 depositedRewardsMc1 = ERC20(weth).balanceOf(address(masterchef1)) - prevBalanceMc1;
+
+    _title('WETH REWARD DISTRIBUTION');
+    console.log('Total USDC sold: ', usdcToSell);
+    console.log('Total ETH acquired: ', ETHAcquired);
+    console.log('Distributed to masterchef0: ', depositedRewardsMc0);
+    console.log('Distributed to masterchef1: ', depositedRewardsMc1);
     _spacer();
   }
 
@@ -172,8 +199,40 @@ contract SystemLogsTest is ABaseExit10Test {
     vm.stopPrank();
 
     string memory log0 = string.concat('User: ', userName[_user]);
-    string memory log1 = string.concat('Amount: ', Strings.toString(balance));
+    string memory log1 = string.concat('Token Staked: ', ERC20(_token).symbol());
+    string memory log2 = string.concat('Amount: ', Strings.toString(balance));
     _title('STAKING IN MASTERCHEF');
+    console.log(log0);
+    console.log(log1);
+    console.log(log2);
+    _spacer();
+  }
+
+  function _claimExitRewards(address _user) internal {
+    uint256 prevExitBalance = exit.balanceOf(_user);
+    vm.startPrank(_user);
+    masterchefExit.withdraw(0, 0);
+    vm.stopPrank();
+    uint256 claimedExit = exit.balanceOf(_user) - prevExitBalance;
+
+    string memory log0 = string.concat('User: ', userName[_user]);
+    string memory log1 = string.concat('Amount: ', Strings.toString(claimedExit));
+    _title('CLAIMED EXIT IN MASTERCHEF');
+    console.log(log0);
+    console.log(log1);
+    _spacer();
+  }
+
+  function _claimEthRewards(address _user, address _mc, uint256 _pid) internal {
+    uint256 prevWethBalance = ERC20(weth).balanceOf(_user);
+    vm.startPrank(_user);
+    AMasterchefBase(_mc).withdraw(_pid, 0);
+    vm.stopPrank();
+    uint256 claimedWeth = ERC20(weth).balanceOf(_user) - prevWethBalance;
+
+    string memory log0 = string.concat('User: ', userName[_user]);
+    string memory log1 = string.concat('Amount: ', Strings.toString(claimedWeth));
+    _title('CLAIMED WETH IN MASTERCHEF');
     console.log(log0);
     console.log(log1);
     _spacer();
@@ -208,6 +267,17 @@ contract SystemLogsTest is ABaseExit10Test {
   ) internal view {
     _displayBalance(_targetTitle, _target, _tokenA);
     _displayBalance(_targetTitle, _target, _tokenB);
+  }
+
+  function _displayInDecimals(address _token, uint256 _amount) internal view returns (string memory) {
+    uint256 integer;
+    uint256 decimal;
+    uint256 decimals = 3;
+    decimals = 10 ** decimals;
+
+    integer = _amount / 10 ** ERC20(_token).decimals();
+    decimal = ((_amount * decimals) / 10 ** ERC20(_token).decimals()) - (integer * decimals);
+    return string.concat(ERC20(_token).symbol(), ': ', Strings.toString(integer), '.', Strings.toString(decimal));
   }
 
   function _displayTotal(string memory _titleText, uint256 _amountUSDC, uint256 _amountWETH) internal view {

@@ -336,7 +336,8 @@ contract Exit10 is UniswapBase {
     (bootstrapRewardsPlusRefund, teamPlusBackersRewards, exitTokenRewardsFinal) = _calculateFinalShares(
       bootstrapRefund,
       exitBucketRewards,
-      bootstrapBucketFinal
+      bootstrapBucketFinal,
+      exitTokenSupplyFinal
     );
 
     emit Exit(
@@ -592,7 +593,8 @@ contract Exit10 is UniswapBase {
   function _calculateFinalShares(
     uint256 _refund,
     uint256 _totalRewards,
-    uint256 _bootstrapBucket
+    uint256 _bootstrapBucket,
+    uint256 _exitSupply
   ) internal pure returns (uint256 _bootRewards, uint256 _stoRewards, uint256 _exitRewards) {
     uint256 exitBucketMinusRefund = _totalRewards - _refund;
     uint256 tenPercent = exitBucketMinusRefund / 10;
@@ -603,7 +605,12 @@ contract Exit10 is UniswapBase {
     }
     // 20% of the ExitLiquidity
     _stoRewards = tenPercent * 2;
-    // 70% Exit Token holders
-    _exitRewards = _totalRewards - (_bootRewards + _stoRewards);
+
+    if (_exitSupply != 0) {
+      // 70% Exit Token holders
+      _exitRewards = _totalRewards - (_bootRewards + _stoRewards);
+    } else {
+      _stoRewards = _totalRewards - _bootRewards;
+    }
   }
 }

@@ -48,7 +48,8 @@ dev-ui:
 	$(MAKE) dev
 	./deploy/deploy-exit10.sh
 	./deploy/deploy-dev-data.sh
-	./deploy/export-local-ini-to-ui.sh
+	./deploy/export-to-ui.sh
+	./deploy/export-to-subgraph.sh
 
 dev-mainnet-fork:
 	#trap "kill $(jobs -p)" SIGINT SIGTERM EXIT

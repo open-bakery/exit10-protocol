@@ -4,11 +4,13 @@ SD="$(dirname "$(readlink -f "$0")")"
 source "$SD/../.env"
 source "$SD/../config/local.ini"
 
-CONTRACTS="Exit10"
+CONTRACTS="Exit10 IUniswapV3Pool STOToken"
 echo "{
   \"startBlock\": 0,
   \"network\": \"mainnet\",
-  \"Exit10\": \"$EXIT10\"
+  \"Exit10\": \"$EXIT10\",
+  \"STOToken\": \"$STO\",
+  \"Pool\": \"$POOL\"
 }" > "$EXIT10_SUBGRAPH_PATH/networks/local.json"
 
 for contract in $CONTRACTS; do

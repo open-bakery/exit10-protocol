@@ -32,7 +32,7 @@ EXIT=$(forge create "$SRC/BaseToken.sol:BaseToken" --unlocked --constructor-args
 # Masterchefs
 MASTERCHEF0=$(forge create "$SRC/Masterchef.sol:Masterchef" --unlocked --constructor-args "$WETH" "$REWARDS_DURATION" | extract_addr)
 MASTERCHEF1=$(forge create "$SRC/Masterchef.sol:Masterchef" --unlocked --constructor-args "$WETH" "$REWARDS_DURATION" | extract_addr)
-MASTERCHEF_EXIT=$(forge create "$SRC/MasterchefExit.sol:MasterchefExit" --unlocked --constructor-args "$EXIT" "$REWARDS_DURATION" | extract_addr)
+MASTERCHEF_EXIT=$(forge create "$SRC/MasterchefExit.sol:MasterchefExit" --unlocked --constructor-args "$EXIT" "$REWARDS_DURATIONadfadfs" | extract_addr)
 
 # Exit10 Core (FeeSplitter, Exit10)
 FEE_SPLITTER=$(forge create "$SRC/FeeSplitter.sol:FeeSplitter" --unlocked --constructor-args "$MASTERCHEF0" "$MASTERCHEF1" "$SWAPPER" | extract_addr)
@@ -58,17 +58,15 @@ cast send "$FEE_SPLITTER" "setExit10(address)" "$EXIT10"
 echo "SETUP MASTERCHEF0"
 cast send "$MASTERCHEF0" "add(uint256,address)" 50 "$STO"
 cast send "$MASTERCHEF0" "add(uint256,address)" 50 "$BOOT"
-cast send "$MASTERCHEF0" "setRewardDistributor(address)" "$FEE_SPLITTER"
-cast send "$MASTERCHEF0" "renounceOwnership()"
+cast send "$MASTERCHEF0" "transferOwnership(address)" "$FEE_SPLITTER"
 
 echo "SETUP MASTERCHEF1"
 cast send "$MASTERCHEF1" "add(uint256,address)" 100 "$BOOT"
-cast send "$MASTERCHEF1" "setRewardDistributor(address)" "$FEE_SPLITTER"
-cast send "$MASTERCHEF1" "renounceOwnership()"
+cast send "$MASTERCHEF1" "transferOwnership(address)" "$FEE_SPLITTER"
 
 echo "SETUP MASTERCHEF_EXIT"
 cast send "$MASTERCHEF_EXIT" "add(uint256,address)" 100 "$EXIT_LP"
-cast send "$MASTERCHEF_EXIT" "renounceOwnership()"
+cast send "$MASTERCHEF_EXIT" "transferOwnership(address)" "$EXIT10"
 
 echo "TRANSFER OWNERSHIPS"
 cast send "$BOOT" "transferOwnership(address)" "$EXIT10"

@@ -4,7 +4,7 @@ SD="$(dirname "$(readlink -f "$0")")"
 source "$SD/../.env"
 source "$SD/../config/local.ini"
 
-CONTRACTS="Exit10 DepositHelper"
+CONTRACTS="Exit10 DepositHelper STOToken"
 for contract in $CONTRACTS; do
   echo "export const $contract = $(jq .abi "$SD/../out/$contract.sol/$contract.json") as const" > "$EXIT10_UI_PATH/src/abis/$contract.ts"
 done
@@ -19,6 +19,7 @@ echo "export default {
   uniswapV2Factory: '$UNISWAP_V2_FACTORY',
   uniswapV2Router: '$UNISWAP_V2_ROUTER',
   swapper: '$SWAPPER',
+  stoDistributor: '$STO_DISTRIBUTOR',
   pool: '$POOL',
 
   nft: '$NFT',

@@ -77,6 +77,6 @@ contract Exit10_convertBondTest is ABaseExit10Test {
     (uint256 bondId, uint256 bondAmount) = _skipBootAndCreateBond(100_000_000_000000, 1_000_000 ether);
     exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
     assertEq(exit.totalSupply(), exit10.MAX_EXIT_SUPPLY(), 'Check exit token capmint');
-    assertEq(exit.balanceOf(address(this)), exit10.BONDERS_EXIT_REWARD() - exitPreMint, 'Check exit balance');
+    assertEq(exit.balanceOf(address(this)), exit10.BONDERS_EXIT_REWARD(), 'Check exit balance');
   }
 }

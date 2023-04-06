@@ -58,7 +58,7 @@ dev-mainnet-fork:
 	@source ./config/mainnet.ini ; sed < .env.template > .env $(SED_REPLACE)
 
 gas-report:
-	forge test -vv --mc Masterchef --gas-report --fork-url $(RPC_URL)
+	forge test -vv --nmc "SystemLogsTest|FuzzTest" --gas-report --fork-url $(RPC_URL)
 
 tests:
 	forge test -vv  --nmc "SystemLogsTest|FuzzTest" --fork-url $(RPC_URL)

@@ -9,6 +9,27 @@ contract MasterchefExit is AMasterchefBase {
   event UpdateRewards(address indexed caller, uint256 amount);
   event StopRewards(uint256 undistributedRewards);
 
+  function deposit(uint256 pid, uint256 amount) external override {
+    PoolInfo storage pool = poolInfo[pid];
+    UserInfo storage user = userInfo[pid][msg.sender];
+    _updatePool(pid);
+
+    /// @dev Undistributed rewards to this pool are given to the first staker.
+    if (pool.totalStaked == 0) {
+      _safeClaimRewards(pid, pool.accUndistributedReward / PRECISION);
+      pool.accUndistributedReward = 0;
+    } else {
+      _safeClaimRewards(pid, _getUserPendingReward(user.amount, user.rewardDebt, pool.accRewardPerShare));
+    }
+
+    _transferAmountIn(pool.token, amount);
+    user.amount += amount;
+    user.rewardDebt = (user.amount * pool.accRewardPerShare) / PRECISION;
+    pool.totalStaked += amount;
+
+    emit Deposit(msg.sender, pid, amount);
+  }
+
   function updateRewards(uint256 amount) external override onlyOwner {
     require(amount != 0, 'MasterchefExit: Amount must not be zero');
     require(totalAllocPoint != 0, 'MasterchefExit: Must add a pool prior to adding rewards');
@@ -24,23 +45,12 @@ contract MasterchefExit is AMasterchefBase {
       unchecked {
         uint256 rewardStartTime = periodFinish - REWARDS_DURATION;
         uint256 distributedRewards = ((block.timestamp - rewardStartTime) * rewardRate) / PRECISION;
+        uint256 balance = IERC20(REWARD_TOKEN).balanceOf(address(this));
         undistributedRewards = allocatedRewards - distributedRewards;
+        undistributedRewards = undistributedRewards <= balance ? undistributedRewards : balance;
       }
       periodFinish = block.timestamp;
     }
     emit StopRewards(undistributedRewards);
-  }
-
-  function _updateUndistributedRewards(uint256 _amount) internal override {
-    _massUpdatePools();
-
-    if (block.timestamp < periodFinish) {
-      uint256 amount = _amount * PRECISION;
-      uint256 duration = periodFinish - block.timestamp;
-      uint256 undistributedRewards = rewardRate * duration;
-
-      amount += undistributedRewards;
-      rewardRate = amount / duration;
-    }
   }
 }

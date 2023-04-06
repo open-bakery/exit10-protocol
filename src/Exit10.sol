@@ -66,6 +66,7 @@ contract Exit10 is UniswapBase {
 
   bool public isBootstrapCapReached;
   bool public inExitMode;
+  bool private hasUpdatedRewards;
 
   mapping(uint256 => BondData) private idToBondData;
   mapping(address => uint256) public bootstrapDeposit;
@@ -203,6 +204,12 @@ contract Exit10 is UniswapBase {
   ) external payable returns (uint256 bondID, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
     _requireNoExitMode();
     require(!_isBootstrapOngoing(), 'EXIT10: Bootstrap ongoing');
+
+    if (!hasUpdatedRewards) {
+      EXIT.mint(MASTERCHEF, LP_EXIT_REWARD);
+      MasterchefExit(MASTERCHEF).updateRewards(LP_EXIT_REWARD);
+      hasUpdatedRewards = true;
+    }
 
     claimAndDistributeFees();
 

@@ -70,7 +70,7 @@ abstract contract AMasterchefBase is Ownable {
     poolToken[address(token)] = true;
   }
 
-  function deposit(uint256 pid, uint256 amount) external {
+  function deposit(uint256 pid, uint256 amount) external virtual {
     PoolInfo storage pool = poolInfo[pid];
     UserInfo storage user = userInfo[pid][msg.sender];
     _updatePool(pid);

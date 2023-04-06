@@ -31,7 +31,6 @@ abstract contract ABaseExit10Test is ABaseTest {
 
   uint256 initialBalance = 1_000_000_000 ether;
   uint256 deployTime;
-  uint256 exitPreMint = 10 ether;
 
   address weth = vm.envAddress('WETH');
   address usdc = vm.envAddress('USDC');
@@ -103,8 +102,7 @@ abstract contract ABaseExit10Test is ABaseTest {
     exit10 = new Exit10(baseParams, params);
     nft.setExit10(address(exit10));
     FeeSplitter(feeSplitter).setExit10(address(exit10));
-    exit.mint(address(this), exitPreMint);
-    lp = _setUpExitLiquidity(usdc, address(exit), 10_000000, exitPreMint);
+    lp = _pairForUniswapV2(address(UNISWAP_V2_FACTORY), usdc, address(exit));
     _setUpExitPool(exit10, lp);
     _setMasterchefs(feeSplitter);
 
@@ -205,21 +203,9 @@ abstract contract ABaseExit10Test is ABaseTest {
 
   function _setUpExitPool(Exit10 _exit10, address _lp) internal {
     MasterchefExit(_exit10.MASTERCHEF()).add(100, _lp);
-    _exit10.EXIT().mint(_exit10.MASTERCHEF(), _exit10.LP_EXIT_REWARD());
-    MasterchefExit(_exit10.MASTERCHEF()).updateRewards(_exit10.LP_EXIT_REWARD());
+    // _exit10.EXIT().mint(_exit10.MASTERCHEF(), _exit10.LP_EXIT_REWARD());
+    // MasterchefExit(_exit10.MASTERCHEF()).updateRewards(_exit10.LP_EXIT_REWARD());
     MasterchefExit(_exit10.MASTERCHEF()).transferOwnership(address(_exit10));
-  }
-
-  function _setUpExitLiquidity(
-    address _token0,
-    address _token1,
-    uint256 _amount0,
-    uint256 _amount1
-  ) internal returns (address pair) {
-    deal(_token0, address(this), _amount0);
-    deal(_token1, address(this), _amount1);
-    pair = UNISWAP_V2_FACTORY.createPair(_token0, _token1);
-    _addLiquidity(_token0, _token1, _amount0, _amount1);
   }
 
   function _addLiquidity(

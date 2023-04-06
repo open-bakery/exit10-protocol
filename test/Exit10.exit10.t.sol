@@ -50,12 +50,7 @@ contract Exit10_exit10Test is ABaseExit10Test {
     _eth10k();
     exit10.exit10();
 
-    uint256 distributedRewards = (masterchefExit.rewardRate() * bootstrapPeriod) / masterchefExit.PRECISION();
-    assertEq(
-      exit.totalSupply(),
-      exitPreMint + distributedRewards + exit.balanceOf(address(this)),
-      'Check exit totalSupply'
-    );
+    assertEq(exit.totalSupply(), exit.balanceOf(address(this)), 'Check exit totalSupply');
   }
 
   function test_exit10() public {

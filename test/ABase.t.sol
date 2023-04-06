@@ -54,6 +54,12 @@ abstract contract ABaseTest is Test {
     _maxApprove(address(_token), _spender);
   }
 
+  function _maxApproveFrom(address _from, address _token, address _spender) internal {
+    vm.startPrank(_from);
+    ERC20(_token).approve(_spender, type(uint256).max);
+    vm.stopPrank();
+  }
+
   function _maxApprove(address _token, address _spender) internal {
     ERC20(_token).approve(_spender, type(uint256).max);
   }
@@ -147,5 +153,23 @@ abstract contract ABaseTest is Test {
     } else {
       assertLt(b - a, precision, err);
     }
+  }
+
+  function _pairForUniswapV2(address _factory, address _tokenA, address _tokenB) internal pure returns (address _pair) {
+    (address token0, address token1) = _tokenA < _tokenB ? (_tokenA, _tokenB) : (_tokenB, _tokenA);
+    _pair = address(
+      uint160(
+        uint(
+          keccak256(
+            abi.encodePacked(
+              hex'ff',
+              _factory,
+              keccak256(abi.encodePacked(token0, token1)),
+              hex'96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f' // init code hash
+            )
+          )
+        )
+      )
+    );
   }
 }

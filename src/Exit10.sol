@@ -48,8 +48,8 @@ contract Exit10 is UniswapBase {
   uint256 private pendingBucket;
   uint256 private reserveBucket;
   uint256 private bootstrapBucket;
-  uint256 private bootstrapBucketFinal;
-  uint256 private exitBucketFinal;
+  uint256 public bootstrapBucketFinal;
+  uint256 public exitBucketFinal;
 
   // EXIT TOKEN
   uint256 public exitTokenSupplyFinal;
@@ -304,6 +304,7 @@ contract Exit10 is UniswapBase {
     exitTokenSupplyFinal = EXIT.totalSupply();
     exitBucketFinal = _liquidityAmount() - (pendingBucket + reserveBucket);
     bootstrapBucketFinal = bootstrapBucket;
+    bootstrapBucket = 0;
 
     RemoveLiquidity memory rmParams = RemoveLiquidity({
       liquidity: uint128(exitBucketFinal),
@@ -323,7 +324,7 @@ contract Exit10 is UniswapBase {
     }
 
     // Total initial deposits that needs to be returned to bootsrappers
-    uint256 bootstrapRefund = exitBucketFinal != 0 ? (bootstrapBucket * exitBucketRewards) / exitBucketFinal : 0;
+    uint256 bootstrapRefund = exitBucketFinal != 0 ? (bootstrapBucketFinal * exitBucketRewards) / exitBucketFinal : 0;
 
     (bootstrapRewardsPlusRefund, teamPlusBackersRewards, exitTokenRewardsFinal) = _calculateFinalShares(
       bootstrapRefund,
@@ -342,17 +343,16 @@ contract Exit10 is UniswapBase {
 
   function bootstrapClaim() external returns (uint256 claim) {
     uint256 bootBalance = IERC20(BOOT).balanceOf(msg.sender);
-    uint256 bootLiquidity = bootBalance / TOKEN_MULTIPLIER;
+
     claim = _safeTokenClaim(
       BOOT,
-      bootLiquidity,
+      bootBalance / TOKEN_MULTIPLIER,
       bootstrapBucketFinal,
       bootstrapRewardsPlusRefund,
       bootstrapRewardsPlusRefundClaimed
     );
 
     bootstrapRewardsPlusRefundClaimed += claim;
-    bootstrapBucket -= bootLiquidity;
 
     _safeTransferToken(TOKEN_OUT, msg.sender, claim);
 
@@ -524,7 +524,7 @@ contract Exit10 is UniswapBase {
 
   function _exitBucket() internal view returns (uint256 _exitAmount) {
     if (positionId == 0) return 0;
-    _exitAmount = inExitMode ? exitBucketFinal : _liquidityAmount() - (pendingBucket + reserveBucket + bootstrapBucket);
+    _exitAmount = inExitMode ? 0 : _liquidityAmount() - (pendingBucket + reserveBucket + bootstrapBucket);
   }
 
   function _liquidityAmount() internal view returns (uint128 _liquidity) {

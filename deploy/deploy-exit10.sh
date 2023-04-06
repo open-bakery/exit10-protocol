@@ -16,12 +16,6 @@ function extract_addr_cast() {
   cat < /dev/stdin | grep contractAddress | awk '{ print $2 }'
 }
 
-
-REWARDS_DURATION="1209600" # 2 weeks
-BOOTSTRAP_PERIOD="1209600"
-ACCRUAL_PARAMETER="604800" # 1 week
-LP_PER_USD="1"
-
 # Our Tokens
 NFT=$(forge create "$SRC/NFT.sol:NFT" --unlocked --constructor-args "Bond Data" "BND" 0 | extract_addr)
 STO=$(forge create "$SRC/STOToken.sol:STOToken" --unlocked --constructor-args $ZERO32 | extract_addr)
@@ -32,7 +26,7 @@ EXIT=$(forge create "$SRC/BaseToken.sol:BaseToken" --unlocked --constructor-args
 # Masterchefs
 MASTERCHEF0=$(forge create "$SRC/Masterchef.sol:Masterchef" --unlocked --constructor-args "$WETH" "$REWARDS_DURATION" | extract_addr)
 MASTERCHEF1=$(forge create "$SRC/Masterchef.sol:Masterchef" --unlocked --constructor-args "$WETH" "$REWARDS_DURATION" | extract_addr)
-MASTERCHEF_EXIT=$(forge create "$SRC/MasterchefExit.sol:MasterchefExit" --unlocked --constructor-args "$EXIT" "$REWARDS_DURATIONadfadfs" | extract_addr)
+MASTERCHEF_EXIT=$(forge create "$SRC/MasterchefExit.sol:MasterchefExit" --unlocked --constructor-args "$EXIT" "$REWARDS_DURATION_EXIT" | extract_addr)
 
 # Exit10 Core (FeeSplitter, Exit10)
 FEE_SPLITTER=$(forge create "$SRC/FeeSplitter.sol:FeeSplitter" --unlocked --constructor-args "$MASTERCHEF0" "$MASTERCHEF1" "$SWAPPER" | extract_addr)

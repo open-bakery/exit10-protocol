@@ -46,12 +46,12 @@ abstract contract ABaseExit10Test is ABaseTest {
   uint24 fee = uint24(vm.envUint('FEE'));
   int24 tickLower = int24(vm.envInt('LOWER_TICK'));
   int24 tickUpper = int24(vm.envInt('UPPER_TICK'));
+  uint256 rewardsDuration = vm.envUint('REWARDS_DURATION');
+  uint256 rewardsDurationExit = vm.envUint('REWARDS_DURATION_EXIT');
 
   uint256 constant DECIMAL_PRECISION = 1e18;
   uint256 constant USDC_DECIMALS = 1e6;
   uint256 constant ORACLE_SECONDS = 60;
-  uint256 constant REWARDS_DURATION = 2 weeks;
-  uint256 constant REWARDS_DURATION_EXIT = 52 weeks * 2; // 2 years
 
   Masterchef masterchef0; // 50% BOOT 50% STO
   Masterchef masterchef1; // BLP
@@ -79,9 +79,9 @@ abstract contract ABaseExit10Test is ABaseTest {
     nft = new NFT('Bond Data', 'BND', 0);
 
     // Deploy dependency contracts
-    masterchef0 = new Masterchef(weth, REWARDS_DURATION);
-    masterchef1 = new Masterchef(weth, REWARDS_DURATION);
-    masterchefExit = new MasterchefExit(address(exit), REWARDS_DURATION_EXIT);
+    masterchef0 = new Masterchef(weth, rewardsDuration);
+    masterchef1 = new Masterchef(weth, rewardsDuration);
+    masterchefExit = new MasterchefExit(address(exit), rewardsDurationExit);
 
     feeSplitter = address(new FeeSplitter(address(masterchef0), address(masterchef1), vm.envAddress('SWAPPER')));
     Exit10.DeployParams memory params = Exit10.DeployParams({

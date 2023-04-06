@@ -70,7 +70,7 @@ testSingle:
 	forge test -vv --mc Exit10_convertBondTest --fork-url $(RPC_URL)
 
 systemLogs:
-	forge test -vv --mc SystemLogsTest --fork-url $(RPC_URL)
+	forge test -vvv --mt testScenario_1 --fork-url $(RPC_URL)
 
 fuzz:
 	forge test -vv --mc FuzzTest --fork-url $(RPC_URL)

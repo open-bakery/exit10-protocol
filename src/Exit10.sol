@@ -48,6 +48,7 @@ contract Exit10 is UniswapBase {
   uint256 private pendingBucket;
   uint256 private reserveBucket;
   uint256 private bootstrapBucket;
+  uint256 private bootstrapBucketFinal;
   uint256 private exitBucketFinal;
 
   // EXIT TOKEN
@@ -302,6 +303,7 @@ contract Exit10 is UniswapBase {
     EXIT.burn(MASTERCHEF, MasterchefExit(MASTERCHEF).stopRewards(LP_EXIT_REWARD));
     exitTokenSupplyFinal = EXIT.totalSupply();
     exitBucketFinal = _liquidityAmount() - (pendingBucket + reserveBucket);
+    bootstrapBucketFinal = bootstrapBucket;
 
     RemoveLiquidity memory rmParams = RemoveLiquidity({
       liquidity: uint128(exitBucketFinal),
@@ -340,15 +342,17 @@ contract Exit10 is UniswapBase {
 
   function bootstrapClaim() external returns (uint256 claim) {
     uint256 bootBalance = IERC20(BOOT).balanceOf(msg.sender);
+    uint256 bootLiquidity = bootBalance / TOKEN_MULTIPLIER;
     claim = _safeTokenClaim(
       BOOT,
-      bootBalance / TOKEN_MULTIPLIER,
-      bootstrapBucket,
+      bootLiquidity,
+      bootstrapBucketFinal,
       bootstrapRewardsPlusRefund,
       bootstrapRewardsPlusRefundClaimed
     );
 
     bootstrapRewardsPlusRefundClaimed += claim;
+    bootstrapBucket -= bootLiquidity;
 
     _safeTransferToken(TOKEN_OUT, msg.sender, claim);
 

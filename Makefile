@@ -67,7 +67,7 @@ trace:
 	forge test -vv --nmc "SystemLogsTest|FuzzTest" --fork-url $(RPC_URL)
 
 single:
-	forge test -vv --mc MasterchefExitTest --fork-url $(RPC_URL)
+	forge test -vv --mc DepositHelperTest --fork-url $(RPC_URL)
 
 systemLogs:
 	forge test -vv --mt testScenario_0 --fork-url $(RPC_URL)

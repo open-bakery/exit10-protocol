@@ -11,5 +11,4 @@ broadcast/
 .reinitSubmodules.sh
 anvil.log
 .vscode
-test/SystemLogs.t.sol
 config/local.ini

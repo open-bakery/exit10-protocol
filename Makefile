@@ -60,6 +60,9 @@ dev-mainnet-fork:
 gas-report:
 	forge test -vv --nmc "SystemLogsTest|FuzzTest" --gas-report --fork-url $(RPC_URL)
 
+testAll:
+	forge test -vv --fork-url $(RPC_URL)
+
 tests:
 	forge test -vv  --nmc "SystemLogsTest|FuzzTest" --fork-url $(RPC_URL)
 
@@ -70,7 +73,7 @@ single:
 	forge test -vv --mc DepositHelperTest --fork-url $(RPC_URL)
 
 systemLogs:
-	forge test -vv --mt testScenario_0 --fork-url $(RPC_URL)
+	forge test -vv --mc SystemLogsTest --fork-url $(RPC_URL)
 
 fuzz:
 	forge test -vv --mc FuzzTest --fork-url $(RPC_URL)

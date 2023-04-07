@@ -138,6 +138,17 @@ contract MasterchefExitTest is ABaseTest {
     assertEq(_balance(rewardToken, alice), prevRewardBalance + intervalReward);
   }
 
+  function testClaimingRewardsAfterPeriodFinished() public {
+    _init();
+    _depositAs(alice, stakeAmount);
+    skip(1 days);
+    _withdrawAs(alice, stakeAmount);
+    skip(rewardDuration);
+    _depositAs(alice, stakeAmount);
+
+    assertApproxEqAbs(_balance(rewardToken, alice), rewardAmount, 1, 'Check balance == rewardAmount');
+  }
+
   function _init() internal {
     mc.add(10, address(stakeToken));
     mc.updateRewards(rewardAmount);

@@ -155,6 +155,14 @@ abstract contract ABaseTest is Test {
     }
   }
 
+  function _assertEqRoughly(uint256 _a, uint256 _b, uint256 _precision, string memory _err) internal {
+    if (_a > _b) {
+      assertLt(_a - _b, _precision, _err);
+    } else {
+      assertLt(_b - _a, _precision, _err);
+    }
+  }
+
   function _pairForUniswapV2(address _factory, address _tokenA, address _tokenB) internal pure returns (address _pair) {
     (address token0, address token1) = _tokenA < _tokenB ? (_tokenA, _tokenB) : (_tokenB, _tokenA);
     _pair = address(

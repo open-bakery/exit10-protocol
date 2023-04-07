@@ -134,24 +134,24 @@ abstract contract ABaseTest is Test {
     return ERC20(_token).balanceOf(address(this));
   }
 
-  function _balance(ERC20 _token, address who) internal view returns (uint256) {
-    return _token.balanceOf(who);
+  function _balance(ERC20 _token, address _who) internal view returns (uint256) {
+    return _token.balanceOf(_who);
   }
 
-  function _balance(address _token, address who) internal view returns (uint256) {
-    return ERC20(_token).balanceOf(who);
+  function _balance(address _token, address _who) internal view returns (uint256) {
+    return ERC20(_token).balanceOf(_who);
   }
 
   function _ethBalance() internal view returns (uint256) {
     return address(this).balance;
   }
 
-  function _assertEqRoughly(uint256 a, uint256 b, string memory err) internal {
+  function _assertEqRoughly(uint256 _a, uint256 _b, string memory _err) internal {
     uint256 precision = 1_000_000;
-    if (a > b) {
-      assertLt(a - b, precision, err);
+    if (_a > _b) {
+      assertLt(_a - _b, precision, _err);
     } else {
-      assertLt(b - a, precision, err);
+      assertLt(_a - _b, precision, _err);
     }
   }
 

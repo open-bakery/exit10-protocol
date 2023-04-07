@@ -29,9 +29,7 @@ contract MasterchefExitTest is ABaseTest {
   }
 
   function test_updateRewards_RevertIf_AmountZero() public {
-    mc.add(10, address(stakeToken));
-    vm.prank(mc.owner());
-    mc.updateRewards(rewardAmount);
+    _init();
     vm.expectRevert(bytes('MasterchefExit: Can only deposit rewards once'));
     mc.updateRewards(rewardAmount);
   }
@@ -42,8 +40,7 @@ contract MasterchefExitTest is ABaseTest {
   }
 
   function test_updateRewards_RevertIf_UpdatingMoreThanOnce() public {
-    mc.add(10, address(stakeToken));
-    mc.updateRewards(rewardAmount);
+    _init();
     vm.expectRevert(bytes('MasterchefExit: Can only deposit rewards once'));
     mc.updateRewards(rewardAmount);
   }
@@ -55,15 +52,14 @@ contract MasterchefExitTest is ABaseTest {
   }
 
   function test_updateRewards() public {
-    mc.add(10, address(stakeToken));
-    mc.updateRewards(rewardAmount);
+    _init();
     assertEq(mc.rewardRate(), (rewardAmount * mc.PRECISION()) / rewardDuration, 'Reward rate set');
     assertEq(mc.periodFinish(), block.timestamp + rewardDuration, 'Period finish set');
     assertEq(_balance(rewardToken, address(mc)), rewardAmount, 'Reward token transfered');
   }
 
   function test_rewards() public {
-    _init();
+    _initAndDeposit();
     uint256 interval = 1 days;
     skip(interval);
     uint256 expectedReward = (mc.rewardRate() * interval) / mc.PRECISION();
@@ -72,14 +68,14 @@ contract MasterchefExitTest is ABaseTest {
   }
 
   function test_deleteRewards_RevertIf_NotOwner() public {
-    _init();
+    _initAndDeposit();
     vm.expectRevert(bytes('Ownable: caller is not the owner'));
     vm.prank(alice);
     mc.stopRewards(rewardAmount);
   }
 
   function test_deleteRewards() public {
-    _init();
+    _initAndDeposit();
     uint256 interval = 1 days;
     skip(interval);
     uint256 expectedReward = (mc.rewardRate() * interval) / mc.PRECISION();
@@ -98,7 +94,7 @@ contract MasterchefExitTest is ABaseTest {
   }
 
   function testDeleteRewardsTwoDepositors() public {
-    _init();
+    _initAndDeposit();
     uint256 interval = 1 days;
     skip(interval);
 
@@ -118,9 +114,37 @@ contract MasterchefExitTest is ABaseTest {
     assertEq(rewardToken.totalSupply(), intervalReward * 2, 'Check total supply');
   }
 
+  function testFirstDepositCollectAllRewards() public {
+    _init();
+    uint256 interval = 1 days;
+    skip(interval);
+
+    uint256 intervalReward = (mc.rewardRate() * interval) / mc.PRECISION();
+    _depositAs(alice, stakeAmount);
+    assertEq(_balance(rewardToken, alice), intervalReward);
+  }
+
+  function testNoStakeInBetweenDeposits() public {
+    _init();
+    uint256 interval = 1 days;
+    skip(interval);
+    _depositAs(alice, stakeAmount);
+    _withdrawAs(alice, stakeAmount);
+    uint256 prevRewardBalance = _balance(rewardToken, alice);
+    skip(interval);
+
+    uint256 intervalReward = (mc.rewardRate() * interval) / mc.PRECISION();
+    _depositAs(alice, stakeAmount);
+    assertEq(_balance(rewardToken, alice), prevRewardBalance + intervalReward);
+  }
+
   function _init() internal {
     mc.add(10, address(stakeToken));
     mc.updateRewards(rewardAmount);
+  }
+
+  function _initAndDeposit() internal {
+    _init();
     mc.deposit(0, stakeAmount);
   }
 

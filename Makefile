@@ -70,7 +70,7 @@ trace:
 	forge test -vv --nmc "SystemLogsTest|FuzzTest" --fork-url $(RPC_URL)
 
 single:
-	forge test -vv --mc DepositHelperTest --fork-url $(RPC_URL)
+	forge test -vvv --mc Exit10_bootstrapLockCappedTest --fork-url $(RPC_URL)
 
 systemLogs:
 	forge test -vv --mc SystemLogsTest --fork-url $(RPC_URL)

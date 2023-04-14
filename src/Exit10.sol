@@ -165,6 +165,7 @@ contract Exit10 is UniswapBase {
     AddLiquidity memory params
   ) external payable returns (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
     require(_isBootstrapOngoing(), 'EXIT10: Bootstrap ended');
+    require(!isBootstrapCapReached, 'EXIT10: Bootstrap cap reached');
 
     _depositTokens(params.amount0Desired, params.amount1Desired);
 
@@ -550,7 +551,7 @@ contract Exit10 is UniswapBase {
   }
 
   function _isBootstrapOngoing() internal view returns (bool) {
-    return (block.timestamp < DEPLOYMENT_TIMESTAMP + BOOTSTRAP_PERIOD && !isBootstrapCapReached);
+    return (block.timestamp < DEPLOYMENT_TIMESTAMP + BOOTSTRAP_PERIOD);
   }
 
   function _requireExitMode() internal view {

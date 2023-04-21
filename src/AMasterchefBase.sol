@@ -8,6 +8,7 @@ import { APermit } from './APermit.sol';
 abstract contract AMasterchefBase is APermit, Ownable {
   using SafeERC20 for IERC20;
 
+  event Add(uint256 indexed pid, uint256 allocPoint, address indexed token);
   event SetRewardDistributor(address indexed caller, address indexed rewardDistributor);
   event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
   event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
@@ -68,7 +69,9 @@ abstract contract AMasterchefBase is APermit, Ownable {
       })
     );
 
-    poolToken[token] = true;
+    poolToken[address(token)] = true;
+
+    emit Add(poolInfo.length - 1, allocPoint, token);
   }
 
   function deposit(uint256 pid, uint256 amount) public virtual {

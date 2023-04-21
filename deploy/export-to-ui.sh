@@ -4,15 +4,15 @@ SD="$(dirname "$(readlink -f "$0")")"
 source "$SD/../.env"
 source "$SD/../config/local.ini"
 
-CONTRACTS="Exit10 DepositHelper STOToken"
+CONTRACTS="Exit10 DepositHelper STOToken Masterchef MasterchefExit FeeSplitter"
 for contract in $CONTRACTS; do
   echo "export const $contract = $(jq .abi "$SD/../out/$contract.sol/$contract.json") as const" > "$EXIT10_UI_PATH/src/abis/$contract.ts"
 done
 
 
 echo "export default {
-  weth: '$WETH',
-  usdc: '$USDC',
+  a: '$USDC',
+  bw: '$WETH',
   uniswapV3Factory: '$UNISWAP_V3_FACTORY',
   uniswapV3Router: '$UNISWAP_V3_ROUTER',
   uniswapV3NPM: '$UNISWAP_V3_NPM',

@@ -79,6 +79,9 @@ SWAPPER_ADDRESS=$(cast send --create "$SWAPPER_BYTECODE" | extract_contract_addr
 cast send "0x$POOL_ADDRESS" "increaseObservationCardinalityNext(uint16)" 2 > /dev/null
 sleep 2
 cast send >> /dev/null
+
+BLOCK=$(cast rpc eth_blockNumber | jq -r . | awk -n '{print $1+1}')
+
 echo "WETH=0x$WETH_ADDRESS
 USDC=0x$USDC_ADDRESS
 UNISWAP_V3_FACTORY=0x$V3_FACTORY_ADDRESS
@@ -88,5 +91,6 @@ SWAPPER=0x$SWAPPER_ADDRESS
 POOL=0x$POOL_ADDRESS
 UNISWAP_V2_FACTORY=0x$V2_FACTORY_ADDRESS
 UNISWAP_V2_ROUTER=0x$V2_ROUTER_ADDRESS
-" > "$SD/../config/local.ini" 
+START_BLOCK=$BLOCK
+" > "$SD/../config/local.ini"
 

@@ -31,42 +31,42 @@ MASTERCHEF_EXIT=$(forge create "$SRC/MasterchefExit.sol:MasterchefExit" --unlock
 # Exit10 Core (FeeSplitter, Exit10)
 FEE_SPLITTER=$(forge create "$SRC/FeeSplitter.sol:FeeSplitter" --unlocked --constructor-args "$MASTERCHEF0" "$MASTERCHEF1" "$SWAPPER" | extract_addr)
 EXIT10_BASE_PARAMS="($WETH,$UNISWAP_V3_FACTORY,$UNISWAP_V3_NPM,$WETH,$USDC,$FEE,$LOWER_TICK,$UPPER_TICK)"
-EXIT10_DEPLOY_PARAMS="($NFT,$STO,$BOOT,$BLP,$EXIT,$MASTERCHEF_EXIT,$FEE_SPLITTER,$BOOTSTRAP_PERIOD,$BOOTSTRAP_TARGET,$BOOTSTRAP_CAP,$LIQUIDITY_PER_USDC,$EXIT_DISCOUNT,$ACCRUAL_PARAMETER)"
+EXIT10_DEPLOY_PARAMS="($NFT,$STO,$BOOT,$BLP,$EXIT,$MASTERCHEF_EXIT,$FEE_SPLITTER,$BENEFICIARY,$BOOTSTRAP_PERIOD,$BOOTSTRAP_TARGET,$BOOTSTRAP_CAP,$LIQUIDITY_PER_USDC,$EXIT_DISCOUNT,$ACCRUAL_PARAMETER)"
 EXIT10=$(forge create "$SRC/Exit10.sol:Exit10" --unlocked --constructor-args "$EXIT10_BASE_PARAMS" "$EXIT10_DEPLOY_PARAMS" | extract_addr)
 echo "EXIT10: $EXIT10"
 
 DEPOSIT_HELPER=$(forge create "$SRC/DepositHelper.sol:DepositHelper" --unlocked --constructor-args "$UNISWAP_V3_ROUTER" "$EXIT10" "$WETH" | extract_addr)
 
 # Uniswap V2 Pool for EXIT/USDC
-cast send "$UNISWAP_V2_FACTORY" "createPair(address,address)" "$EXIT" "$USDC"
+cast send "$UNISWAP_V2_FACTORY" "createPair(address,address)" "$EXIT" "$USDC" > /dev/null
 
 EXIT_LP="0x$(cast call "$UNISWAP_V2_FACTORY" "getPair(address,address)" "$EXIT" "$USDC" | cut -c 27-66)"
 echo "EXIT_LP: $EXIT_LP"
 
 # Post-deploy setup
 echo "nft.setExit10"
-cast send "$NFT" "setExit10(address)" "$EXIT10"
+cast send "$NFT" "setExit10(address)" "$EXIT10" > /dev/null
 echo "feeSplitter.setExit10"
-cast send "$FEE_SPLITTER" "setExit10(address)" "$EXIT10"
+cast send "$FEE_SPLITTER" "setExit10(address)" "$EXIT10" > /dev/null
 
 echo "SETUP MASTERCHEF0"
-cast send "$MASTERCHEF0" "add(uint256,address)" 50 "$STO"
-cast send "$MASTERCHEF0" "add(uint256,address)" 50 "$BOOT"
-cast send "$MASTERCHEF0" "transferOwnership(address)" "$FEE_SPLITTER"
+cast send "$MASTERCHEF0" "add(uint32,address)" 50 "$STO" > /dev/null
+cast send "$MASTERCHEF0" "add(uint32,address)" 50 "$BOOT" > /dev/null
+cast send "$MASTERCHEF0" "transferOwnership(address)" "$FEE_SPLITTER" > /dev/null
 
 echo "SETUP MASTERCHEF1"
-cast send "$MASTERCHEF1" "add(uint256,address)" 100 "$BOOT"
-cast send "$MASTERCHEF1" "transferOwnership(address)" "$FEE_SPLITTER"
+cast send "$MASTERCHEF1" "add(uint32,address)" 100 "$BLP" > /dev/null
+cast send "$MASTERCHEF1" "transferOwnership(address)" "$FEE_SPLITTER" > /dev/null
 
 echo "SETUP MASTERCHEF_EXIT"
-cast send "$MASTERCHEF_EXIT" "add(uint256,address)" 100 "$EXIT_LP"
-cast send "$MASTERCHEF_EXIT" "transferOwnership(address)" "$EXIT10"
+cast send "$MASTERCHEF_EXIT" "add(uint32,address)" 100 "$EXIT_LP" > /dev/null
+cast send "$MASTERCHEF_EXIT" "transferOwnership(address)" "$EXIT10" > /dev/null
 
 echo "TRANSFER OWNERSHIPS"
-cast send "$BOOT" "transferOwnership(address)" "$EXIT10"
-cast send "$STO" "transferOwnership(address)" "$EXIT10"
-cast send "$BLP" "transferOwnership(address)" "$EXIT10"
-cast send "$EXIT" "transferOwnership(address)" "$EXIT10"
+cast send "$BOOT" "transferOwnership(address)" "$EXIT10" > /dev/null
+cast send "$STO" "transferOwnership(address)" "$EXIT10" > /dev/null
+cast send "$BLP" "transferOwnership(address)" "$EXIT10" > /dev/null
+cast send "$EXIT" "transferOwnership(address)" "$EXIT10" > /dev/null
 
 
 echo "NFT=$NFT
@@ -81,4 +81,3 @@ FEE_SPLITTER=$FEE_SPLITTER
 EXIT10=$EXIT10
 DEPOSIT_HELPER=$DEPOSIT_HELPER
 EXIT_LP=$EXIT_LP" >> "$SD/../config/local.ini"
-

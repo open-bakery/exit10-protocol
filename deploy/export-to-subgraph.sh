@@ -4,13 +4,19 @@ SD="$(dirname "$(readlink -f "$0")")"
 source "$SD/../.env"
 source "$SD/../config/local.ini"
 
-CONTRACTS="Exit10 IUniswapV3Pool STOToken"
+CONTRACTS="Exit10 STOToken AMasterchefBase Masterchef MasterchefExit FeeSplitter"
 echo "{
-  \"startBlock\": 0,
+  \"startBlock\": $START_BLOCK,
   \"network\": \"mainnet\",
   \"Exit10\": \"$EXIT10\",
   \"STOToken\": \"$STO\",
-  \"Pool\": \"$POOL\"
+  \"EXIT\": \"$EXIT\",
+  \"ExitLp\": \"$EXIT_LP\",
+  \"Pool\": \"$POOL\",
+  \"Masterchef0\": \"$MASTERCHEF0\",
+  \"Masterchef1\": \"$MASTERCHEF1\",
+  \"MasterchefExit\": \"$MASTERCHEF_EXIT\",
+  \"FeeSplitter\": \"$FEE_SPLITTER\"
 }" > "$EXIT10_SUBGRAPH_PATH/networks/local.json"
 
 for contract in $CONTRACTS; do

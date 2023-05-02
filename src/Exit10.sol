@@ -164,6 +164,7 @@ contract Exit10 is UniswapBase {
   function bootstrapLock(
     AddLiquidity memory params
   ) external payable returns (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
+    _requireNoExitMode();
     require(_isBootstrapOngoing(), 'EXIT10: Bootstrap ended');
     require(!isBootstrapCapReached, 'EXIT10: Bootstrap cap reached');
 

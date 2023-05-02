@@ -476,7 +476,9 @@ contract Exit10 is UniswapBase {
   }
 
   function _getExitAmount(uint256 _liquidity) internal view returns (uint256) {
-    uint256 percentFromTaget = _getPercentFromTarget(_liquidity) <= 5000 ? 5000 : _getPercentFromTarget(_liquidity);
+    uint256 percentFromTaget = _getPercentFromTarget(bootstrapBucket) <= 5000
+      ? 5000
+      : _getPercentFromTarget(bootstrapBucket);
     uint256 projectedLiquidityPerExit = (LIQUIDITY_PER_USD * percentFromTaget) / PERCENT_BASE;
     uint256 actualLiquidityPerExit = _getActualLiquidityPerExit(_exitBucket());
     uint256 liquidityPerExit = actualLiquidityPerExit > projectedLiquidityPerExit

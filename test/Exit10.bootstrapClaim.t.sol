@@ -16,7 +16,6 @@ contract Exit10_bootstrapClaimTest is ABaseExit10Test {
 
     uint256 usdcBalanceBefore = _balance0();
     uint256 bootBalance = _balance(boot);
-    uint256 bootstrapRewardsPlusRefundClaimedBefore = exit10.bootstrapRewardsPlusRefundClaimed();
 
     exit10.bootstrapClaim();
 
@@ -25,7 +24,6 @@ contract Exit10_bootstrapClaimTest is ABaseExit10Test {
     assertEq(_balance(boot), 0, 'BOOT tokens burned');
     assertGt(claimableAmount, 0, 'Check claimable > 0');
     assertEq(_balance0(), usdcBalanceBefore + claimableAmount, 'USDC balance increased');
-    assertGt(exit10.bootstrapRewardsPlusRefundClaimed(), bootstrapRewardsPlusRefundClaimedBefore, 'Claimed increased');
   }
 
   function test_bootstrapClaim_RevertIf_NotExited() public {

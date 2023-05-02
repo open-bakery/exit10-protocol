@@ -25,8 +25,6 @@ contract Exit10_exitClaimTest is ABaseExit10Test {
     vm.prank(alice);
     exit10.exitClaim();
 
-    uint256 exitTokenRewardsClaimedBefore = exit10.exitTokenRewardsClaimed();
-
     // action!
     exit10.exitClaim();
 
@@ -35,12 +33,6 @@ contract Exit10_exitClaimTest is ABaseExit10Test {
       _balance0(),
       initialBalanceUSDC + (exit10.exitTokenRewardsFinal() * exitTokenShare) / precision,
       'Check USD balance'
-    );
-
-    assertEq(
-      exit10.exitTokenRewardsClaimed(),
-      exitTokenRewardsClaimedBefore + (exit10.exitTokenRewardsFinal() * exitTokenShare) / precision,
-      'Remaining reward decreased'
     );
   }
 

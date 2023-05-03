@@ -34,6 +34,7 @@ abstract contract ABaseExit10Test is ABaseTest {
 
   address weth = vm.envAddress('WETH');
   address usdc = vm.envAddress('USDC');
+  address beneficiary = vm.envAddress('BENEFICIARY');
   address uniswapV3Factory = vm.envAddress('UNISWAP_V3_FACTORY');
   address nonfungiblePositionManager = vm.envAddress('UNISWAP_V3_NPM');
   uint256 accrualParameter = vm.envUint('ACCRUAL_PARAMETER');
@@ -91,6 +92,7 @@ abstract contract ABaseExit10Test is ABaseTest {
       EXIT: address(exit),
       masterchef: address(masterchefExit),
       feeSplitter: feeSplitter,
+      beneficiary: beneficiary,
       bootstrapPeriod: bootstrapPeriod,
       bootstrapTarget: bootstrapTarget,
       bootstrapCap: _getBootstrapCap(),

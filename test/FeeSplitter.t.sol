@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
+import { console } from 'forge-std/console.sol';
 import { BaseToken } from '../src/BaseToken.sol';
 import { FeeSplitter } from '../src/FeeSplitter.sol';
 import { Masterchef } from '../src/Masterchef.sol';
 import { ISwapper } from '../src/interfaces/ISwapper.sol';
 import { ABaseTest } from './ABase.t.sol';
+import { IUniswapV3Router } from '../src/interfaces/IUniswapV3Router.sol';
+import { IUniswapV3Pool } from '../src/interfaces/IUniswapV3Pool.sol';
 
 contract FeeSplitterTest is ABaseTest {
   BaseToken STO = new BaseToken('Share Token', 'STO');
@@ -129,7 +132,7 @@ contract FeeSplitterTest is ABaseTest {
 
   function test_updateFees_FullSell() public {
     _init();
-    uint256 exchanged = feeSplitter.updateFees(_usdcAmount(100_000_000));
+    uint256 exchanged = feeSplitter.updateFees(_usdcAmount(1_000_000));
     _checkBuckets(0, 0, 0, 0);
     _checkBalances(address(feeSplitter), 0, 0);
 
@@ -138,6 +141,9 @@ contract FeeSplitterTest is ABaseTest {
     uint256 mc0BalanceWeth = (pendingWeth / 10) * 4;
     _checkBalances(masterchef0, 0, mc0BalanceWeth);
     _checkBalances(masterchef1, 0, exchanged + amountWeth - mc0BalanceWeth);
+
+    console.log('exchanged: ', exchanged);
+    console.log(_returnPriceInUSD());
   }
 
   function _dealTokens(uint256 _amountUsdc, uint256 _amountWeth) internal {
@@ -171,5 +177,14 @@ contract FeeSplitterTest is ABaseTest {
     _dealTokens(amountUsdc, amountWeth);
     feeSplitter.collectFees(pendingShare, remainingShare, amountUsdc, amountWeth);
     skip(ORACLE_SECONDS);
+  }
+
+  function _returnPriceInUSD() internal view returns (uint160) {
+    uint160 sqrtPriceX96;
+    (sqrtPriceX96, , , , , , ) = IUniswapV3Pool(IUniswapV3Router(UNISWAP_V3_ROUTER).getPool(USDC, WETH, FEE)).slot0();
+    //uint256 a = uint256(sqrtPriceX96) * uint256(sqrtPriceX96) * 1000000;
+    //uint256 b = 1 << 192;
+    //uint256 uintPrice = a / b;
+    return sqrtPriceX96;
   }
 }

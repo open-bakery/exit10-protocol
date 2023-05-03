@@ -11,7 +11,7 @@ import { Exit10 } from './Exit10.sol';
 contract FeeSplitter is Ownable {
   using SafeERC20 for IERC20;
 
-  uint16 constant SLIPPAGE = 100;
+  uint16 constant SLIPPAGE = 50;
   uint32 constant ORACLE_SECONDS = 60;
   uint256 constant MAX_UINT_256 = type(uint256).max;
 

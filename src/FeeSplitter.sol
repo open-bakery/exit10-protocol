@@ -128,8 +128,12 @@ contract FeeSplitter is Ownable {
     pendingBucketTokenIn = 0;
     remainingBucketsTokenIn = 0;
 
-    Masterchef(MASTERCHEF_0).updateRewards(mc0TokenIn);
-    Masterchef(MASTERCHEF_1).updateRewards(mc1TokenIn);
+    if (mc0TokenIn != 0) {
+      Masterchef(MASTERCHEF_0).updateRewards(mc0TokenIn);
+    }
+    if (mc1TokenIn != 0) {
+      Masterchef(MASTERCHEF_1).updateRewards(mc1TokenIn);
+    }
 
     emit UpdateFees(msg.sender, totalExchangedIn, mc0TokenIn, mc1TokenIn);
   }

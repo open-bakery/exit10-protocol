@@ -78,7 +78,6 @@ contract AuditTest is ABaseExit10Test {
       skip(1 days);
 
       // Call updateFees with 0 amount
-      vm.expectRevert(bytes('Masterchef: Nothing to update'));
       FeeSplitter(feeSplitter).updateFees(0);
 
       console.log('MC0 RewardRate:', masterchef0.rewardRate());

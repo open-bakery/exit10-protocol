@@ -126,7 +126,6 @@ abstract contract AMasterchefBase is Ownable {
   /// @notice Adds rewards to the pool and updates the reward rate.
   /// Must add and evenly distribute rewards through the rewardsDuration.
   function updateRewards(uint256 amount) external virtual onlyOwner {
-    require(amount != 0, 'Masterchef: Nothing to update');
     require(totalAllocPoint != 0, 'Masterchef: Must initiate a pool before updating rewards');
     IERC20(REWARD_TOKEN).safeTransferFrom(msg.sender, address(this), amount);
 

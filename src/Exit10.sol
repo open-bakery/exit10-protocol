@@ -182,11 +182,15 @@ contract Exit10 is UniswapBase {
         (uint256 amountRemoved0, uint256 amountRemoved1) = _decreaseLiquidity(
           UniswapBase.RemoveLiquidity({ liquidity: uint128(diff), amount0Min: 0, amount1Min: 0, deadline: DEADLINE })
         );
-        _collect(address(this), uint128(amountRemoved0), uint128(amountRemoved1));
+        (uint256 amountCollected0, uint256 amountCollected1) = _collect(
+          address(this),
+          uint128(amountRemoved0),
+          uint128(amountRemoved1)
+        );
 
         liquidityAdded -= uint128(diff);
-        amountAdded0 -= amountRemoved0;
-        amountAdded1 -= amountRemoved1;
+        amountAdded0 -= amountCollected0;
+        amountAdded1 -= amountCollected1;
         bootstrapBucket = BOOTSTRAP_CAP;
         isBootstrapCapReached = true;
       }
@@ -248,11 +252,15 @@ contract Exit10 is UniswapBase {
     idToBondData[bondID].endTime = uint64(block.timestamp);
 
     (amountRemoved0, amountRemoved1) = _decreaseLiquidity(params);
-    _collect(msg.sender, uint128(amountRemoved0), uint128(amountRemoved1));
+    (uint256 amountCollected0, uint256 amountCollected1) = _collect(
+      msg.sender,
+      uint128(amountRemoved0),
+      uint128(amountRemoved1)
+    );
 
     pendingBucket -= params.liquidity;
 
-    emit CancelBond(msg.sender, bondID, amountRemoved0, amountRemoved1);
+    emit CancelBond(msg.sender, bondID, amountCollected0, amountCollected1);
   }
 
   function convertBond(
@@ -294,9 +302,13 @@ contract Exit10 is UniswapBase {
     BLP.burn(msg.sender, amountToBurn);
 
     (amountRemoved0, amountRemoved1) = _decreaseLiquidity(params);
-    _collect(msg.sender, uint128(amountRemoved0), uint128(amountRemoved1));
+    (uint256 amountCollected0, uint256 amountCollected1) = _collect(
+      msg.sender,
+      uint128(amountRemoved0),
+      uint128(amountRemoved1)
+    );
 
-    emit Redeem(msg.sender, amountToBurn, amountRemoved0, amountRemoved1);
+    emit Redeem(msg.sender, amountToBurn, amountCollected0, amountCollected1);
   }
 
   function exit10() external {
@@ -325,10 +337,10 @@ contract Exit10 is UniswapBase {
 
     if (POOL.token1() == TOKEN_IN) {
       (exitBucketRewards, ) = _decreaseLiquidity(rmParams);
-      _collect(address(this), uint128(exitBucketRewards), 0);
+      (exitBucketRewards, ) = _collect(address(this), uint128(exitBucketRewards), 0);
     } else {
       (, exitBucketRewards) = _decreaseLiquidity(rmParams);
-      _collect(address(this), 0, uint128(exitBucketRewards));
+      (, exitBucketRewards) = _collect(address(this), 0, uint128(exitBucketRewards));
     }
 
     // Total initial deposits that needs to be returned to bootsrappers

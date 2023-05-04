@@ -193,10 +193,6 @@ contract DepositHelperTest is ABaseExit10Test {
 
     // min amount
     uint256 amountOutMinimum = _swap(weth, usdc, swapAmount);
-    (uint160 sqrtPriceX96, , , , , , ) = exit10.POOL().slot0();
-    uint160 sqrtPriceLimitX96 = sqrtPriceX96 + (sqrtPriceX96 / 1000);
-    console.log('sqrtPriceX96: ', _returnPriceInUSD(sqrtPriceX96));
-    console.log('sqrtPriceLimitX96: ', _returnPriceInUSD(sqrtPriceLimitX96));
 
     vm.revertTo(snapshot); // restores the state
 
@@ -208,10 +204,8 @@ contract DepositHelperTest is ABaseExit10Test {
       deadline: block.timestamp,
       amountIn: swapAmount,
       amountOutMinimum: amountOutMinimum,
-      sqrtPriceLimitX96: sqrtPriceLimitX96
+      sqrtPriceLimitX96: 0
     });
-
-    console.log('Price in USD: ', _returnPriceInUSD());
 
     // min lp amounts
     (, uint128 eliquidityAdded, , ) = depositHelper.swapAndBootstrapLock(
@@ -220,7 +214,6 @@ contract DepositHelperTest is ABaseExit10Test {
       slippageParams
     );
 
-    console.log('Price in USD After Trade: ', _returnPriceInUSD());
     vm.revertTo(snapshot); // restores the state
 
     // frontrunning the trade in the opposite direction will succeed
@@ -240,7 +233,101 @@ contract DepositHelperTest is ABaseExit10Test {
       })
     );
 
-    console.log('Price in USD after frontrun: ', _returnPriceInUSD());
+    // provide liquidity
+    (, uint128 eLiquidityRealized, , ) = depositHelper.swapAndBootstrapLock(
+      depositUsdc + swapAmount * 2,
+      depositWeth * 2,
+      slippageParams
+    );
+
+    // backrun lp
+    vm.prank(alice);
+    UNISWAP_V3_ROUTER.exactInputSingle(
+      IUniswapV3Router.ExactInputSingleParams({
+        tokenIn: usdc,
+        tokenOut: weth,
+        fee: 500,
+        recipient: alice,
+        deadline: block.timestamp,
+        amountIn: receivedUsdc,
+        amountOutMinimum: 0,
+        sqrtPriceLimitX96: 0
+      })
+    );
+
+    // Frontrunnig will harm the lp
+    assertLt(eLiquidityRealized, eliquidityAdded, 'eLiquidityRealized < eliquidityAdded');
+
+    // While benefiting the frontrunner
+    assertGe(_balance(weth, alice), wethBalanceBefore, 'wethBalanceAfterAlice < wethBalanceBeforeAlice');
+  }
+
+  function test_frontrunDepositHelperUnitFailed() public {
+    _bootstrapLockVanilla(); // vanilla bootstrap lock to compare with
+
+    // change default parms
+    depositWeth = _tokenAmount(weth, 100_000);
+    depositUsdc = _ratio(depositWeth);
+    swapAmount = _tokenAmount(usdc, 10); // is relative small such that profit is not too high
+    uint256 soldEther = 0.1 ether;
+
+    // prepare front runner
+    _mintAndApprove(alice, weth, soldEther, address(UNISWAP_V3_ROUTER));
+    _maxApproveFrom(alice, usdc, address(UNISWAP_V3_ROUTER));
+    uint256 wethBalanceBefore = _balance(weth, alice);
+
+    uint256 snapshot = vm.snapshot();
+
+    // min amount
+    uint256 amountOutMinimum = _swap(weth, usdc, swapAmount);
+    (uint160 sqrtPriceX96, , , , , , ) = exit10.POOL().slot0();
+    uint160 sqrtPriceLimitX96 = sqrtPriceX96 + (sqrtPriceX96 / 1000);
+    // console.log('sqrtPriceX96: ', _returnPriceInUSD(sqrtPriceX96));
+    // console.log('sqrtPriceLimitX96: ', _returnPriceInUSD(sqrtPriceLimitX96));
+
+    vm.revertTo(snapshot); // restores the state
+
+    IUniswapV3Router.ExactInputSingleParams memory slippageParams = IUniswapV3Router.ExactInputSingleParams({
+      tokenIn: weth,
+      tokenOut: usdc,
+      fee: 500,
+      recipient: address(depositHelper),
+      deadline: block.timestamp,
+      amountIn: swapAmount,
+      amountOutMinimum: amountOutMinimum,
+      sqrtPriceLimitX96: sqrtPriceLimitX96
+    });
+
+    // console.log('Price in USD: ', _returnPriceInUSD());
+
+    // min lp amounts
+    (, uint128 eliquidityAdded, , ) = depositHelper.swapAndBootstrapLock(
+      depositUsdc + swapAmount * 2,
+      depositWeth * 2,
+      slippageParams
+    );
+
+    // console.log('Price in USD After Trade: ', _returnPriceInUSD());
+    vm.revertTo(snapshot); // restores the state
+
+    // frontrunning the trade in the opposite direction will succeed
+
+    // frontrun lp
+    vm.prank(alice);
+    uint256 receivedUsdc = UNISWAP_V3_ROUTER.exactInputSingle(
+      IUniswapV3Router.ExactInputSingleParams({
+        tokenIn: weth,
+        tokenOut: usdc,
+        fee: 500,
+        recipient: alice,
+        deadline: block.timestamp,
+        amountIn: soldEther,
+        amountOutMinimum: 0,
+        sqrtPriceLimitX96: 0
+      })
+    );
+
+    // console.log('Price in USD after frontrun: ', _returnPriceInUSD());
 
     // provide liquidity
     (, uint128 eLiquidityRealized, , ) = depositHelper.swapAndBootstrapLock(
@@ -270,11 +357,11 @@ contract DepositHelperTest is ABaseExit10Test {
     // While benefiting the frontrunner
     assertGe(_balance(weth, alice), wethBalanceBefore, 'wethBalanceAfterAlice < wethBalanceBeforeAlice');
 
-    console.log('wethBalanceBefore: ', wethBalanceBefore);
-    console.log('wethBalanceAfter: ', _balance(weth, alice));
+    // console.log('wethBalanceBefore: ', wethBalanceBefore);
+    // console.log('wethBalanceAfter: ', _balance(weth, alice));
 
-    console.log('eLiquidityRealized: ', eLiquidityRealized);
-    console.log('eliquidityAdded: ', eliquidityAdded);
+    // console.log('eLiquidityRealized: ', eLiquidityRealized);
+    // console.log('eliquidityAdded: ', eliquidityAdded);
   }
 
   function _returnPriceInUSD(uint160 sqrtPriceX96) internal pure returns (uint256) {

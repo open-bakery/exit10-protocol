@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
+import { console } from 'forge-std/console.sol';
 import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import { IERC721 } from '@openzeppelin/contracts/token/ERC721/IERC721.sol';
 import { ABaseExit10Test } from './ABaseExit10.t.sol';
@@ -172,6 +173,35 @@ contract DepositHelperTest is ABaseExit10Test {
     // liquidityBefore includes what was added to bootstarpBasket in setUp
     _checkBuckets(liquidityBefore - stateBootstrapBefore + liquidityAdded, 0, 0, stateBootstrapBefore);
     _checkBondData(bondId, liquidityAdded, 0, block.timestamp, 0, uint8(Exit10.BondStatus.active));
+  }
+
+  function testPriceLimitSwaps() public {
+    _skipBootstrap();
+    uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(tickLower);
+    uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(tickUpper);
+    (uint160 sqrtRatioX96, int24 tick, , , , , ) = IUniswapV3Pool(vm.envAddress('POOL')).slot0();
+    console.log('initial USDC balance of DepositHelper:', ERC20(usdc).balanceOf(address(depositHelper)));
+    console.log('sqrtRatioX96:', sqrtRatioX96);
+    (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
+      sqrtRatioX96,
+      sqrtRatioAX96,
+      sqrtRatioBX96,
+      1e15
+    ); // amounts to obtain 1e15 liquidity
+    uint256 swapAmount0 = convert1ToToken0(sqrtRatioX96, amount1, 6); // usdc amount to swap
+    ERC20(usdc).transfer(alice, amount0 + swapAmount0); // give usdc to alice
+    IUniswapV3Router.ExactInputSingleParams memory swapParams = _getSwapParams(usdc, weth, swapAmount0);
+    swapParams.sqrtPriceLimitX96 = TickMath.getSqrtRatioAtTick(tick - 1);
+    console.log('alice sends', amount0 + swapAmount0, 'USDC');
+    console.log('and swaps', swapAmount0, 'USDC for ETH');
+    console.log('swapParams.sqrtPriceLimitX96 set to:', swapParams.sqrtPriceLimitX96);
+    vm.startPrank(alice);
+    ERC20(usdc).approve(address(depositHelper), amount0 + swapAmount0);
+    depositHelper.swapAndCreateBond(amount0 + swapAmount0, 0, swapParams);
+    vm.stopPrank();
+    uint256 usdcLeft = ERC20(usdc).balanceOf(address(depositHelper));
+    console.log('Only', swapAmount0 - usdcLeft, 'USDC has been swapped and used to mint bonds');
+    console.log('USDC Left into DepositHelper:', usdcLeft);
   }
 
   function _getSwapParams(

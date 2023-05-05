@@ -83,10 +83,10 @@ contract DepositHelper {
       amountOut = IUniswapV3Router(UNISWAP_V3_ROUTER).exactInputSingle(_swapParams);
 
       if (_swapParams.tokenIn == TOKEN_0) {
-        _initialAmount0 -= _swapParams.amountIn;
+        _initialAmount0 = IERC20(TOKEN_0).balanceOf(address(this));
         _initialAmount1 += amountOut;
       } else {
-        _initialAmount1 -= _swapParams.amountIn;
+        _initialAmount1 = IERC20(TOKEN_1).balanceOf(address(this));
         _initialAmount0 += amountOut;
       }
     }

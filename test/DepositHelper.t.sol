@@ -208,6 +208,7 @@ contract DepositHelperTest is ABaseExit10Test {
     uint256 usdcLeft = ERC20(usdc).balanceOf(address(depositHelper));
     console.log('Only', swapAmount0 - usdcLeft, 'USDC has been swapped and used to mint bonds');
     console.log('USDC Left into DepositHelper:', usdcLeft);
+    assertEq(usdcLeft, 0, 'Check usdcLeft == 0');
   }
 
   function _getSwapParams(

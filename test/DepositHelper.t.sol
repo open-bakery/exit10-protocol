@@ -7,6 +7,12 @@ import { ABaseExit10Test } from './ABaseExit10.t.sol';
 import { Exit10 } from '../src/Exit10.sol';
 import { DepositHelper } from '../src/DepositHelper.sol';
 import { IUniswapV3Router } from '../src/interfaces/IUniswapV3Router.sol';
+import { IUniswapV3Pool } from '../src/UniswapBase.sol';
+// needs v3-core@0.8
+import { TickMath } from '../lib/v3-core/contracts/libraries/TickMath.sol';
+import { FullMath } from '../lib/v3-core/contracts/libraries/FullMath.sol';
+import { LiquidityAmounts } from '../lib/v3-periphery/contracts/libraries/LiquidityAmounts.sol';
+import { Math } from '@openzeppelin/contracts/utils/math/Math.sol';
 
 contract DepositHelperTest is ABaseExit10Test {
   DepositHelper depositHelper;
@@ -237,5 +243,30 @@ contract DepositHelperTest is ABaseExit10Test {
     (, liquidityAddedVanilla, addedUsdcVanilla, addedWethVanilla) = exit10.createBond(
       _addLiquidityParams(depositUsdc, depositWeth)
     );
+  }
+
+  function sqrtPriceX96ToUint(uint160 _sqrtPriceX96, uint8 decimalsToken0) internal pure returns (uint256) {
+    uint256 numerator1 = uint256(_sqrtPriceX96) * uint256(_sqrtPriceX96);
+    uint256 numerator2 = 10 ** decimalsToken0;
+    return FullMath.mulDiv(numerator1, numerator2, 1 << 192);
+  }
+
+  function convert0ToToken1(
+    uint160 _sqrtPriceX96,
+    uint256 amount0,
+    uint8 decimalsToken0
+  ) internal pure returns (uint256 amount0ConvertedToToken1) {
+    uint256 price = sqrtPriceX96ToUint(_sqrtPriceX96, decimalsToken0);
+    amount0ConvertedToToken1 = (amount0 * (price)) / (10 ** decimalsToken0);
+  }
+
+  function convert1ToToken0(
+    uint160 _sqrtPriceX96,
+    uint256 amount1,
+    uint8 decimalsToken0
+  ) internal pure returns (uint256 amount1ConvertedToToken0) {
+    uint256 price = sqrtPriceX96ToUint(_sqrtPriceX96, decimalsToken0);
+    if (price == 0) return 0;
+    amount1ConvertedToToken0 = (amount1 * (10 ** decimalsToken0)) / (price);
   }
 }

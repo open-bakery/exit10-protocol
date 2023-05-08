@@ -337,8 +337,10 @@ abstract contract ABaseExit10Test is ABaseTest {
   }
 
   function _getExitAmount(uint256 _liquidity) internal view virtual returns (uint256) {
-    (, , , uint256 exitBucket) = exit10.getBuckets();
-    uint256 percentFromTaget = _getPercentFromTarget(_liquidity) <= 5000 ? 5000 : _getPercentFromTarget(_liquidity);
+    (, , uint256 bootstrapBucket, uint256 exitBucket) = exit10.getBuckets();
+    uint256 percentFromTaget = _getPercentFromTarget(bootstrapBucket) <= 5000
+      ? 5000
+      : _getPercentFromTarget(bootstrapBucket);
     uint256 projectedLiquidityPerExit = (liquidityPerUsd * percentFromTaget) / PERCENT_BASE;
     uint256 actualLiquidityPerExit = _getActualLiquidityPerExit(exitBucket);
     uint256 liquidityPerExit = actualLiquidityPerExit > projectedLiquidityPerExit

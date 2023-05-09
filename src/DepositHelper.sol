@@ -9,6 +9,8 @@ contract DepositHelper {
   using SafeERC20 for IERC20;
   uint256 private constant MAX_UINT_256 = type(uint256).max;
   uint256 private constant DEADLINE = 1e10;
+  uint256 private constant RESOLUTION = 10_000;
+  uint256 private constant SLIPPAGE = 100;
 
   address private immutable UNISWAP_V3_ROUTER;
   address private immutable EXIT_10;
@@ -95,8 +97,8 @@ contract DepositHelper {
       depositor: msg.sender,
       amount0Desired: _initialAmount0,
       amount1Desired: _initialAmount1,
-      amount0Min: 0,
-      amount1Min: 0,
+      amount0Min: _initialAmount0 - (_initialAmount0 * SLIPPAGE) / RESOLUTION,
+      amount1Min: _initialAmount1 - (_initialAmount1 * SLIPPAGE) / RESOLUTION,
       deadline: DEADLINE
     });
 

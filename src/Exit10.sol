@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
+import { console } from 'forge-std/console.sol';
 import { IERC20, SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import { Math } from '@openzeppelin/contracts/utils/math/Math.sol';
 import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import { INPM } from './interfaces/INonfungiblePositionManager.sol';
 import { IUniswapV3Pool } from './interfaces/IUniswapV3Pool.sol';
@@ -13,6 +15,7 @@ import { STOToken } from './STOToken.sol';
 
 contract Exit10 is UniswapBase {
   using SafeERC20 for IERC20;
+  using Math for uint256;
 
   struct DeployParams {
     address NFT;
@@ -63,6 +66,9 @@ contract Exit10 is UniswapBase {
   // STO TOKEN
   uint256 public teamPlusBackersRewards;
   uint256 public teamPlusBackersRewardsClaimed;
+
+  uint256 public bootstrapFees0;
+  uint256 public bootstrapFees1;
 
   bool public isBootstrapCapReached;
   bool public inExitMode;
@@ -428,12 +434,17 @@ contract Exit10 is UniswapBase {
   function claimAndDistributeFees() public {
     (uint256 amountCollected0, uint256 amountCollected1) = _collect(address(this), MAX_UINT_128, MAX_UINT_128);
 
-    if (amountCollected0 + amountCollected1 == 0) return;
+    if (amountCollected0 + amountCollected1 + bootstrapFees0 + bootstrapFees1 == 0) return;
 
     if (!inExitMode) {
       if (_liquidityAmount() != 0) {
-        uint256 bootstrapFees0 = (bootstrapBucket * amountCollected0) / _liquidityAmount();
-        uint256 bootstrapFees1 = (bootstrapBucket * amountCollected1) / _liquidityAmount();
+        uint256 cacheBootstrapFees0 = bootstrapBucket.mulDiv(amountCollected0, _liquidityAmount(), Math.Rounding.Down);
+        uint256 cacheBootstrapFees1 = bootstrapBucket.mulDiv(amountCollected1, _liquidityAmount(), Math.Rounding.Down);
+
+        bootstrapFees0 += cacheBootstrapFees0;
+        bootstrapFees1 += cacheBootstrapFees1;
+        amountCollected0 -= cacheBootstrapFees0;
+        amountCollected1 -= cacheBootstrapFees1;
 
         if (bootstrapFees0 != 0 && bootstrapFees1 != 0) {
           try
@@ -448,15 +459,26 @@ contract Exit10 is UniswapBase {
               })
             )
           returns (uint128, uint256 amountAdded0, uint256 amountAdded1) {
+            // Liquidity Added Success
             unchecked {
-              amountCollected0 -= amountAdded0;
-              amountCollected1 -= amountAdded1;
+              bootstrapFees0 -= amountAdded0;
+              bootstrapFees1 -= amountAdded1;
             }
           } catch {
-            return;
+            // Liquidity Added Fail
+            // Continue and distribute amountCollected
           }
         }
       }
+
+      // In case Exit10 is called and we need to distribute pending bootstrap fees
+      if (_isOutOfTickRange()) {
+        amountCollected0 += bootstrapFees0;
+        amountCollected1 += bootstrapFees1;
+        bootstrapFees0 = 0;
+        bootstrapFees1 = 0;
+      }
+
       FeeSplitter(FEE_SPLITTER).collectFees(
         pendingBucket,
         bootstrapBucket + reserveBucket + _exitBucket(),
@@ -554,6 +576,14 @@ contract Exit10 is UniswapBase {
     return (block.timestamp < DEPLOYMENT_TIMESTAMP + BOOTSTRAP_PERIOD);
   }
 
+  function _isOutOfTickRange() internal view returns (bool) {
+    if (TOKEN_IN > TOKEN_OUT) {
+      return (_currentTick() <= TICK_LOWER);
+    } else {
+      return (_currentTick() >= TICK_UPPER);
+    }
+  }
+
   function _requireExitMode() internal view {
     require(inExitMode, 'EXIT10: Not in Exit mode');
   }
@@ -563,11 +593,7 @@ contract Exit10 is UniswapBase {
   }
 
   function _requireOutOfTickRange() internal view {
-    if (TOKEN_IN > TOKEN_OUT) {
-      require(_currentTick() <= TICK_LOWER, 'EXIT10: Current Tick not below TICK_LOWER');
-    } else {
-      require(_currentTick() >= TICK_UPPER, 'EXIT10: Current Tick not above TICK_UPPER');
-    }
+    require(_isOutOfTickRange(), 'EXIT10: Not out of tick range');
   }
 
   function _requireCallerOwnsBond(uint256 _bondID) internal view {

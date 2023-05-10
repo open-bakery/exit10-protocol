@@ -6,7 +6,7 @@ contract Exit10_exit10Test is ABaseExit10Test {
   function test_exit10_RevertIf_NotOutOfRange() public {
     _skipBootAndCreateBond();
 
-    vm.expectRevert(bytes('EXIT10: Current Tick not below TICK_LOWER'));
+    vm.expectRevert(bytes('EXIT10: Not out of tick range'));
     exit10.exit10();
   }
 

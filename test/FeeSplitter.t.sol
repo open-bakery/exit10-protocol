@@ -6,8 +6,6 @@ import { FeeSplitter } from '../src/FeeSplitter.sol';
 import { Masterchef } from '../src/Masterchef.sol';
 import { ISwapper } from '../src/interfaces/ISwapper.sol';
 import { ABaseTest } from './ABase.t.sol';
-import { IUniswapV3Router } from '../src/interfaces/IUniswapV3Router.sol';
-import { IUniswapV3Pool } from '../src/interfaces/IUniswapV3Pool.sol';
 
 contract FeeSplitterTest is ABaseTest {
   BaseToken STO = new BaseToken('Share Token', 'STO');
@@ -131,19 +129,52 @@ contract FeeSplitterTest is ABaseTest {
   }
 
   function test_updateFees_FullSell() public {
+    uint256 exchangedPending;
+    uint256 pendingWeth;
+    uint256 mc0BalanceWeth;
+
     _init();
-    uint256 exchanged = feeSplitter.updateFees(_usdcAmount(1_000_000));
+    uint256 exchanged = feeSplitter.updateFees(_usdcAmount(30_000));
+    exchangedPending = (exchanged * pendingShare) / 10;
+    pendingWeth = ((amountWeth * pendingShare) / 10) + exchangedPending;
+    mc0BalanceWeth += (pendingWeth * 4) / 10;
+    skip(ORACLE_SECONDS);
+    console.log('mc0BalanceWeth: ', mc0BalanceWeth);
+    console.log('Balance Masterchef0: ', _balance(WETH, masterchef0));
+    console.log('Balance Masterchef1: ', _balance(WETH, masterchef1));
+
+    exchanged = feeSplitter.updateFees(_usdcAmount(30_000));
+    exchangedPending = (exchanged * pendingShare) / 10;
+    mc0BalanceWeth += (exchangedPending * 4) / 10;
+    skip(ORACLE_SECONDS);
+    console.log('mc0BalanceWeth: ', mc0BalanceWeth);
+    console.log('Balance Masterchef0: ', _balance(WETH, masterchef0));
+    console.log('Balance Masterchef1: ', _balance(WETH, masterchef1));
+
+    exchanged = feeSplitter.updateFees(_usdcAmount(30_000));
+    exchangedPending = (exchanged * pendingShare) / 10;
+    mc0BalanceWeth += (exchangedPending * 4) / 10;
+    skip(ORACLE_SECONDS);
+    console.log('mc0BalanceWeth: ', mc0BalanceWeth);
+    console.log('Balance Masterchef0: ', _balance(WETH, masterchef0));
+    console.log('Balance Masterchef1: ', _balance(WETH, masterchef1));
+
+    exchanged = feeSplitter.updateFees(_usdcAmount(30_000));
+    exchangedPending = (exchanged * pendingShare) / 10;
+    mc0BalanceWeth += (exchangedPending * 4) / 10;
+    skip(ORACLE_SECONDS);
+    console.log('mc0BalanceWeth: ', mc0BalanceWeth);
+    console.log('Balance Masterchef0: ', _balance(WETH, masterchef0));
+    console.log('Balance Masterchef1: ', _balance(WETH, masterchef1));
+
     _checkBuckets(0, 0, 0, 0);
     _checkBalances(address(feeSplitter), 0, 0);
 
-    uint256 exchangedPending = (exchanged / 10) * pendingShare;
-    uint256 pendingWeth = (amountWeth / 10) * pendingShare + exchangedPending;
-    uint256 mc0BalanceWeth = (pendingWeth / 10) * 4;
+    //uint256 exchangedPending = (exchanged * pendingShare) / 10;
+    // uint256 pendingWeth = ((amountWeth * pendingShare) / 10) + exchangedPending;
+    // uint256 mc0BalanceWeth = (pendingWeth * 4) / 10;
     _checkBalances(masterchef0, 0, mc0BalanceWeth);
     _checkBalances(masterchef1, 0, exchanged + amountWeth - mc0BalanceWeth);
-
-    console.log('exchanged: ', exchanged);
-    console.log(_returnPriceInUSD());
   }
 
   function _dealTokens(uint256 _amountUsdc, uint256 _amountWeth) internal {
@@ -164,7 +195,7 @@ contract FeeSplitterTest is ABaseTest {
   }
 
   function _checkBalances(address _target, uint256 _amountTokenOut, uint256 _amountTokenIn) internal {
-    uint roundAmount = 100;
+    uint roundAmount = 1;
     assertEq(_amountTokenOut / roundAmount, _balance(USDC, _target) / roundAmount, 'Check balance token out');
     assertEq(_amountTokenIn / roundAmount, _balance(WETH, _target) / roundAmount, 'Check balance token in');
   }
@@ -177,14 +208,5 @@ contract FeeSplitterTest is ABaseTest {
     _dealTokens(amountUsdc, amountWeth);
     feeSplitter.collectFees(pendingShare, remainingShare, amountUsdc, amountWeth);
     skip(ORACLE_SECONDS);
-  }
-
-  function _returnPriceInUSD() internal view returns (uint160) {
-    uint160 sqrtPriceX96;
-    (sqrtPriceX96, , , , , , ) = IUniswapV3Pool(IUniswapV3Router(UNISWAP_V3_ROUTER).getPool(USDC, WETH, FEE)).slot0();
-    //uint256 a = uint256(sqrtPriceX96) * uint256(sqrtPriceX96) * 1000000;
-    //uint256 b = 1 << 192;
-    //uint256 uintPrice = a / b;
-    return sqrtPriceX96;
   }
 }

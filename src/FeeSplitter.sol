@@ -110,9 +110,10 @@ contract FeeSplitter is Ownable {
         );
       }
 
+      /// @dev We use the tokenOut ratio because the tokenIn was just exchanged from that portion.
       uint256 exchangedPendingShareIn = _calcPortionOfValue(
-        pendingBucketTokenIn,
-        pendingBucketTokenIn + remainingBucketsTokenIn,
+        pendingBucketTokenOut,
+        pendingBucketTokenOut + remainingBucketsTokenOut,
         totalExchangedIn
       );
 

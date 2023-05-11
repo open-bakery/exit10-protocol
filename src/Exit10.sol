@@ -377,8 +377,9 @@ contract Exit10 is UniswapBase {
   }
 
   function stoClaim() external returns (uint256 claim) {
-    uint256 stoBalance = IERC20(STO).balanceOf(msg.sender);
-    claim = _safeTokenClaim(STO, stoBalance, STOToken(address(STO)).MAX_SUPPLY(), teamPlusBackersRewards);
+    BaseToken sto = STO;
+    uint256 stoBalance = IERC20(sto).balanceOf(msg.sender);
+    claim = _safeTokenClaim(sto, stoBalance, STOToken(address(sto)).MAX_SUPPLY(), teamPlusBackersRewards);
 
     _safeTransferToken(TOKEN_OUT, msg.sender, claim);
 
@@ -386,12 +387,13 @@ contract Exit10 is UniswapBase {
   }
 
   function exitClaim() external returns (uint256 claim) {
-    uint256 exitBalance = IERC20(EXIT).balanceOf(msg.sender);
-    claim = _safeTokenClaim(EXIT, exitBalance, exitTokenSupplyFinal, exitTokenRewardsFinal);
+    BaseToken exit = EXIT;
+    uint256 exitBalance = IERC20(exit).balanceOf(msg.sender);
+    claim = _safeTokenClaim(exit, exitBalance, exitTokenSupplyFinal, exitTokenRewardsFinal);
 
     _safeTransferToken(TOKEN_OUT, msg.sender, claim);
 
-    emit ClaimRewards(msg.sender, address(EXIT), exitBalance, claim);
+    emit ClaimRewards(msg.sender, address(exit), exitBalance, claim);
   }
 
   function getBondData(

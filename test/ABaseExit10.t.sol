@@ -185,7 +185,7 @@ abstract contract ABaseExit10Test is ABaseTest {
   }
 
   function _skipBootstrap() internal {
-    skip(exit10.BOOTSTRAP_PERIOD());
+    skip(bootstrapPeriod);
   }
 
   function _skipToExit() internal {

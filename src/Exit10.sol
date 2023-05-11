@@ -94,8 +94,7 @@ contract Exit10 is UniswapBase {
   address public immutable FEE_SPLITTER;
   address public immutable BENEFICIARY;
 
-  uint256 public immutable DEPLOYMENT_TIMESTAMP;
-  uint256 public immutable BOOTSTRAP_PERIOD;
+  uint256 public immutable BOOTSTRAP_FINISH;
   uint256 public immutable BOOTSTRAP_TARGET;
   uint256 public immutable BOOTSTRAP_CAP;
   uint256 public immutable ACCRUAL_PARAMETER;
@@ -149,8 +148,7 @@ contract Exit10 is UniswapBase {
     FEE_SPLITTER = params_.feeSplitter;
     BENEFICIARY = params_.beneficiary;
 
-    DEPLOYMENT_TIMESTAMP = block.timestamp;
-    BOOTSTRAP_PERIOD = params_.bootstrapPeriod;
+    BOOTSTRAP_FINISH = params_.bootstrapPeriod + block.timestamp;
     BOOTSTRAP_TARGET = params_.bootstrapTarget;
     BOOTSTRAP_CAP = params_.bootstrapCap;
     ACCRUAL_PARAMETER = params_.accrualParameter;
@@ -573,7 +571,7 @@ contract Exit10 is UniswapBase {
   }
 
   function _isBootstrapOngoing() internal view returns (bool) {
-    return (block.timestamp < DEPLOYMENT_TIMESTAMP + BOOTSTRAP_PERIOD);
+    return (block.timestamp < BOOTSTRAP_FINISH);
   }
 
   function _isOutOfTickRange() internal view returns (bool) {

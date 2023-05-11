@@ -73,7 +73,6 @@ contract Exit10 is UniswapBase {
   bool private hasUpdatedRewards;
 
   mapping(uint256 => BondData) private idToBondData;
-  mapping(address => uint256) public bootstrapDeposit;
 
   uint256 public constant TOKEN_MULTIPLIER = 1e8;
   uint256 public constant LP_EXIT_REWARD = 3_000_000 ether;

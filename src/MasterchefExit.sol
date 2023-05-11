@@ -13,7 +13,7 @@ contract MasterchefExit is AMasterchefBase {
     PoolInfo storage pool = poolInfo[pid];
     UserInfo storage user = userInfo[pid][msg.sender];
     _requireNonZeroAmount(amount);
-    _updatePool(pid);
+    _updatePool(pool);
 
     /// @dev Undistributed rewards to this pool are given to the first staker.
     if (pool.totalStaked == 0) {

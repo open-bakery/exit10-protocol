@@ -73,7 +73,7 @@ abstract contract AMasterchefBase is Ownable {
   function deposit(uint256 pid, uint256 amount) external virtual {
     PoolInfo storage pool = poolInfo[pid];
     UserInfo storage user = userInfo[pid][msg.sender];
-    _updatePool(pid);
+    _updatePool(pool);
 
     /// @dev Undistributed rewards to this pool are divided equally between all active pools.
     if (pool.totalStaked == 0) {
@@ -94,7 +94,7 @@ abstract contract AMasterchefBase is Ownable {
   function withdraw(uint256 pid, uint256 amount) public {
     PoolInfo storage pool = poolInfo[pid];
     UserInfo storage user = userInfo[pid][msg.sender];
-    _updatePool(pid);
+    _updatePool(pool);
 
     amount = Math.min(user.amount, amount);
 
@@ -165,9 +165,7 @@ abstract contract AMasterchefBase is Ownable {
 
   // Increases accRewardPerShare and accUndistributedReward since last update.
   // Every time there is an update on *stake amount* we should update THE pool.
-  function _updatePool(uint256 _pid) internal {
-    PoolInfo storage pool = poolInfo[_pid];
-
+  function _updatePool(PoolInfo storage pool) internal {
     uint256 poolRewards = _getPoolRewardsSinceLastUpdate(pool.lastUpdateTime, pool.allocPoint);
 
     if (poolRewards != 0) {
@@ -186,7 +184,7 @@ abstract contract AMasterchefBase is Ownable {
   function _massUpdatePools() internal {
     uint256 length = poolInfo.length;
     for (uint256 pid = 0; pid < length; ++pid) {
-      _updatePool(pid);
+      _updatePool(poolInfo[pid]);
     }
   }
 

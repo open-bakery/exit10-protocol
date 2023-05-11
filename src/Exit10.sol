@@ -290,7 +290,8 @@ contract Exit10 is UniswapBase {
     pendingBucket -= params.liquidity;
     reserveBucket += accruedLiquidity;
 
-    exitTokenAmount = _getDiscountedExitAmount((bond.bondAmount - accruedLiquidity), EXIT_DISCOUNT);
+    uint256 exitAccrued = _getExitAmount(bond.bondAmount - accruedLiquidity);
+    exitTokenAmount = exitAccrued + ((exitAccrued * EXIT_DISCOUNT) / PERCENT_BASE);
 
     BLP.mint(msg.sender, boostTokenAmount);
     _mintExitCapped(msg.sender, exitTokenAmount);
@@ -503,30 +504,20 @@ contract Exit10 is UniswapBase {
     emit ClaimAndDistributeFees(msg.sender, amountCollected0, amountCollected1);
   }
 
-  function _getDiscountedExitAmount(uint256 _liquidity, uint256 _discountPercentage) internal view returns (uint256) {
-    return _addPercentToAmount(_getExitAmount(_liquidity), _discountPercentage);
-  }
-
   function _getExitAmount(uint256 _liquidity) internal view returns (uint256) {
-    uint256 percentFromTaget = _getPercentFromTarget(bootstrapBucket) <= 5000
-      ? 5000
-      : _getPercentFromTarget(bootstrapBucket);
-    uint256 projectedLiquidityPerExit = (LIQUIDITY_PER_USD * percentFromTaget) / PERCENT_BASE;
+    uint256 bootstrapTargetLiquidity = (BOOTSTRAP_TARGET * LIQUIDITY_PER_USD) / TOKEN_OUT_DECIMALS;
+
+    uint256 percentFromTaget = (bootstrapTargetLiquidity == 0)
+      ? 0
+      : (bootstrapBucket * PERCENT_BASE) / bootstrapTargetLiquidity;
+
+    uint256 projectedLiquidityPerExit = (LIQUIDITY_PER_USD * Math.max(percentFromTaget, 5000)) / PERCENT_BASE;
+
     uint256 actualLiquidityPerExit = _getActualLiquidityPerExit(_exitBucket());
-    uint256 liquidityPerExit = actualLiquidityPerExit > projectedLiquidityPerExit
-      ? actualLiquidityPerExit
-      : projectedLiquidityPerExit;
+
+    uint256 liquidityPerExit = Math.max(actualLiquidityPerExit, projectedLiquidityPerExit);
+
     return ((_liquidity * DECIMAL_PRECISION) / liquidityPerExit);
-  }
-
-  function _getPercentFromTarget(uint256 _amountBootstrapped) internal view returns (uint256) {
-    uint256 bootstrapTargetLiquidity = _getLiquidityForBootsrapTarget();
-    if (bootstrapTargetLiquidity == 0) return 0;
-    return (_amountBootstrapped * PERCENT_BASE) / bootstrapTargetLiquidity;
-  }
-
-  function _getLiquidityForBootsrapTarget() internal view returns (uint256) {
-    return (BOOTSTRAP_TARGET * LIQUIDITY_PER_USD) / TOKEN_OUT_DECIMALS;
   }
 
   function _safeTokenClaim(
@@ -620,10 +611,6 @@ contract Exit10 is UniswapBase {
 
   function _requireEqualValues(uint256 _valueA, uint256 _valueB) internal pure {
     require(_valueA == _valueB, 'EXIT10: Amounts do not match');
-  }
-
-  function _addPercentToAmount(uint256 _amount, uint256 _percent) internal pure returns (uint256) {
-    return _amount + ((_amount * _percent) / PERCENT_BASE);
   }
 
   function _getActualLiquidityPerExit(uint256 _exitBucketAmount) internal pure returns (uint256) {

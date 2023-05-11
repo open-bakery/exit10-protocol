@@ -27,7 +27,6 @@ contract Exit10_stoClaimTest is ABaseExit10Test {
     uint256 initialBalanceUSDC = _balance0();
     uint256 precision = 1e18;
     uint256 stoTokenShare = (_balance(sto) * precision) / stoSupply;
-    uint256 teamPlusBackersRewardsClaimedBefore = exit10.teamPlusBackersRewardsClaimed();
 
     exit10.stoClaim();
 
@@ -36,12 +35,6 @@ contract Exit10_stoClaimTest is ABaseExit10Test {
       _balance0(),
       initialBalanceUSDC + (exit10.teamPlusBackersRewards() * stoTokenShare) / precision,
       'USD balance increased'
-    );
-
-    assertEq(
-      exit10.teamPlusBackersRewardsClaimed(),
-      teamPlusBackersRewardsClaimedBefore + (exit10.teamPlusBackersRewards() * stoTokenShare) / precision,
-      'Remaing reward increased'
     );
   }
 

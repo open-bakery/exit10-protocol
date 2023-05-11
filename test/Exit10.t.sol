@@ -15,12 +15,8 @@ contract Exit10Test is ABaseExit10Test {
     _checkBuckets(0, 0, 0, 0);
     assertEq(exit10.exitTokenSupplyFinal(), 0, 'setup exitTokenSupplyFinal');
     assertEq(exit10.exitTokenRewardsFinal(), 0, 'setup exitTokenRewardsFinal');
-    assertEq(exit10.exitTokenRewardsClaimed(), 0, 'setup exitTokenRewardsClaimed');
     assertEq(exit10.bootstrapRewardsPlusRefund(), 0, 'setup bootstrapRewardsPlusRefund');
-    assertEq(exit10.bootstrapRewardsPlusRefundClaimed(), 0, 'setup bootstrapRewardsPlusRefundClaimed');
     assertEq(exit10.teamPlusBackersRewards(), 0, 'setup teamPlusBackersRewards');
-    assertEq(exit10.teamPlusBackersRewardsClaimed(), 0, 'setup teamPlusBackersRewardsClaimed');
-    assertEq(exit10.teamPlusBackersRewardsClaimed(), 0, 'setup teamPlusBackersRewardsClaimed');
 
     assertTrue(!exit10.inExitMode(), 'Check inExitMode');
 

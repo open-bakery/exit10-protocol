@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 import { IERC20, SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import { Math } from '@openzeppelin/contracts/utils/math/Math.sol';
 import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import { INPM } from './interfaces/INonfungiblePositionManager.sol';
 import { IUniswapV3Pool } from './interfaces/IUniswapV3Pool.sol';
@@ -13,6 +14,7 @@ import { STOToken } from './STOToken.sol';
 
 contract Exit10 is UniswapBase {
   using SafeERC20 for IERC20;
+  using Math for uint256;
 
   struct DeployParams {
     address NFT;
@@ -54,15 +56,12 @@ contract Exit10 is UniswapBase {
   // EXIT TOKEN
   uint256 public exitTokenSupplyFinal;
   uint256 public exitTokenRewardsFinal;
-  uint256 public exitTokenRewardsClaimed;
 
   // BOOT TOKEN
   uint256 public bootstrapRewardsPlusRefund;
-  uint256 public bootstrapRewardsPlusRefundClaimed;
 
   // STO TOKEN
   uint256 public teamPlusBackersRewards;
-  uint256 public teamPlusBackersRewardsClaimed;
 
   bool public isBootstrapCapReached;
   bool public inExitMode;
@@ -354,15 +353,7 @@ contract Exit10 is UniswapBase {
   function bootstrapClaim() external returns (uint256 claim) {
     uint256 bootBalance = IERC20(BOOT).balanceOf(msg.sender);
 
-    claim = _safeTokenClaim(
-      BOOT,
-      bootBalance / TOKEN_MULTIPLIER,
-      bootstrapBucketFinal,
-      bootstrapRewardsPlusRefund,
-      bootstrapRewardsPlusRefundClaimed
-    );
-
-    bootstrapRewardsPlusRefundClaimed += claim;
+    claim = _safeTokenClaim(BOOT, bootBalance / TOKEN_MULTIPLIER, bootstrapBucketFinal, bootstrapRewardsPlusRefund);
 
     _safeTransferToken(TOKEN_OUT, msg.sender, claim);
 
@@ -371,15 +362,7 @@ contract Exit10 is UniswapBase {
 
   function stoClaim() external returns (uint256 claim) {
     uint256 stoBalance = IERC20(STO).balanceOf(msg.sender);
-    claim = _safeTokenClaim(
-      STO,
-      stoBalance,
-      STOToken(address(STO)).MAX_SUPPLY(),
-      teamPlusBackersRewards,
-      teamPlusBackersRewardsClaimed
-    );
-
-    teamPlusBackersRewardsClaimed += claim;
+    claim = _safeTokenClaim(STO, stoBalance, STOToken(address(STO)).MAX_SUPPLY(), teamPlusBackersRewards);
 
     _safeTransferToken(TOKEN_OUT, msg.sender, claim);
 
@@ -388,9 +371,7 @@ contract Exit10 is UniswapBase {
 
   function exitClaim() external returns (uint256 claim) {
     uint256 exitBalance = IERC20(EXIT).balanceOf(msg.sender);
-    claim = _safeTokenClaim(EXIT, exitBalance, exitTokenSupplyFinal, exitTokenRewardsFinal, exitTokenRewardsClaimed);
-
-    exitTokenRewardsClaimed += claim;
+    claim = _safeTokenClaim(EXIT, exitBalance, exitTokenSupplyFinal, exitTokenRewardsFinal);
 
     _safeTransferToken(TOKEN_OUT, msg.sender, claim);
 
@@ -500,16 +481,14 @@ contract Exit10 is UniswapBase {
   function _safeTokenClaim(
     BaseToken _token,
     uint256 _amount,
-    uint256 _supply,
-    uint256 _externalSum,
-    uint256 _claimed
-  ) internal returns (uint256 _claim) {
+    uint256 _finalTotalSupply,
+    uint256 _rewardsFinalTotalSupply
+  ) internal returns (uint256 _claimableRewards) {
     _requireExitMode();
     require(_amount != 0, 'EXIT10: Amount must be != 0');
 
     _token.burn(msg.sender, IERC20(_token).balanceOf(msg.sender));
-    _claim = (_amount * _externalSum) / _supply;
-    _claim = (_claimed + _claim <= _supply) ? _claim : _supply - _claimed;
+    _claimableRewards = _amount.mulDiv(_rewardsFinalTotalSupply, _finalTotalSupply, Math.Rounding.Down);
   }
 
   function _depositTokens(uint256 _amount0, uint256 _amount1) internal {

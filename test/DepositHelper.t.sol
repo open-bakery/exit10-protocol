@@ -11,6 +11,7 @@ import { IUniswapV3Router } from '../src/interfaces/IUniswapV3Router.sol';
 contract DepositHelperTest is ABaseExit10Test {
   DepositHelper depositHelper;
 
+  uint256 constant SLIPPAGE = 100;
   uint256 constant MAX_PERCENT_DELTA = 0.01 ether;
 
   uint256 deposit0;
@@ -34,6 +35,7 @@ contract DepositHelperTest is ABaseExit10Test {
     depositHelper.swapAndBootstrapLock(
       deposit0,
       deposit1,
+      SLIPPAGE,
       _getSwapParams(address(token0), address(token1), deposit0 * 100)
     );
   }
@@ -53,6 +55,7 @@ contract DepositHelperTest is ABaseExit10Test {
     (, uint128 addedLiquidity, uint256 added0, uint256 added1) = depositHelper.swapAndBootstrapLock(
       expectedAdded0 + swapAmount0,
       expectedAdded1 - amount1,
+      SLIPPAGE,
       _getSwapParams(address(token0), address(token1), swapAmount0)
     );
 
@@ -76,6 +79,7 @@ contract DepositHelperTest is ABaseExit10Test {
     (, uint128 addedLiquidity, uint256 added0, uint256 added1) = depositHelper.swapAndBootstrapLock(
       expectedAdded0,
       expectedAdded1,
+      SLIPPAGE,
       _getSwapParams(usdc, weth, 0)
     );
 
@@ -98,6 +102,7 @@ contract DepositHelperTest is ABaseExit10Test {
     (, uint128 addedLiquidity, uint256 added0, uint256 added1) = depositHelper.swapAndBootstrapLock(
       expectedAdded0 - amount0,
       expectedAdded1 + swapAmount1,
+      SLIPPAGE,
       _getSwapParams(address(token1), address(token0), swapAmount1)
     );
 
@@ -131,6 +136,7 @@ contract DepositHelperTest is ABaseExit10Test {
     (uint256 bondId, uint128 addedLiquidity, uint256 added0, uint256 added1) = depositHelper.swapAndCreateBond(
       expectedAdded0 + swapAmount0,
       expectedAdded1 - amount1,
+      SLIPPAGE,
       _getSwapParams(address(token0), address(token1), swapAmount0)
     );
 
@@ -184,6 +190,7 @@ contract DepositHelperTest is ABaseExit10Test {
     (, uint128 noFrontRunLiquidity, , ) = depositHelper.swapAndBootstrapLock(
       expectedAdded0 - amount0,
       expectedAdded1 + swapAmount1,
+      SLIPPAGE,
       slippageParams
     );
 
@@ -211,6 +218,7 @@ contract DepositHelperTest is ABaseExit10Test {
     (, uint256 frontRunLiquidity, , ) = depositHelper.swapAndBootstrapLock(
       expectedAdded0 - amount0,
       expectedAdded1 + swapAmount1,
+      SLIPPAGE,
       slippageParams
     );
 
@@ -256,7 +264,7 @@ contract DepositHelperTest is ABaseExit10Test {
     // PROVIDE LIQUIDITY W/ FRONTRUN PROTECTION REVERTS
     uint256 amount1 = _convert0ToToken1(swapAmount0);
     vm.expectRevert(bytes('SPL')); // Square root price limit (see:   // https://docs.uniswap.org/contracts/v3/reference/error-codes)
-    depositHelper.swapAndBootstrapLock(deposit0 + swapAmount0, deposit1 - amount1, swapParams);
+    depositHelper.swapAndBootstrapLock(deposit0 + swapAmount0, deposit1 - amount1, SLIPPAGE, swapParams);
   }
 
   function test_frontrunProtectionRevertsWithToken1ToToken0Frontrun() public {
@@ -284,6 +292,7 @@ contract DepositHelperTest is ABaseExit10Test {
     (, uint128 realizedLiquidity, , ) = depositHelper.swapAndBootstrapLock(
       deposit0 + swapAmount0,
       deposit1 - amount1,
+      SLIPPAGE,
       swapParams
     );
 
@@ -438,6 +447,7 @@ contract DepositHelperTest is ABaseExit10Test {
     (, _expectedLiquidity, , ) = depositHelper.swapAndBootstrapLock(
       expectedAdded0 + _swapAmount0,
       expectedAdded1 - amount1,
+      SLIPPAGE,
       _swapParams
     );
     vm.revertTo(snapshot); // restores the state

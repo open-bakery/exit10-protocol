@@ -12,6 +12,7 @@ contract MasterchefExit is AMasterchefBase {
   function deposit(uint256 pid, uint256 amount) external override {
     PoolInfo storage pool = poolInfo[pid];
     UserInfo storage user = userInfo[pid][msg.sender];
+    _requireNonZeroAmount(amount);
     _updatePool(pid);
 
     /// @dev Undistributed rewards to this pool are given to the first staker.
@@ -31,7 +32,7 @@ contract MasterchefExit is AMasterchefBase {
   }
 
   function updateRewards(uint256 amount) external override onlyOwner {
-    require(amount != 0, 'MasterchefExit: Amount must not be zero');
+    _requireNonZeroAmount(amount);
     require(totalAllocPoint != 0, 'MasterchefExit: Must add a pool prior to adding rewards');
     require(rewardRate == 0, 'MasterchefExit: Can only deposit rewards once');
     require(IERC20(REWARD_TOKEN).balanceOf(address(this)) >= amount, 'MasterchefExit: Token balance not sufficient');
@@ -52,5 +53,9 @@ contract MasterchefExit is AMasterchefBase {
       periodFinish = block.timestamp;
     }
     emit StopRewards(undistributedRewards);
+  }
+
+  function _requireNonZeroAmount(uint256 _amount) internal pure {
+    require(_amount != 0, 'MasterchefExit: Amount must not be zero');
   }
 }

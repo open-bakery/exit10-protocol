@@ -242,6 +242,9 @@ abstract contract ABaseExit10Test is ABaseTest {
       deal(exit10.TOKEN_OUT(), address(this), amount);
       _swap(exit10.TOKEN_OUT(), exit10.TOKEN_IN(), amount);
     } while (_currentTick(exit10) >= tickLower);
+    // We need to skip at least one second in order to make sure
+    // we are able to pass the OracleLibrary.getBlockStartingTickAndLiquidity() check
+    skip(1);
   }
 
   function _checkBuckets(uint256 _pending, uint256 _reserve, uint256 _exit, uint256 _bootstrap) internal {

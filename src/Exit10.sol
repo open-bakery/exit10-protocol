@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
+import { OracleLibrary } from '@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol';
 import { IERC20, SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import { INPM } from './interfaces/INonfungiblePositionManager.sol';
@@ -563,11 +564,15 @@ contract Exit10 is UniswapBase {
   }
 
   function _requireOutOfTickRange() internal view {
+    (int24 blockStartTick, ) = OracleLibrary.getBlockStartingTickAndLiquidity(address(POOL));
+    int24 currentTick = _currentTick();
     if (TOKEN_IN > TOKEN_OUT) {
-      require(_currentTick() <= TICK_LOWER, 'EXIT10: Current Tick not below TICK_LOWER');
+      require(currentTick <= TICK_LOWER, 'EXIT10: Current Tick not below TICK_LOWER');
     } else {
-      require(_currentTick() >= TICK_UPPER, 'EXIT10: Current Tick not above TICK_UPPER');
+      require(currentTick >= TICK_UPPER, 'EXIT10: Current Tick not above TICK_UPPER');
     }
+    int24 tickDiff = blockStartTick > currentTick ? blockStartTick - currentTick : currentTick - blockStartTick;
+    require(tickDiff < 100); // 100 ticks is about 1% in price difference
   }
 
   function _requireCallerOwnsBond(uint256 _bondID) internal view {

@@ -439,6 +439,13 @@ contract Exit10 is UniswapBase {
           }
         }
       }
+
+      if (POOL.token0() != TOKEN_OUT) {
+        uint256 temp = amountCollected0;
+        amountCollected0 = amountCollected1;
+        amountCollected1 = temp;
+      }
+
       FeeSplitter(FEE_SPLITTER).collectFees(
         pendingBucket,
         _totalLiquidityBefore - bootstrapBucket,

@@ -372,31 +372,28 @@ contract DepositHelperTest is ABaseExit10Test {
 
   function testPriceLimitSwaps() public {
     _skipBootstrap();
-    uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(tickLower);
-    uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(tickUpper);
     (uint160 sqrtRatioX96, int24 tick, , , , , ) = IUniswapV3Pool(vm.envAddress('POOL')).slot0();
-    console.log('initial USDC balance of DepositHelper:', ERC20(usdc).balanceOf(address(depositHelper)));
-    console.log('sqrtRatioX96:', sqrtRatioX96);
     (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
       sqrtRatioX96,
-      sqrtRatioAX96,
-      sqrtRatioBX96,
+      TickMath.getSqrtRatioAtTick(tickLower),
+      TickMath.getSqrtRatioAtTick(tickUpper),
       1e15
     ); // amounts to obtain 1e15 liquidity
-    uint256 swapAmount0 = convert1ToToken0(sqrtRatioX96, amount1, 6); // usdc amount to swap
-    ERC20(usdc).transfer(alice, amount0 + swapAmount0); // give usdc to alice
-    IUniswapV3Router.ExactInputSingleParams memory swapParams = _getSwapParams(usdc, weth, swapAmount0);
+    uint256 swapAmount0 = convert1ToToken0(sqrtRatioX96, amount1, token0.decimals()); // usdc amount to swap
+    ERC20(usdc).transfer(alice, amount0 + swapAmount0);
+    IUniswapV3Router.ExactInputSingleParams memory swapParams = _getSwapParams(
+      address(token0),
+      address(token1),
+      swapAmount0
+    );
+    // Set a very tight price slippage so Alice does not trade 100% of swapAmount
     swapParams.sqrtPriceLimitX96 = TickMath.getSqrtRatioAtTick(tick - 1);
-    console.log('alice sends', amount0 + swapAmount0, 'USDC');
-    console.log('and swaps', swapAmount0, 'USDC for ETH');
-    console.log('swapParams.sqrtPriceLimitX96 set to:', swapParams.sqrtPriceLimitX96);
     vm.startPrank(alice);
     ERC20(usdc).approve(address(depositHelper), amount0 + swapAmount0);
-    depositHelper.swapAndCreateBond(amount0 + swapAmount0, 0, swapParams);
+    depositHelper.swapAndCreateBond(amount0 + swapAmount0, 0, 10000, swapParams);
     vm.stopPrank();
     uint256 usdcLeft = ERC20(usdc).balanceOf(address(depositHelper));
-    console.log('Only', swapAmount0 - usdcLeft, 'USDC has been swapped and used to mint bonds');
-    console.log('USDC Left into DepositHelper:', usdcLeft);
+    // No amount is left in the contract
     assertEq(usdcLeft, 0, 'Check usdcLeft == 0');
   }
 

@@ -98,6 +98,7 @@ contract Exit10_createBondTest is ABaseExit10Test {
   function test_createBond_claimAndDistributeFees() public {
     exit10.bootstrapLock(_addLiquidityParams(1000000_000000, 1000 ether));
     _skipBootstrap();
+    _createBond(10000_000000, 10 ether);
     _generateFees(token0, token1, 100000_000000);
     _createBond(10000_000000, 10 ether);
     assertGt(_balance(token0, feeSplitter), 0, 'Check balance0 feeSplitter');

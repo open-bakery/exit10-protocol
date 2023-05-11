@@ -9,6 +9,7 @@ contract DepositHelper {
   using SafeERC20 for IERC20;
   uint256 private constant MAX_UINT_256 = type(uint256).max;
   uint256 private constant DEADLINE = 1e10;
+  uint256 private constant RESOLUTION = 10_000;
 
   address private immutable UNISWAP_V3_ROUTER;
   address private immutable EXIT_10;
@@ -46,10 +47,11 @@ contract DepositHelper {
   function swapAndBootstrapLock(
     uint256 initialAmount0,
     uint256 initialAmount1,
+    uint256 slippage,
     IUniswapV3Router.ExactInputSingleParams memory swapParams
   ) external payable returns (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
     (tokenId, liquidityAdded, amountAdded0, amountAdded1) = Exit10(EXIT_10).bootstrapLock(
-      _depositAndSwap(initialAmount0, initialAmount1, swapParams)
+      _depositAndSwap(initialAmount0, initialAmount1, slippage, swapParams)
     );
 
     emit SwapAndBootstrapLock(msg.sender, liquidityAdded, amountAdded0, amountAdded1);
@@ -58,10 +60,11 @@ contract DepositHelper {
   function swapAndCreateBond(
     uint256 initialAmount0,
     uint256 initialAmount1,
+    uint256 slippage,
     IUniswapV3Router.ExactInputSingleParams memory swapParams
   ) external payable returns (uint256 bondId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
     (bondId, liquidityAdded, amountAdded0, amountAdded1) = Exit10(EXIT_10).createBond(
-      _depositAndSwap(initialAmount0, initialAmount1, swapParams)
+      _depositAndSwap(initialAmount0, initialAmount1, slippage, swapParams)
     );
 
     emit SwapAndCreateBond(msg.sender, bondId, liquidityAdded, amountAdded0, amountAdded1);
@@ -70,6 +73,7 @@ contract DepositHelper {
   function _depositAndSwap(
     uint256 _initialAmount0,
     uint256 _initialAmount1,
+    uint256 _slippage,
     IUniswapV3Router.ExactInputSingleParams memory _swapParams
   ) internal returns (UniswapBase.AddLiquidity memory _params) {
     _depositTokens(_initialAmount0, _initialAmount1);
@@ -95,8 +99,8 @@ contract DepositHelper {
       depositor: msg.sender,
       amount0Desired: _initialAmount0,
       amount1Desired: _initialAmount1,
-      amount0Min: 0,
-      amount1Min: 0,
+      amount0Min: _initialAmount0 - (_initialAmount0 * _slippage) / RESOLUTION,
+      amount1Min: _initialAmount1 - (_initialAmount1 * _slippage) / RESOLUTION,
       deadline: DEADLINE
     });
 

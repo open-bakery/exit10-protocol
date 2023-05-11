@@ -14,4 +14,6 @@ interface IUniswapV3Router {
   }
 
   function exactInputSingle(ExactInputSingleParams calldata params) external payable returns (uint256 amountOut);
+
+  function getPool(address tokenA, address tokenB, uint24 fee) external view returns (address);
 }

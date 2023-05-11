@@ -590,7 +590,7 @@ contract Exit10 is UniswapBase {
     (int24 blockStartTick, ) = OracleLibrary.getBlockStartingTickAndLiquidity(address(POOL));
     int24 currentTick = _currentTick();
     int24 tickDiff = blockStartTick > currentTick ? blockStartTick - currentTick : currentTick - blockStartTick;
-    bool limit = (tickDiff < 100);
+    bool limit = (tickDiff < 100); // 100 ticks is about 1% in price difference
     if (TOKEN_IN > TOKEN_OUT) {
       return (currentTick <= TICK_LOWER && limit);
     } else {

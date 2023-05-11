@@ -36,7 +36,7 @@ contract Masterchef_addTest is AMasterchefBaseTest {
       AMasterchefBase.PoolInfo({
         token: token1,
         allocPoint: 10,
-        lastUpdateTime: block.timestamp,
+        lastUpdateTime: uint64(block.timestamp),
         totalStaked: 0,
         accRewardPerShare: 0,
         accUndistributedReward: 0
@@ -47,7 +47,7 @@ contract Masterchef_addTest is AMasterchefBaseTest {
       AMasterchefBase.PoolInfo({
         token: token2,
         allocPoint: 30,
-        lastUpdateTime: block.timestamp,
+        lastUpdateTime: uint64(block.timestamp),
         totalStaked: 0,
         accRewardPerShare: 0,
         accUndistributedReward: 0

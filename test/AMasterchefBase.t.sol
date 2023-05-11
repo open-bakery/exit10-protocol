@@ -16,7 +16,7 @@ abstract contract AMasterchefBaseTest is ABaseTest {
   uint256 rewardTokenSupply = 10_000 ether;
   uint256 rewardDuration = 100;
   uint256 rewardAmount = 100 ether;
-  uint256 allocPoint = 10; // default alloc point used for test pools
+  uint32 allocPoint = 10; // default alloc point used for test pools
   uint256 jump;
 
   function setUp() public virtual {
@@ -52,8 +52,8 @@ abstract contract AMasterchefBaseTest is ABaseTest {
   function _checkPoolInfo(uint256 _pid, AMasterchefBase.PoolInfo memory _params) internal {
     (
       address token_,
-      uint256 allocPoint_,
-      uint256 lastUpdateTime_,
+      uint32 allocPoint_,
+      uint64 lastUpdateTime_,
       uint256 totalStaked_,
       uint256 accRewardPerShare_,
       uint256 accUndistributedReward_

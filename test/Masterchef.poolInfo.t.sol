@@ -7,13 +7,13 @@ contract MasterchefTest is AMasterchefBaseTest {
     // setup, no deposit, arbitrary wait
     _add();
     _updateRewards();
-    uint256 ts1 = block.timestamp;
+    uint64 ts1 = uint64(block.timestamp);
     _jump(66);
     _checkPoolInfo(
       AMasterchefBase.PoolInfo({
         token: token1,
         allocPoint: allocPoint,
-        lastUpdateTime: ts1,
+        lastUpdateTime: uint64(ts1),
         totalStaked: 0,
         accRewardPerShare: 0,
         accUndistributedReward: 0
@@ -27,7 +27,7 @@ contract MasterchefTest is AMasterchefBaseTest {
       AMasterchefBase.PoolInfo({
         token: token1,
         allocPoint: allocPoint,
-        lastUpdateTime: block.timestamp,
+        lastUpdateTime: uint64(block.timestamp),
         totalStaked: deposit,
         accRewardPerShare: 0,
         accUndistributedReward: 0
@@ -41,7 +41,7 @@ contract MasterchefTest is AMasterchefBaseTest {
       AMasterchefBase.PoolInfo({
         token: token1,
         allocPoint: allocPoint,
-        lastUpdateTime: block.timestamp,
+        lastUpdateTime: uint64(block.timestamp),
         totalStaked: deposit,
         accRewardPerShare: (_rewardByDuration(jump) * masterchef.PRECISION()) / deposit,
         accUndistributedReward: 0
@@ -52,8 +52,8 @@ contract MasterchefTest is AMasterchefBaseTest {
   }
 
   function test_poolInfo_MultiplePools() public {
-    uint256 allocPoint0 = 60;
-    uint256 allocPoint1 = 40;
+    uint32 allocPoint0 = 60;
+    uint32 allocPoint1 = 40;
     uint256 totalAllocPoint = allocPoint0 + allocPoint1;
     vm.startPrank(masterchef.owner());
     masterchef.add(allocPoint0, token1);
@@ -78,7 +78,7 @@ contract MasterchefTest is AMasterchefBaseTest {
       AMasterchefBase.PoolInfo({
         token: address(token1),
         allocPoint: allocPoint0,
-        lastUpdateTime: block.timestamp,
+        lastUpdateTime: uint64(block.timestamp),
         totalStaked: deposit0,
         accRewardPerShare: ((baseReward * allocPoint0)) / totalAllocPoint / deposit0,
         accUndistributedReward: 0
@@ -89,7 +89,7 @@ contract MasterchefTest is AMasterchefBaseTest {
       AMasterchefBase.PoolInfo({
         token: address(token2),
         allocPoint: allocPoint1,
-        lastUpdateTime: block.timestamp,
+        lastUpdateTime: uint64(block.timestamp),
         totalStaked: deposit1,
         accRewardPerShare: ((baseReward * allocPoint1) / totalAllocPoint) / deposit1,
         accUndistributedReward: 0

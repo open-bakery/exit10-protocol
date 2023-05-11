@@ -21,8 +21,8 @@ abstract contract AMasterchefBase is Ownable {
 
   struct PoolInfo {
     address token;
-    uint256 allocPoint;
-    uint256 lastUpdateTime;
+    uint32 allocPoint;
+    uint64 lastUpdateTime;
     uint256 totalStaked;
     uint256 accRewardPerShare;
     uint256 accUndistributedReward;
@@ -47,7 +47,7 @@ abstract contract AMasterchefBase is Ownable {
     periodFinish = block.timestamp + rewardsDuration_;
   }
 
-  function add(uint256 allocPoint, address token) external onlyOwner {
+  function add(uint32 allocPoint, address token) external onlyOwner {
     require(!poolToken[address(token)], 'Masterchef: Token already added');
     require(token != REWARD_TOKEN, 'Masterchef: Staking reward token not supported');
     require(allocPoint != 0, 'Masterchef: Allocation must be non zero');
@@ -60,7 +60,7 @@ abstract contract AMasterchefBase is Ownable {
       PoolInfo({
         token: token,
         allocPoint: allocPoint,
-        lastUpdateTime: block.timestamp,
+        lastUpdateTime: uint64(block.timestamp),
         totalStaked: 0,
         accRewardPerShare: 0,
         accUndistributedReward: 0
@@ -178,7 +178,7 @@ abstract contract AMasterchefBase is Ownable {
       }
     }
 
-    pool.lastUpdateTime = block.timestamp;
+    pool.lastUpdateTime = uint64(block.timestamp);
   }
 
   /// @notice Increases accRewardPerShare and accUndistributedReward for all pools since last update up to block.timestamp.

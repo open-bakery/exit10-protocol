@@ -25,6 +25,7 @@ contract Exit10 is UniswapBase {
     address EXIT;
     address masterchef; // EXIT/USDC Stakers
     address feeSplitter; // Distribution to STO + BOOT and BLP stakers
+    address beneficiary; // Address to receive fees if pool goes back into range after Exit10
     uint256 bootstrapPeriod;
     uint256 bootstrapTarget;
     uint256 bootstrapCap;
@@ -74,8 +75,6 @@ contract Exit10 is UniswapBase {
   mapping(uint256 => BondData) private idToBondData;
   mapping(address => uint256) public bootstrapDeposit;
 
-  address public constant PROTOCOL_GUILD = 0xF29Ff96aaEa6C9A1fBa851f74737f3c069d4f1a9;
-
   uint256 public constant TOKEN_MULTIPLIER = 1e8;
   uint256 public constant LP_EXIT_REWARD = 3_000_000 ether;
   uint256 public constant BONDERS_EXIT_REWARD = 7_000_000 ether;
@@ -94,6 +93,7 @@ contract Exit10 is UniswapBase {
 
   address public immutable MASTERCHEF;
   address public immutable FEE_SPLITTER;
+  address public immutable BENEFICIARY;
 
   uint256 public immutable DEPLOYMENT_TIMESTAMP;
   uint256 public immutable BOOTSTRAP_PERIOD;
@@ -148,6 +148,7 @@ contract Exit10 is UniswapBase {
 
     MASTERCHEF = params_.masterchef;
     FEE_SPLITTER = params_.feeSplitter;
+    BENEFICIARY = params_.beneficiary;
 
     DEPLOYMENT_TIMESTAMP = block.timestamp;
     BOOTSTRAP_PERIOD = params_.bootstrapPeriod;
@@ -496,7 +497,7 @@ contract Exit10 is UniswapBase {
       );
     } else {
       // In case liquidity from Pending + Reserve buckets goes back in range after Exit10
-      _safeTransferTokens(PROTOCOL_GUILD, amountCollected0, amountCollected1);
+      _safeTransferTokens(BENEFICIARY, amountCollected0, amountCollected1);
     }
 
     emit ClaimAndDistributeFees(msg.sender, amountCollected0, amountCollected1);

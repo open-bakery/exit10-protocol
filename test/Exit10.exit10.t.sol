@@ -94,11 +94,11 @@ contract Exit10_exit10Test is ABaseExit10Test {
     // Go back into range
     _swap(weth, usdc, 10_000 ether);
     _generateFees(token0, token1, 100000_000000);
-    uint256 preBalance0 = _balance(token0, exit10.PROTOCOL_GUILD());
-    uint256 preBalance1 = _balance(token1, exit10.PROTOCOL_GUILD());
+    uint256 preBalance0 = _balance(token0, exit10.BENEFICIARY());
+    uint256 preBalance1 = _balance(token1, exit10.BENEFICIARY());
     exit10.claimAndDistributeFees();
 
-    assertGt(_balance(token0, exit10.PROTOCOL_GUILD()), preBalance0, 'Check balance0 Protocol Guild');
-    assertGt(_balance(token1, exit10.PROTOCOL_GUILD()), preBalance1, 'Check balance0 Protocol Guild');
+    assertGt(_balance(token0, exit10.BENEFICIARY()), preBalance0, 'Check balance0 Protocol Guild');
+    assertGt(_balance(token1, exit10.BENEFICIARY()), preBalance1, 'Check balance0 Protocol Guild');
   }
 }

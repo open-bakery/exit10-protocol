@@ -27,6 +27,7 @@ contract Exit10Test is ABaseExit10Test {
     assertEq(address(exit10.NFT()), address(nft), 'setup NFT');
     assertEq(exit10.MASTERCHEF(), address(masterchefExit), 'setup MASTERCHEF');
     assertEq(exit10.FEE_SPLITTER(), address(feeSplitter), 'setup FEE_SPLITTER');
+    assertEq(exit10.BENEFICIARY(), address(beneficiary), 'setup BENEFICIARY');
 
     assertEq(exit10.DEPLOYMENT_TIMESTAMP(), block.timestamp, 'setup DEPLOYMENT_TIMESTAMP');
     assertEq(exit10.BOOTSTRAP_PERIOD(), bootstrapPeriod, 'setup bootstrapPeriod');

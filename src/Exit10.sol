@@ -629,7 +629,7 @@ contract Exit10 is UniswapBase {
       _bootRewards = _refund + tenPercent;
     }
     // 20% of the ExitLiquidity
-    _stoRewards = tenPercent * 2;
+    _stoRewards = tenPercent << 1;
 
     if (_exitSupply != 0) {
       // 70% Exit Token holders

@@ -116,7 +116,7 @@ contract FeeSplitter is Ownable {
       remainingBucketsTokenOut = (notExchangedOut - notExchangedPendingShareOut);
     }
 
-    uint256 mc0TokenIn = (pendingBucketTokenIn * 4) / 10; // 40%
+    uint256 mc0TokenIn = (pendingBucketTokenIn << 2) / 10; // 40%
     uint256 mc1TokenIn = remainingBucketsTokenIn + (pendingBucketTokenIn - mc0TokenIn); // 60%
 
     pendingBucketTokenIn = 0;

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-import { console } from 'forge-std/console.sol';
+import { OracleLibrary } from '@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol';
 import { IERC20, SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import { Math } from '@openzeppelin/contracts/utils/math/Math.sol';
 import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
@@ -574,10 +574,14 @@ contract Exit10 is UniswapBase {
   }
 
   function _isOutOfTickRange() internal view returns (bool) {
+    (int24 blockStartTick, ) = OracleLibrary.getBlockStartingTickAndLiquidity(address(POOL));
+    int24 currentTick = _currentTick();
+    int24 tickDiff = blockStartTick > currentTick ? blockStartTick - currentTick : currentTick - blockStartTick;
+    bool limit = (tickDiff < 100);
     if (TOKEN_IN > TOKEN_OUT) {
-      return (_currentTick() <= TICK_LOWER);
+      return (currentTick <= TICK_LOWER && limit);
     } else {
-      return (_currentTick() >= TICK_UPPER);
+      return (currentTick >= TICK_UPPER && limit);
     }
   }
 

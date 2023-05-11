@@ -47,10 +47,12 @@ contract Exit10_exit10Test is ABaseExit10Test {
   function test_exit10_burnExitRewards() public {
     (uint256 bondId, uint256 bondAmount) = _skipBootAndCreateBond();
     exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
+    uint256 blockTime = block.timestamp;
     _eth10k();
+    uint256 distributedRewards = ((block.timestamp - blockTime) * masterchefExit.rewardRate()) /
+      masterchefExit.PRECISION();
     exit10.exit10();
-
-    assertEq(exit.totalSupply(), exit.balanceOf(address(this)), 'Check exit totalSupply');
+    assertEq(exit.totalSupply(), exit.balanceOf(address(this)) + distributedRewards, 'Check exit totalSupply');
   }
 
   function test_exit10() public {

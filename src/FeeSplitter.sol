@@ -58,33 +58,25 @@ contract FeeSplitter is Ownable {
 
   function collectFees(
     uint256 pendingBucket,
-    uint256 remainingBuckets,
+    uint256 totalBuckets,
     uint256 amountTokenOut,
     uint256 amountTokenIn
   ) external onlyAuthorized {
     if (amountTokenOut != 0) {
       IERC20(Exit10(exit10).TOKEN_OUT()).safeTransferFrom(exit10, address(this), amountTokenOut);
-      uint256 portionOfPendingBucketTokenOut = _calcPortionOfValue(
-        pendingBucket,
-        pendingBucket + remainingBuckets,
-        amountTokenOut
-      );
+      uint256 portionOfPendingBucketTokenOut = _calcPortionOfValue(pendingBucket, totalBuckets, amountTokenOut);
       pendingBucketTokenOut += portionOfPendingBucketTokenOut;
       remainingBucketsTokenOut += (amountTokenOut - portionOfPendingBucketTokenOut);
     }
 
     if (amountTokenIn != 0) {
       IERC20(Exit10(exit10).TOKEN_IN()).safeTransferFrom(exit10, address(this), amountTokenIn);
-      uint256 portionOfPendingBucketTokenIn = _calcPortionOfValue(
-        pendingBucket,
-        pendingBucket + remainingBuckets,
-        amountTokenIn
-      );
+      uint256 portionOfPendingBucketTokenIn = _calcPortionOfValue(pendingBucket, totalBuckets, amountTokenIn);
       pendingBucketTokenIn += portionOfPendingBucketTokenIn;
       remainingBucketsTokenIn += (amountTokenIn - portionOfPendingBucketTokenIn);
     }
 
-    emit CollectFees(pendingBucket, remainingBuckets, amountTokenOut, amountTokenIn);
+    emit CollectFees(pendingBucket, totalBuckets - pendingBucket, amountTokenOut, amountTokenIn);
   }
 
   function updateFees(uint256 swapAmountOut) external returns (uint256 totalExchangedIn) {

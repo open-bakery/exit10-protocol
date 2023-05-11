@@ -412,9 +412,10 @@ contract Exit10 is UniswapBase {
     if (amountCollected0 + amountCollected1 == 0) return;
 
     if (!inExitMode) {
-      if (_liquidityAmount() != 0) {
-        uint256 bootstrapFees0 = (bootstrapBucket * amountCollected0) / _liquidityAmount();
-        uint256 bootstrapFees1 = (bootstrapBucket * amountCollected1) / _liquidityAmount();
+      uint128 _totalLiquidityBefore = _liquidityAmount();
+      if (_totalLiquidityBefore != 0) {
+        uint256 bootstrapFees0 = (bootstrapBucket * amountCollected0) / _totalLiquidityBefore;
+        uint256 bootstrapFees1 = (bootstrapBucket * amountCollected1) / _totalLiquidityBefore;
 
         if (bootstrapFees0 != 0 && bootstrapFees1 != 0) {
           try
@@ -440,7 +441,7 @@ contract Exit10 is UniswapBase {
       }
       FeeSplitter(FEE_SPLITTER).collectFees(
         pendingBucket,
-        bootstrapBucket + reserveBucket + _exitBucket(),
+        _totalLiquidityBefore - bootstrapBucket,
         amountCollected0,
         amountCollected1
       );

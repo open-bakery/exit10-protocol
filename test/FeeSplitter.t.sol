@@ -26,7 +26,7 @@ contract FeeSplitterTest is ABaseTest {
 
   uint256 mc0Share = 4;
   uint256 pendingShare = 4;
-  uint256 remainingShare = 6;
+  uint256 remainingShare = 6 + pendingShare;
   uint256 amountUsdc = _usdcAmount(100_000);
   uint256 amountWeth = 10_000 ether;
 
@@ -60,8 +60,8 @@ contract FeeSplitterTest is ABaseTest {
     _checkBuckets(
       (amountUsdc * pendingShare) / 10,
       (amountWeth * pendingShare) / 10,
-      (amountUsdc * remainingShare) / 10,
-      (amountWeth * remainingShare) / 10
+      (amountUsdc * (remainingShare - pendingShare)) / 10,
+      (amountWeth * (remainingShare - pendingShare)) / 10
     );
     _checkBalances(address(feeSplitter), amountUsdc, amountWeth);
   }
@@ -116,7 +116,8 @@ contract FeeSplitterTest is ABaseTest {
     uint256 exchanged = feeSplitter.updateFees(exchangeAmount);
 
     uint256 pendingUsdc = (((amountUsdc * pendingShare) / 10)) - (((exchangeAmount * pendingShare) / 10));
-    uint256 remainingUsdc = (((amountUsdc * remainingShare) / 10)) - (((exchangeAmount * remainingShare) / 10));
+    uint256 remainingUsdc = (((amountUsdc * (remainingShare - pendingShare)) / 10)) -
+      (((exchangeAmount * (remainingShare - pendingShare)) / 10));
     _checkBuckets(pendingUsdc, 0, remainingUsdc, 0);
     _checkBalances(address(feeSplitter), amountUsdc - exchangeAmount, 0);
 

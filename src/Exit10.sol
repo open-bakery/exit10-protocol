@@ -340,7 +340,7 @@ contract Exit10 is UniswapBase {
 
     uint256 exitBucketRewards;
 
-    if (POOL.token1() == TOKEN_IN) {
+    if (TOKEN_OUT < TOKEN_IN) {
       (exitBucketRewards, ) = _decreaseLiquidity(rmParams);
       (exitBucketRewards, ) = _collect(address(this), uint128(exitBucketRewards), 0);
     } else {

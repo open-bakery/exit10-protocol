@@ -7,6 +7,12 @@ import { ABaseExit10Test } from './ABaseExit10.t.sol';
 import { Exit10 } from '../src/Exit10.sol';
 import { DepositHelper } from '../src/DepositHelper.sol';
 import { IUniswapV3Router } from '../src/interfaces/IUniswapV3Router.sol';
+import { IUniswapV3Pool } from '../src/UniswapBase.sol';
+// needs v3-core@0.8
+import { TickMath } from '../lib/v3-core/contracts/libraries/TickMath.sol';
+import { FullMath } from '../lib/v3-core/contracts/libraries/FullMath.sol';
+import { LiquidityAmounts } from '../lib/v3-periphery/contracts/libraries/LiquidityAmounts.sol';
+import { Math } from '@openzeppelin/contracts/utils/math/Math.sol';
 
 contract DepositHelperTest is ABaseExit10Test {
   DepositHelper depositHelper;
@@ -364,6 +370,36 @@ contract DepositHelperTest is ABaseExit10Test {
     vm.revertTo(snapshot); // restores the state
   }
 
+  function testPriceLimitSwaps() public {
+    _skipBootstrap();
+    uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(tickLower);
+    uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(tickUpper);
+    (uint160 sqrtRatioX96, int24 tick, , , , , ) = IUniswapV3Pool(vm.envAddress('POOL')).slot0();
+    console.log('initial USDC balance of DepositHelper:', ERC20(usdc).balanceOf(address(depositHelper)));
+    console.log('sqrtRatioX96:', sqrtRatioX96);
+    (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
+      sqrtRatioX96,
+      sqrtRatioAX96,
+      sqrtRatioBX96,
+      1e15
+    ); // amounts to obtain 1e15 liquidity
+    uint256 swapAmount0 = convert1ToToken0(sqrtRatioX96, amount1, 6); // usdc amount to swap
+    ERC20(usdc).transfer(alice, amount0 + swapAmount0); // give usdc to alice
+    IUniswapV3Router.ExactInputSingleParams memory swapParams = _getSwapParams(usdc, weth, swapAmount0);
+    swapParams.sqrtPriceLimitX96 = TickMath.getSqrtRatioAtTick(tick - 1);
+    console.log('alice sends', amount0 + swapAmount0, 'USDC');
+    console.log('and swaps', swapAmount0, 'USDC for ETH');
+    console.log('swapParams.sqrtPriceLimitX96 set to:', swapParams.sqrtPriceLimitX96);
+    vm.startPrank(alice);
+    ERC20(usdc).approve(address(depositHelper), amount0 + swapAmount0);
+    depositHelper.swapAndCreateBond(amount0 + swapAmount0, 0, swapParams);
+    vm.stopPrank();
+    uint256 usdcLeft = ERC20(usdc).balanceOf(address(depositHelper));
+    console.log('Only', swapAmount0 - usdcLeft, 'USDC has been swapped and used to mint bonds');
+    console.log('USDC Left into DepositHelper:', usdcLeft);
+    assertEq(usdcLeft, 0, 'Check usdcLeft == 0');
+  }
+
   function _getSwapParams(
     address tokenIn,
     address tokenOut,
@@ -453,5 +489,30 @@ contract DepositHelperTest is ABaseExit10Test {
     vm.revertTo(snapshot); // restores the state
 
     return (_expectedLiquidity, _swapAmount0, _swapParams);
+  }
+
+  function sqrtPriceX96ToUint(uint160 _sqrtPriceX96, uint8 decimalsToken0) internal pure returns (uint256) {
+    uint256 numerator1 = uint256(_sqrtPriceX96) * uint256(_sqrtPriceX96);
+    uint256 numerator2 = 10 ** decimalsToken0;
+    return FullMath.mulDiv(numerator1, numerator2, 1 << 192);
+  }
+
+  function convert0ToToken1(
+    uint160 _sqrtPriceX96,
+    uint256 amount0,
+    uint8 decimalsToken0
+  ) internal pure returns (uint256 amount0ConvertedToToken1) {
+    uint256 price = sqrtPriceX96ToUint(_sqrtPriceX96, decimalsToken0);
+    amount0ConvertedToToken1 = (amount0 * (price)) / (10 ** decimalsToken0);
+  }
+
+  function convert1ToToken0(
+    uint160 _sqrtPriceX96,
+    uint256 amount1,
+    uint8 decimalsToken0
+  ) internal pure returns (uint256 amount1ConvertedToToken0) {
+    uint256 price = sqrtPriceX96ToUint(_sqrtPriceX96, decimalsToken0);
+    if (price == 0) return 0;
+    amount1ConvertedToToken0 = (amount1 * (10 ** decimalsToken0)) / (price);
   }
 }

@@ -31,6 +31,6 @@ contract Exit10Test is ABaseExit10Test {
 
     assertEq(exit10.DEPLOYMENT_TIMESTAMP(), block.timestamp, 'setup DEPLOYMENT_TIMESTAMP');
     assertEq(exit10.BOOTSTRAP_PERIOD(), bootstrapPeriod, 'setup bootstrapPeriod');
-    assertEq(exit10.ACCRUAL_PARAMETER(), accrualParameter * 1e18, 'setup ACCRUAL_PARAMETER');
+    assertEq(exit10.ACCRUAL_PARAMETER(), accrualParameter, 'setup ACCRUAL_PARAMETER');
   }
 }

@@ -154,7 +154,7 @@ contract Exit10 is UniswapBase {
     BOOTSTRAP_PERIOD = params_.bootstrapPeriod;
     BOOTSTRAP_TARGET = params_.bootstrapTarget;
     BOOTSTRAP_CAP = params_.bootstrapCap;
-    ACCRUAL_PARAMETER = params_.accrualParameter * DECIMAL_PRECISION;
+    ACCRUAL_PARAMETER = params_.accrualParameter;
     LIQUIDITY_PER_USD = params_.liquidityPerUsd;
     EXIT_DISCOUNT = params_.exitDiscount;
     TOKEN_OUT_DECIMALS = 10 ** ERC20(TOKEN_OUT).decimals();
@@ -578,7 +578,7 @@ contract Exit10 is UniswapBase {
   }
 
   function _getAccruedLiquidity(BondData memory _params) internal view returns (uint256 accruedAmount) {
-    uint256 bondDuration = 1e18 * (block.timestamp - _params.startTime);
+    uint256 bondDuration = block.timestamp - _params.startTime;
     accruedAmount = (_params.bondAmount * bondDuration) / (bondDuration + ACCRUAL_PARAMETER);
   }
 

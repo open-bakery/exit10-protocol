@@ -118,7 +118,7 @@ contract DepositHelper {
     IWETH9(WETH).deposit{ value: _msgValue }();
     if (TOKEN_0 == WETH) {
       _amount0 += _msgValue;
-    } else {
+    } else if (TOKEN_1 == WETH) {
       _amount1 += _msgValue;
     }
 

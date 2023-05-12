@@ -90,9 +90,9 @@ contract Exit10 is UniswapBase {
   BaseToken public immutable EXIT;
   INFT public immutable NFT;
 
+  address public immutable BENEFICIARY;
   address public immutable MASTERCHEF;
   address public immutable FEE_SPLITTER;
-  address public immutable BENEFICIARY;
 
   uint256 public immutable BOOTSTRAP_FINISH;
   uint256 public immutable BOOTSTRAP_TARGET;
@@ -246,10 +246,10 @@ contract Exit10 is UniswapBase {
     _requireCallerOwnsBond(bondID);
     BondData memory bond = idToBondData[bondID];
     _requireActiveStatus(bond.status);
-    _requireEqualValues(bond.bondAmount, params.liquidity);
 
     claimAndDistributeFees();
 
+    params.liquidity = uint128(bond.bondAmount);
     idToBondData[bondID].status = BondStatus.cancelled;
     idToBondData[bondID].endTime = uint64(block.timestamp);
 
@@ -273,10 +273,10 @@ contract Exit10 is UniswapBase {
     _requireCallerOwnsBond(bondID);
     BondData memory bond = idToBondData[bondID];
     _requireActiveStatus(bond.status);
-    _requireEqualValues(bond.bondAmount, params.liquidity);
 
     claimAndDistributeFees();
 
+    params.liquidity = uint128(bond.bondAmount);
     uint256 accruedLiquidity = _getAccruedLiquidity(bond);
     boostTokenAmount = accruedLiquidity * TOKEN_MULTIPLIER;
 
@@ -606,10 +606,6 @@ contract Exit10 is UniswapBase {
 
   function _requireActiveStatus(BondStatus _status) internal pure {
     require(_status == BondStatus.active, 'EXIT10: Bond must be active');
-  }
-
-  function _requireEqualValues(uint256 _valueA, uint256 _valueB) internal pure {
-    require(_valueA == _valueB, 'EXIT10: Amounts do not match');
   }
 
   function _getActualLiquidityPerExit(uint256 _exitBucketAmount) internal pure returns (uint256) {

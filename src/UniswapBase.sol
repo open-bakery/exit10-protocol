@@ -5,7 +5,7 @@ import { IUniswapV3Pool } from './interfaces/IUniswapV3Pool.sol';
 import { INPM } from './interfaces/INonfungiblePositionManager.sol';
 import { IWETH9 } from './interfaces/IWETH9.sol';
 
-contract UniswapBase {
+abstract contract UniswapBase {
   struct BaseDeployParams {
     address weth;
     address uniswapFactory;

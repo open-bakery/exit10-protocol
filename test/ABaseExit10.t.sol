@@ -366,10 +366,10 @@ abstract contract ABaseExit10Test is ABaseTest {
   }
 
   function _getPercentFromTarget(uint256 _amountBootstrapped) internal view virtual returns (uint256) {
-    return (_amountBootstrapped * PERCENT_BASE) / _getLiquidityForBootsrapTarget();
+    return (_amountBootstrapped * PERCENT_BASE) / _getLiquidityForBootstrapTarget();
   }
 
-  function _getLiquidityForBootsrapTarget() internal view returns (uint256) {
+  function _getLiquidityForBootstrapTarget() internal view returns (uint256) {
     return (bootstrapTarget * liquidityPerUsd) / USDC_DECIMALS;
   }
 

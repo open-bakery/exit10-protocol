@@ -345,7 +345,7 @@ contract Exit10 is UniswapBase {
       (, exitBucketRewards) = _collect(address(this), 0, uint128(exitBucketRewards));
     }
 
-    // Total initial deposits that needs to be returned to bootsrappers
+    // Total initial deposits that needs to be returned to bootstrappers
     uint256 bootstrapRefund = exitBucketFinal != 0 ? (bootstrapBucketFinal * exitBucketRewards) / exitBucketFinal : 0;
 
     (bootstrapRewardsPlusRefund, teamPlusBackersRewards, exitTokenRewardsFinal) = _calculateFinalShares(

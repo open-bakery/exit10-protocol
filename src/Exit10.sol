@@ -53,7 +53,7 @@ contract Exit10 is UniswapBase {
   uint256 private reserveBucket;
   uint256 private bootstrapBucket;
   uint256 public bootstrapBucketFinal;
-  uint256 public exitBucketFinal;
+  uint256 public exitBucketBootstrapBucketFinal;
 
   // EXIT TOKEN
   uint256 public exitTokenSupplyFinal;
@@ -82,7 +82,7 @@ contract Exit10 is UniswapBase {
   uint256 private constant MAX_UINT_256 = type(uint256).max;
   uint256 private constant DEADLINE = 1e10;
   uint256 private constant DECIMAL_PRECISION = 1e18;
-  uint256 private constant PERCENT_BASE = 10000;
+  uint256 private constant RESOLUTION = 10000;
 
   BaseToken public immutable STO;
   BaseToken public immutable BOOT;
@@ -95,8 +95,8 @@ contract Exit10 is UniswapBase {
   address public immutable FEE_SPLITTER;
 
   uint256 public immutable BOOTSTRAP_FINISH;
-  uint256 public immutable BOOTSTRAP_TARGET;
-  uint256 public immutable BOOTSTRAP_CAP;
+  uint256 public immutable BOOTSTRAP_TARGET_LIQUIDITY;
+  uint256 public immutable BOOTSTRAP_LIQUIDITY_CAP;
   uint256 public immutable ACCRUAL_PARAMETER;
   uint256 public immutable LIQUIDITY_PER_USD;
   uint256 public immutable EXIT_DISCOUNT;
@@ -148,8 +148,8 @@ contract Exit10 is UniswapBase {
     BENEFICIARY = params_.beneficiary;
 
     BOOTSTRAP_FINISH = params_.bootstrapPeriod + block.timestamp;
-    BOOTSTRAP_TARGET = params_.bootstrapTarget;
-    BOOTSTRAP_CAP = params_.bootstrapCap;
+    BOOTSTRAP_TARGET_LIQUIDITY = params_.bootstrapTarget;
+    BOOTSTRAP_LIQUIDITY_CAP = params_.bootstrapCap;
     ACCRUAL_PARAMETER = params_.accrualParameter;
     LIQUIDITY_PER_USD = params_.liquidityPerUsd;
     EXIT_DISCOUNT = params_.exitDiscount;
@@ -174,11 +174,11 @@ contract Exit10 is UniswapBase {
 
     bootstrapBucket += liquidityAdded;
 
-    if (BOOTSTRAP_CAP != 0) {
-      if (bootstrapBucket > BOOTSTRAP_CAP) {
+    if (BOOTSTRAP_LIQUIDITY_CAP != 0) {
+      if (bootstrapBucket > BOOTSTRAP_LIQUIDITY_CAP) {
         uint256 diff;
         unchecked {
-          diff = bootstrapBucket - BOOTSTRAP_CAP;
+          diff = bootstrapBucket - BOOTSTRAP_LIQUIDITY_CAP;
         }
         (uint256 amountRemoved0, uint256 amountRemoved1) = _decreaseLiquidity(
           UniswapBase.RemoveLiquidity({ liquidity: uint128(diff), amount0Min: 0, amount1Min: 0, deadline: DEADLINE })
@@ -192,7 +192,7 @@ contract Exit10 is UniswapBase {
         liquidityAdded -= uint128(diff);
         amountAdded0 -= amountCollected0;
         amountAdded1 -= amountCollected1;
-        bootstrapBucket = BOOTSTRAP_CAP;
+        bootstrapBucket = BOOTSTRAP_LIQUIDITY_CAP;
         isBootstrapCapReached = true;
       }
     }
@@ -286,8 +286,8 @@ contract Exit10 is UniswapBase {
     pendingBucket -= params.liquidity;
     reserveBucket += accruedLiquidity;
 
-    uint256 exitAccrued = _getExitAmount(bond.bondAmount - accruedLiquidity);
-    exitTokenAmount = exitAccrued + ((exitAccrued * EXIT_DISCOUNT) / PERCENT_BASE);
+    uint256 exitAccrued = _getExitAmount(bond.bondAmount - accruedLiquidity); // Protocol acquired liquidity
+    exitTokenAmount = exitAccrued + ((exitAccrued * EXIT_DISCOUNT) / RESOLUTION);
 
     BLP.mint(msg.sender, boostTokenAmount);
     _mintExitCapped(msg.sender, exitTokenAmount);
@@ -324,33 +324,35 @@ contract Exit10 is UniswapBase {
     // Stop and burn Exit rewards.
     EXIT.burn(MASTERCHEF, MasterchefExit(MASTERCHEF).stopRewards(LP_EXIT_REWARD));
     exitTokenSupplyFinal = EXIT.totalSupply();
-    exitBucketFinal = _liquidityAmount() - (pendingBucket + reserveBucket);
+    exitBucketBootstrapBucketFinal = _liquidityAmount() - (pendingBucket + reserveBucket);
     bootstrapBucketFinal = bootstrapBucket;
     bootstrapBucket = 0;
 
     RemoveLiquidity memory rmParams = RemoveLiquidity({
-      liquidity: uint128(exitBucketFinal),
+      liquidity: uint128(exitBucketBootstrapBucketFinal),
       amount0Min: 0,
       amount1Min: 0,
       deadline: DEADLINE
     });
 
-    uint256 exitBucketRewards;
+    uint256 exitBucketBootstrapBucketRewards;
 
     if (TOKEN_OUT < TOKEN_IN) {
-      (exitBucketRewards, ) = _decreaseLiquidity(rmParams);
-      (exitBucketRewards, ) = _collect(address(this), uint128(exitBucketRewards), 0);
+      (exitBucketBootstrapBucketRewards, ) = _decreaseLiquidity(rmParams);
+      (exitBucketBootstrapBucketRewards, ) = _collect(address(this), uint128(exitBucketBootstrapBucketRewards), 0);
     } else {
-      (, exitBucketRewards) = _decreaseLiquidity(rmParams);
-      (, exitBucketRewards) = _collect(address(this), 0, uint128(exitBucketRewards));
+      (, exitBucketBootstrapBucketRewards) = _decreaseLiquidity(rmParams);
+      (, exitBucketBootstrapBucketRewards) = _collect(address(this), 0, uint128(exitBucketBootstrapBucketRewards));
     }
 
     // Total initial deposits that needs to be returned to bootstrappers
-    uint256 bootstrapRefund = exitBucketFinal != 0 ? (bootstrapBucketFinal * exitBucketRewards) / exitBucketFinal : 0;
+    uint256 bootstrapRefund = exitBucketBootstrapBucketFinal != 0
+      ? (bootstrapBucketFinal * exitBucketBootstrapBucketRewards) / exitBucketBootstrapBucketFinal
+      : 0;
 
     (bootstrapRewardsPlusRefund, teamPlusBackersRewards, exitTokenRewardsFinal) = _calculateFinalShares(
       bootstrapRefund,
-      exitBucketRewards,
+      exitBucketBootstrapBucketRewards,
       bootstrapBucketFinal,
       exitTokenSupplyFinal
     );
@@ -503,19 +505,20 @@ contract Exit10 is UniswapBase {
   }
 
   function _getExitAmount(uint256 _liquidity) internal view returns (uint256) {
-    uint256 bootstrapTargetLiquidity = (BOOTSTRAP_TARGET * LIQUIDITY_PER_USD) / TOKEN_OUT_DECIMALS;
+    // bootstrapTargetLiquidityAtExit is the amount of liquidity used to project the final value of Exit.
+    uint256 bootstrapTargetLiquidityAtExit = (BOOTSTRAP_TARGET_LIQUIDITY * LIQUIDITY_PER_USD) / TOKEN_OUT_DECIMALS;
 
-    uint256 percentFromTaget = (bootstrapTargetLiquidity == 0)
+    uint256 bootstrapValueRelativeToTarget = (bootstrapTargetLiquidityAtExit == 0)
       ? 0
-      : (bootstrapBucket * PERCENT_BASE) / bootstrapTargetLiquidity;
+      : (bootstrapBucket * RESOLUTION) / bootstrapTargetLiquidityAtExit;
 
-    uint256 projectedLiquidityPerExit = (LIQUIDITY_PER_USD * Math.max(percentFromTaget, 5000)) / PERCENT_BASE;
+    uint256 projectedPricePerExit = (LIQUIDITY_PER_USD * Math.max(bootstrapValueRelativeToTarget, 5000)) / RESOLUTION;
 
-    uint256 actualLiquidityPerExit = _getActualLiquidityPerExit(_exitBucket());
+    uint256 actualPricePerExit = _getpricePerExitWithMaxSupply(_exitBucket());
 
-    uint256 liquidityPerExit = Math.max(actualLiquidityPerExit, projectedLiquidityPerExit);
+    uint256 pricePerExit = Math.max(actualPricePerExit, projectedPricePerExit);
 
-    return ((_liquidity * DECIMAL_PRECISION) / liquidityPerExit);
+    return ((_liquidity * DECIMAL_PRECISION) / pricePerExit);
   }
 
   function _safeTokenClaim(
@@ -605,8 +608,8 @@ contract Exit10 is UniswapBase {
     require(_status == BondStatus.active, 'EXIT10: Bond must be active');
   }
 
-  function _getActualLiquidityPerExit(uint256 _exitBucketAmount) internal pure returns (uint256) {
-    uint256 exitTokenShareOfBucket = (_exitBucketAmount * 7000) / PERCENT_BASE;
+  function _getpricePerExitWithMaxSupply(uint256 _exitBucketAmount) internal pure returns (uint256) {
+    uint256 exitTokenShareOfBucket = (_exitBucketAmount * 7000) / RESOLUTION; // 70% of the exitBucket
     return (exitTokenShareOfBucket * DECIMAL_PRECISION) / MAX_EXIT_SUPPLY;
   }
 

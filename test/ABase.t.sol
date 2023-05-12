@@ -9,7 +9,7 @@ import { Exit10 } from '../src/Exit10.sol';
 
 abstract contract ABaseTest is Test {
   uint256 constant MAX_UINT_256 = type(uint256).max;
-  uint256 constant PERCENT_BASE = 10000;
+  uint256 constant RESOLUTION = 10000;
   address constant ZERO_ADDRESS = address(0);
 
   address me = address(this);
@@ -115,7 +115,7 @@ abstract contract ABaseTest is Test {
   }
 
   function _addPercentToAmount(uint256 _amount, uint256 _percentage) internal pure returns (uint256) {
-    return _amount + ((_amount * _percentage) / PERCENT_BASE);
+    return _amount + ((_amount * _percentage) / RESOLUTION);
   }
 
   function _getTokensBalance(

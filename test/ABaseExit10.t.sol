@@ -39,10 +39,10 @@ abstract contract ABaseExit10Test is ABaseTest {
   address nonfungiblePositionManager = vm.envAddress('UNISWAP_V3_NPM');
   uint256 accrualParameter = vm.envUint('ACCRUAL_PARAMETER');
   uint256 bootstrapPeriod = vm.envUint('BOOTSTRAP_PERIOD');
-  uint256 bootstrapTarget = vm.envUint('BOOTSTRAP_TARGET');
+  uint256 bootstrapTarget = vm.envUint('BOOTSTRAP_TARGET_LIQUIDITY');
   uint256 liquidityPerUsd = vm.envUint('LIQUIDITY_PER_USDC');
   uint256 exitDiscount = vm.envUint('EXIT_DISCOUNT');
-  uint256 bootstrapCap = vm.envUint('BOOTSTRAP_CAP');
+  uint256 bootstrapCap = vm.envUint('BOOTSTRAP_LIQUIDITY_CAP');
   uint24 fee = uint24(vm.envUint('FEE'));
   int24 tickLower = int24(vm.envInt('LOWER_TICK'));
   int24 tickUpper = int24(vm.envInt('UPPER_TICK'));
@@ -343,15 +343,13 @@ abstract contract ABaseExit10Test is ABaseTest {
 
   function _getExitAmount(uint256 _liquidity) internal view virtual returns (uint256) {
     (, , uint256 bootstrapBucket, uint256 exitBucket) = exit10.getBuckets();
-    uint256 percentFromTaget = _getPercentFromTarget(bootstrapBucket) <= 5000
+    uint256 bootstrapValueRelativeToTarget = _getPercentFromTarget(bootstrapBucket) <= 5000
       ? 5000
       : _getPercentFromTarget(bootstrapBucket);
-    uint256 projectedLiquidityPerExit = (liquidityPerUsd * percentFromTaget) / PERCENT_BASE;
-    uint256 actualLiquidityPerExit = _getActualLiquidityPerExit(exitBucket);
-    uint256 liquidityPerExit = actualLiquidityPerExit > projectedLiquidityPerExit
-      ? actualLiquidityPerExit
-      : projectedLiquidityPerExit;
-    return ((_liquidity * DECIMAL_PRECISION) / liquidityPerExit);
+    uint256 projectedPricePerExit = (liquidityPerUsd * bootstrapValueRelativeToTarget) / RESOLUTION;
+    uint256 actualPricePerExit = _getpricePerExitWithMaxSupply(exitBucket);
+    uint256 pricePerExit = actualPricePerExit > projectedPricePerExit ? actualPricePerExit : projectedPricePerExit;
+    return ((_liquidity * DECIMAL_PRECISION) / pricePerExit);
   }
 
   function _liquidityPerUsd(uint256 _liquidity, uint256 _amount0, uint256 _amount1) internal view returns (uint256) {
@@ -366,15 +364,15 @@ abstract contract ABaseExit10Test is ABaseTest {
   }
 
   function _getPercentFromTarget(uint256 _amountBootstrapped) internal view virtual returns (uint256) {
-    return (_amountBootstrapped * PERCENT_BASE) / _getLiquidityForBootstrapTarget();
+    return (_amountBootstrapped * RESOLUTION) / _getLiquidityForBootstrapTarget();
   }
 
   function _getLiquidityForBootstrapTarget() internal view returns (uint256) {
     return (bootstrapTarget * liquidityPerUsd) / USDC_DECIMALS;
   }
 
-  function _getActualLiquidityPerExit(uint256 _exitBucket) internal view virtual returns (uint256) {
-    uint256 exitTokenShareOfBucket = (_exitBucket * 7000) / PERCENT_BASE;
+  function _getpricePerExitWithMaxSupply(uint256 _exitBucket) internal view virtual returns (uint256) {
+    uint256 exitTokenShareOfBucket = (_exitBucket * 7000) / RESOLUTION;
     return (exitTokenShareOfBucket * DECIMAL_PRECISION) / exit10.MAX_EXIT_SUPPLY();
   }
 
@@ -392,6 +390,6 @@ abstract contract ABaseExit10Test is ABaseTest {
   }
 
   function _getBootstrapCap() internal view virtual returns (uint256) {
-    return vm.envUint('BOOTSTRAP_CAP');
+    return vm.envUint('BOOTSTRAP_LIQUIDITY_CAP');
   }
 }

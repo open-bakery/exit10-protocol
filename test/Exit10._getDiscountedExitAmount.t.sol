@@ -19,7 +19,7 @@ contract Exit10__getDiscountedExitAmountTest is ABaseExit10Test {
     assertEq(_addPercentToAmount(100, 50), 100);
   }
 
-  function test_getPercentFromTarget() public {
+  function test_getValuePerExit() public {
     bootstrapTarget_ = 100_000;
     assertEq(_getPercentFromTarget(100_000 / 2), 5000);
   }
@@ -58,21 +58,21 @@ contract Exit10__getDiscountedExitAmountTest is ABaseExit10Test {
   }
 
   function _getExitAmount(uint256 _liquidity) internal view virtual override returns (uint256) {
-    uint256 percentFromTaget = _getPercentFromTarget(_liquidity) <= 5000 ? 5000 : _getPercentFromTarget(_liquidity);
-    uint256 projectedLiquidityPerExit = (liquidityPerUsd_ * percentFromTaget) / PERCENT_BASE;
-    uint256 actualLiquidityPerExit = _getActualLiquidityPerExit(exitBucket);
-    uint256 liquidityPerExit = actualLiquidityPerExit > projectedLiquidityPerExit
-      ? actualLiquidityPerExit
-      : projectedLiquidityPerExit;
-    return ((_liquidity * DECIMAL_PRECISION) / liquidityPerExit);
+    uint256 bootstrapValueRelativeToTarget = _getPercentFromTarget(_liquidity) <= 5000
+      ? 5000
+      : _getPercentFromTarget(_liquidity);
+    uint256 projectedPricePerExit = (liquidityPerUsd_ * bootstrapValueRelativeToTarget) / RESOLUTION;
+    uint256 actualPricePerExit = _getpricePerExitWithMaxSupply(exitBucket);
+    uint256 pricePerExit = actualPricePerExit > projectedPricePerExit ? actualPricePerExit : projectedPricePerExit;
+    return ((_liquidity * DECIMAL_PRECISION) / pricePerExit);
   }
 
-  function _getActualLiquidityPerExit(uint256 _exitBucket) internal view virtual override returns (uint256) {
-    uint256 exitTokenShareOfBucket = (_exitBucket * 7000) / PERCENT_BASE;
+  function _getpricePerExitWithMaxSupply(uint256 _exitBucket) internal view virtual override returns (uint256) {
+    uint256 exitTokenShareOfBucket = (_exitBucket * 7000) / RESOLUTION;
     return (exitTokenShareOfBucket * DECIMAL_PRECISION) / exit10.MAX_EXIT_SUPPLY();
   }
 
   function _getPercentFromTarget(uint256 _liquidity) internal view virtual override returns (uint256) {
-    return (_liquidity * PERCENT_BASE) / bootstrapTarget_;
+    return (_liquidity * RESOLUTION) / bootstrapTarget_;
   }
 }

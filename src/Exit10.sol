@@ -135,7 +135,6 @@ contract Exit10 is UniswapBase {
   );
   event ClaimRewards(address indexed caller, address indexed token, uint256 amountBurned, uint256 amountClaimed);
   event ClaimAndDistributeFees(address indexed caller, uint256 amountClaimed0, uint256 amountClaimed1);
-  event MintExit(address indexed recipient, uint256 amount);
 
   constructor(BaseDeployParams memory baseParams_, DeployParams memory params_) UniswapBase(baseParams_) {
     STO = STOToken(params_.STO);
@@ -550,8 +549,6 @@ contract Exit10 is UniswapBase {
     uint256 newSupply = EXIT.totalSupply() + amount;
     uint256 mintAmount = newSupply > MAX_EXIT_SUPPLY ? MAX_EXIT_SUPPLY - EXIT.totalSupply() : amount;
     if (mintAmount != 0) EXIT.mint(recipient, mintAmount);
-
-    emit MintExit(recipient, mintAmount);
   }
 
   function _exitBucket() internal view returns (uint256 _exitAmount) {

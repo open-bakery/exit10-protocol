@@ -41,7 +41,13 @@ deploy-infrastructure:
 dev:
 	#trap "kill $(jobs -p)" SIGINT SIGTERM EXIT
 	$(MAKE) start-anvil-local
-	$(MAKE) deploy-infrastructure
+	$(MAKE) deploy-infrastructure isETHToken1=1
+	@source ./config/local.ini ; sed < .env.template > .env $(SED_REPLACE)
+
+dev-flip:
+	#trap "kill $(jobs -p)" SIGINT SIGTERM EXIT
+	$(MAKE) start-anvil-local
+	$(MAKE) deploy-infrastructure isETHToken1=0
 	@source ./config/local.ini ; sed < .env.template > .env $(SED_REPLACE)
 
 dev-ui:
@@ -64,13 +70,13 @@ testAll:
 	forge test -vv --fork-url $(RPC_URL)
 
 tests:
-	forge test -vv  --nmc "SystemLogsTest|FuzzTest" --fork-url $(RPC_URL)
+	forge test -vvv  --nmc "SystemLogsTest|FuzzTest" --fork-url $(RPC_URL)
 
 trace:
 	forge test -vv --nmc "SystemLogsTest|FuzzTest" --fork-url $(RPC_URL)
 
 single:
-	forge test -vvv --mc Exit10_bootstrapLockCappedTest --fork-url $(RPC_URL)
+	forge test -vvv --mc DepositHelperTest --fork-url $(RPC_URL)
 
 systemLogs:
 	forge test -vv --mc SystemLogsTest --fork-url $(RPC_URL)

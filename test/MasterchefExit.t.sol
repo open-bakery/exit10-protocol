@@ -130,8 +130,10 @@ contract MasterchefExitTest is ABaseTest {
     skip(interval);
 
     uint256 intervalReward = (mc.rewardRate() * interval) / mc.PRECISION();
-    vm.expectRevert();
-    _depositAs(alice, 0);
+    vm.startPrank(alice);
+    vm.expectRevert(bytes('MasterchefExit: Amount must not be zero'));
+    mc.deposit(0, 0);
+    vm.stopPrank();
 
     assertEq(_balance(rewardToken, alice), 0, 'Check reward balance 0');
     assertGt(intervalReward, 0, 'Check accumulated rewards > 0');

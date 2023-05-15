@@ -48,7 +48,7 @@ abstract contract AMasterchefBase is Ownable {
   }
 
   function add(uint32 allocPoint, address token) external onlyOwner {
-    require(!poolToken[address(token)], 'Masterchef: Token already added');
+    require(!poolToken[token], 'Masterchef: Token already added');
     require(token != REWARD_TOKEN, 'Masterchef: Staking reward token not supported');
     require(allocPoint != 0, 'Masterchef: Allocation must be non zero');
 
@@ -67,7 +67,7 @@ abstract contract AMasterchefBase is Ownable {
       })
     );
 
-    poolToken[address(token)] = true;
+    poolToken[token] = true;
   }
 
   function deposit(uint256 pid, uint256 amount) external virtual {

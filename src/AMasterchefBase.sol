@@ -154,7 +154,7 @@ abstract contract AMasterchefBase is Ownable {
       );
   }
 
-  function _updateUndistributedRewards(uint256 _amount) internal virtual {
+  function _updateUndistributedRewards(uint256 _amount) internal {
     // Updates pool to account for the previous rewardRate.
     _massUpdatePools();
 

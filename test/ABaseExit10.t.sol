@@ -48,6 +48,7 @@ abstract contract ABaseExit10Test is ABaseTest {
   int24 tickUpper = int24(vm.envInt('UPPER_TICK'));
   uint256 rewardsDuration = vm.envUint('REWARDS_DURATION');
   uint256 rewardsDurationExit = vm.envUint('REWARDS_DURATION_EXIT');
+  uint256 nftLockPeriod = vm.envUint('TRANSFER_LOCKOUT_PERIOD_SECONDS');
 
   uint256 constant DECIMAL_PRECISION = 1e18;
   uint256 constant USDC_DECIMALS = 1e6;
@@ -76,7 +77,7 @@ abstract contract ABaseExit10Test is ABaseTest {
     boot = new BaseToken('Bootstap', 'BOOT');
     blp = new BaseToken('Boost LP', 'BLP');
     exit = new BaseToken('Exit Liquidity', 'EXIT');
-    nft = new NFT('Bond Data', 'BND', 0);
+    nft = new NFT('Bond Data', 'BND', nftLockPeriod);
 
     // Deploy dependency contracts
     masterchef0 = new Masterchef(weth, rewardsDuration);

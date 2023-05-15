@@ -147,7 +147,11 @@ abstract contract AMasterchefBase is Ownable {
       _getPoolRewardsSinceLastUpdate(pool.lastUpdateTime, pool.allocPoint) /
       pool.totalStaked;
 
-    return _getUserPendingReward(user.amount, user.rewardDebt, accRewardPerShare);
+    return
+      Math.min(
+        IERC20(REWARD_TOKEN).balanceOf(address(this)),
+        _getUserPendingReward(user.amount, user.rewardDebt, accRewardPerShare)
+      );
   }
 
   function _updateUndistributedRewards(uint256 _amount) internal virtual {

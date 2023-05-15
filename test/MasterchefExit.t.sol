@@ -124,6 +124,19 @@ contract MasterchefExitTest is ABaseTest {
     assertEq(_balance(rewardToken, alice), intervalReward);
   }
 
+  function testFirstDeposit_RevertIf_CollectAllRewardsZeroStake() public {
+    _init();
+    uint256 interval = 1 days;
+    skip(interval);
+
+    uint256 intervalReward = (mc.rewardRate() * interval) / mc.PRECISION();
+    vm.expectRevert();
+    _depositAs(alice, 0);
+
+    assertEq(_balance(rewardToken, alice), 0, 'Check reward balance 0');
+    assertGt(intervalReward, 0, 'Check accumulated rewards > 0');
+  }
+
   function testNoStakeInBetweenDeposits() public {
     _init();
     uint256 interval = 1 days;

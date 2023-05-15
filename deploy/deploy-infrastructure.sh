@@ -17,15 +17,25 @@ V3_TPD_ADDRESS_="ee6a57ec80ea46401049e92587e52f5ec1c24785"
 
 MAX_ALLOWANCE="0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 
-# Tokens
-USDC_BYTECODE=$(cat "$BYTECODES/USDC")
-USDC_ADDRESS=$(cast send --create "$USDC_BYTECODE" | extract_contract_address)
+# Token
 
-WETH_BYTECODE=$(cat "$BYTECODES/WETH")
-WETH_ADDRESS=$(cast send --create "$WETH_BYTECODE" | extract_contract_address)
+if [ $isETHToken1 -eq 1 ]
+then
+  USDC_BYTECODE=$(cat "$BYTECODES/USDC")
+  USDC_ADDRESS=$(cast send --create "$USDC_BYTECODE" | extract_contract_address)
+
+  WETH_BYTECODE=$(cat "$BYTECODES/WETH")
+  WETH_ADDRESS=$(cast send --create "$WETH_BYTECODE" | extract_contract_address)
+else
+  WETH_BYTECODE=$(cat "$BYTECODES/WETH")
+  WETH_ADDRESS=$(cast send --create "$WETH_BYTECODE" | extract_contract_address)
+
+  USDC_BYTECODE=$(cat "$BYTECODES/USDC")
+  USDC_ADDRESS=$(cast send --create "$USDC_BYTECODE" | extract_contract_address)
+fi
+
 cast balance $ETH_FROM 
-cast send --value 200000000000000000000000 "0x$WETH_ADDRESS" "deposit()" > /dev/null
-
+  cast send --value 200000000000000000000000 "0x$WETH_ADDRESS" "deposit()" > /dev/null
 # Uniswap V2
 V2_FACTORY_BYTECODE=$(cat "$BYTECODES/UniswapV2Factory")
 V2_FACTORY_ADDRESS=$(cast send --create "$V2_FACTORY_BYTECODE" | extract_contract_address)
@@ -51,22 +61,24 @@ cast send "0x$WETH_ADDRESS" "approve(address,uint256)" "0x$V3_NPM_ADDRESS" $MAX_
 cast send "0x$USDC_ADDRESS" "approve(address,uint256)" "0x$V3_NPM_ADDRESS" $MAX_ALLOWANCE > /dev/null
 cast send "0x$WETH_ADDRESS" "approve(address,uint256)" "0x$V3_ROUTER_ADDRESS" $MAX_ALLOWANCE > /dev/null
 cast send "0x$USDC_ADDRESS" "approve(address,uint256)" "0x$V3_ROUTER_ADDRESS" $MAX_ALLOWANCE > /dev/null
-
 cast send "0x$V3_FACTORY_ADDRESS" "createPool(address,address,uint24)" "0x$USDC_ADDRESS" "0x$WETH_ADDRESS" 500 > /dev/null
 POOL_ADDRESS=$(cast call "0x$V3_FACTORY_ADDRESS" "getPool(address,address,uint24)" "0x$WETH_ADDRESS" "0x$USDC_ADDRESS" 500 | cut -c 27-66)
-cast send "0x$POOL_ADDRESS" "initialize(uint160)" "1980704062856608439838598758400000" > /dev/null
-cast send "0x$V3_NPM_ADDRESS" "mint((address,address,uint24,int24,int24,uint256,uint256,uint256,uint256,address,uint256))(uint256,uint128,uint256,uint256)" "(0x$USDC_ADDRESS,0x$WETH_ADDRESS,500,-886800,886800,99000000000000,40740000000000000000000,0,0,$ETH_FROM,10000000000000000000000000000)" > /dev/null
+
+if [ $isETHToken1 -eq 1 ]
+then
+  cast send "0x$POOL_ADDRESS" "initialize(uint160)" "1980704062856608439838598758400000" > /dev/null
+  cast send "0x$V3_NPM_ADDRESS" "mint((address,address,uint24,int24,int24,uint256,uint256,uint256,uint256,address,uint256))(uint256,uint128,uint256,uint256)" "(0x$USDC_ADDRESS,0x$WETH_ADDRESS,500,-886800,886800,99000000000000,40740000000000000000000,0,0,$ETH_FROM,10000000000000000000000000000)" > /dev/null
+else
+  cast send "0x$POOL_ADDRESS" "initialize(uint160)" "3443146727825487316858170" > /dev/null
+  cast send "0x$V3_NPM_ADDRESS" "mint((address,address,uint24,int24,int24,uint256,uint256,uint256,uint256,address,uint256))(uint256,uint128,uint256,uint256)" "(0x$WETH_ADDRESS,0x$USDC_ADDRESS,500,-886800,886800,40740000000000000000000,99000000000000,0,0,$ETH_FROM,10000000000000000000000000000)" > /dev/null
+fi
 
 # Our stuff
-
 SWAPPER_BYTECODE=$(sed < "$BYTECODES/Swapper" "s/$V3_FACTORY_ADDRESS_/$V3_FACTORY_ADDRESS/;s/$V3_ROUTER_ADDRESS_/$V3_ROUTER_ADDRESS/")
 SWAPPER_ADDRESS=$(cast send --create "$SWAPPER_BYTECODE" | extract_contract_address)
-
 cast send "0x$POOL_ADDRESS" "increaseObservationCardinalityNext(uint16)" 2 > /dev/null
-
 sleep 2
 cast send >> /dev/null
-
 echo "WETH=0x$WETH_ADDRESS
 USDC=0x$USDC_ADDRESS
 UNISWAP_V3_FACTORY=0x$V3_FACTORY_ADDRESS

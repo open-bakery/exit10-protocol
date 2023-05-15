@@ -42,13 +42,12 @@ contract MasterchefExit is AMasterchefBase {
   }
 
   function stopRewards(uint256 allocatedRewards) external onlyOwner returns (uint256 undistributedRewards) {
+    if (rewardRate == 0) return 0; // rewards have not been allocated
     if (block.timestamp < periodFinish) {
       unchecked {
         uint256 rewardStartTime = periodFinish - REWARDS_DURATION;
         uint256 distributedRewards = ((block.timestamp - rewardStartTime) * rewardRate) / PRECISION;
-        uint256 balance = IERC20(REWARD_TOKEN).balanceOf(address(this));
         undistributedRewards = allocatedRewards - distributedRewards;
-        undistributedRewards = undistributedRewards <= balance ? undistributedRewards : balance;
       }
       periodFinish = block.timestamp;
     }

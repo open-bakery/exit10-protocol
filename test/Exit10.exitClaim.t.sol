@@ -17,7 +17,7 @@ contract Exit10_exitClaimTest is ABaseExit10Test {
     // exit10
     _eth10k();
     exit10.exit10();
-    uint256 initialBalanceUSDC = _balance0();
+    uint256 initialBalanceTokenOut = _balance(exit10.TOKEN_OUT());
     uint256 precision = 1e18;
     uint256 exitTokenShare = (_balance(exit) * precision) / exit.totalSupply();
 
@@ -30,9 +30,9 @@ contract Exit10_exitClaimTest is ABaseExit10Test {
 
     assertEq(_balance(exit), 0, 'Check exit burn');
     assertEq(
-      _balance0(),
-      initialBalanceUSDC + (exit10.exitTokenRewardsFinal() * exitTokenShare) / precision,
-      'Check USD balance'
+      _balance(exit10.TOKEN_OUT()),
+      initialBalanceTokenOut + (exit10.exitTokenRewardsFinal() * exitTokenShare) / precision,
+      'Check TOKEN_OUT balance'
     );
   }
 

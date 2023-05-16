@@ -5,8 +5,8 @@ import { ABaseExit10Test } from './ABaseExit10.t.sol';
 contract Exit10_claimAndDistributeFeesTest is ABaseExit10Test {
   function testClaimAndDistributeFees() public {
     _skipBootstrap();
-    _createBond(10_000_000_000000, 10_000 ether);
-    _generateFees(address(token0), address(token1), 100_000_000_000000);
+    _createBond();
+    _generateFees(address(token0), address(token1), _tokenAmount(address(token0), 1000));
 
     _checkBuckets(_getLiquidity(), 0, 0, 0);
 
@@ -22,8 +22,8 @@ contract Exit10_claimAndDistributeFeesTest is ABaseExit10Test {
 
   function testClaimAndDistributeFees_minimumFees_NoRevert() public {
     _skipBootstrap();
-    _createBond(10_000_000_000000, 10_000 ether);
-    _generateFees(address(token0), address(token1), 10000);
+    _createBond();
+    _generateFees(address(token0), address(token1), _tokenAmount(address(token0), 1000));
     _checkBuckets(_getLiquidity(), 0, 0, 0);
 
     exit10.claimAndDistributeFees();
@@ -38,7 +38,7 @@ contract Exit10_claimAndDistributeFeesTest is ABaseExit10Test {
 
   function testClaimAndDistributeFees_noFees_NoRevert() public {
     _skipBootstrap();
-    _createBond(10_000_000_000000, 10_000 ether);
+    _createBond();
     _checkBuckets(_getLiquidity(), 0, 0, 0);
 
     exit10.claimAndDistributeFees();

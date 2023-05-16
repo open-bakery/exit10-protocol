@@ -9,10 +9,12 @@ contract Exit10_bootstrapLockCappedTest is ABaseExit10Test {
     // Liquidity per USDC 12875978289:1000000
     // Cap 10_000_000 = 128759782890000000 Liquidity @ ETH 10K
 
-    uint256 amount0 = _tokenAmount(usdc, 10_000_000);
-    uint256 amount1 = _tokenAmount(weth, 10_000);
-    uint256 balanceBefore0 = _balance(usdc);
-    uint256 balanceBefore1 = _balance(weth);
+    (uint256 amount0, uint256 amount1) = (exit10.TOKEN_OUT() < exit10.TOKEN_IN())
+      ? (_tokenAmount(exit10.TOKEN_OUT(), 10_000_000), _tokenAmount(exit10.TOKEN_IN(), 10_000))
+      : (_tokenAmount(exit10.TOKEN_IN(), 10_000), _tokenAmount(exit10.TOKEN_OUT(), 10_000_000));
+
+    uint256 balanceBefore0 = _balance(address(token0));
+    uint256 balanceBefore1 = _balance(address(token1));
     (, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) = exit10.bootstrapLock(
       _addLiquidityParams(amount0, amount1)
     );
@@ -22,13 +24,14 @@ contract Exit10_bootstrapLockCappedTest is ABaseExit10Test {
     assertLt(amountAdded0, amount0);
     assertLt(amountAdded1, amount1);
 
-    assertEq(_balance(usdc), balanceBefore0 - amountAdded0);
-    assertEq(_balance(weth), balanceBefore1 - amountAdded1);
+    assertEq(_balance(address(token0)), balanceBefore0 - amountAdded0, 'check balance 0');
+    assertEq(_balance(address(token1)), balanceBefore1 - amountAdded1, 'check balance 1');
   }
 
   function test_bootstrapLock_capped_revertIf_capReached() public {
-    uint256 amount0 = _tokenAmount(usdc, 10_000_000);
-    uint256 amount1 = _tokenAmount(weth, 10_000);
+    (uint256 amount0, uint256 amount1) = (exit10.TOKEN_OUT() < exit10.TOKEN_IN())
+      ? (_tokenAmount(exit10.TOKEN_OUT(), 10_000_000), _tokenAmount(exit10.TOKEN_IN(), 10_000))
+      : (_tokenAmount(exit10.TOKEN_IN(), 10_000), _tokenAmount(exit10.TOKEN_OUT(), 10_000_000));
     exit10.bootstrapLock(_addLiquidityParams(amount0, amount1));
 
     assertTrue(exit10.isBootstrapCapReached());
@@ -38,8 +41,9 @@ contract Exit10_bootstrapLockCappedTest is ABaseExit10Test {
   }
 
   function test_bootstrapLock_capped_revertIf_createBondBeforeBootstrapPeriodOver() public {
-    uint256 amount0 = _tokenAmount(usdc, 10_000_000);
-    uint256 amount1 = _tokenAmount(weth, 10_000);
+    (uint256 amount0, uint256 amount1) = (exit10.TOKEN_OUT() < exit10.TOKEN_IN())
+      ? (_tokenAmount(exit10.TOKEN_OUT(), 10_000_000), _tokenAmount(exit10.TOKEN_IN(), 10_000))
+      : (_tokenAmount(exit10.TOKEN_IN(), 10_000), _tokenAmount(exit10.TOKEN_OUT(), 10_000_000));
     exit10.bootstrapLock(_addLiquidityParams(amount0, amount1));
 
     assertTrue(exit10.isBootstrapCapReached());

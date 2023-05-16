@@ -5,6 +5,7 @@ import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import { IUniswapV3Router } from '../src/interfaces/IUniswapV3Router.sol';
 import { IUniswapV2Factory } from '../src/interfaces/IUniswapV2Factory.sol';
 import { IUniswapV2Router } from '../src/interfaces/IUniswapV2Router.sol';
+import { FullMath } from '../lib/v3-core/contracts/libraries/FullMath.sol';
 import { Exit10 } from '../src/Exit10.sol';
 
 abstract contract ABaseTest is Test {
@@ -171,5 +172,30 @@ abstract contract ABaseTest is Test {
         )
       )
     );
+  }
+
+  function sqrtPriceX96ToUint(uint160 _sqrtPriceX96, uint8 decimalsToken0) internal pure returns (uint256) {
+    uint256 numerator1 = uint256(_sqrtPriceX96) * uint256(_sqrtPriceX96);
+    uint256 numerator2 = 10 ** decimalsToken0;
+    return FullMath.mulDiv(numerator1, numerator2, 1 << 192);
+  }
+
+  function convert0ToToken1(
+    uint160 _sqrtPriceX96,
+    uint256 amount0,
+    uint8 decimalsToken0
+  ) internal pure returns (uint256 amount0ConvertedToToken1) {
+    uint256 price = sqrtPriceX96ToUint(_sqrtPriceX96, decimalsToken0);
+    amount0ConvertedToToken1 = (amount0 * (price)) / (10 ** decimalsToken0);
+  }
+
+  function convert1ToToken0(
+    uint160 _sqrtPriceX96,
+    uint256 amount1,
+    uint8 decimalsToken0
+  ) internal pure returns (uint256 amount1ConvertedToToken0) {
+    uint256 price = sqrtPriceX96ToUint(_sqrtPriceX96, decimalsToken0);
+    if (price == 0) return 0;
+    amount1ConvertedToToken0 = (amount1 * (10 ** decimalsToken0)) / (price);
   }
 }

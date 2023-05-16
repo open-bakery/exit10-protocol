@@ -70,13 +70,13 @@ testAll:
 	forge test -vv --fork-url $(RPC_URL)
 
 tests:
-	forge test -vvv  --nmc "SystemLogsTest|FuzzTest" --fork-url $(RPC_URL)
+	forge test -vv  --nmc "SystemLogsTest|FuzzTest" --fork-url $(RPC_URL)
 
 trace:
 	forge test -vv --nmc "SystemLogsTest|FuzzTest" --fork-url $(RPC_URL)
 
 single:
-	forge test -vvv --mc DepositHelperTest --fork-url $(RPC_URL)
+	forge test -vvv --mt testScenario_0 --fork-url $(RPC_URL)
 
 systemLogs:
 	forge test -vv --mc SystemLogsTest --fork-url $(RPC_URL)

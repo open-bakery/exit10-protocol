@@ -56,7 +56,10 @@ contract Exit10_exit10Test is ABaseExit10Test {
   }
 
   function test_exit10() public {
-    exit10.bootstrapLock(_addLiquidityParams(10000_000000, 10 ether));
+    address tokenOut = exit10.TOKEN_OUT();
+    address tokenIn = exit10.TOKEN_IN();
+
+    exit10.bootstrapLock(_addLiquidityParams(amount0, amount1));
     (uint256 bondId, uint256 bondAmount) = _skipBootAndCreateBond();
     skip(accrualParameter);
     exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
@@ -67,33 +70,46 @@ contract Exit10_exit10Test is ABaseExit10Test {
     _eth10k();
     uint128 liquidityBeforeExit = _getLiquidity();
     exit10.exit10();
-    uint256 AcquiredUSD = _balance(token0, address(exit10)) + _balance(token0, address(sto));
-    uint256 exitLiquidityPlusBootstrap = liquidityBeforeExit - reserve;
-    uint256 exitBootstrapUSD = (bootstrap * AcquiredUSD) / exitLiquidityPlusBootstrap;
-    uint256 exitLiquidityUSD = (AcquiredUSD - exitBootstrapUSD);
-    uint256 share = exitLiquidityUSD / 10;
+
+    uint256 acquiredTokenOut = _balance(tokenOut, address(exit10));
+    uint256 exitLiquidityPlusBootstrapDeposits = liquidityBeforeExit - reserve;
+    uint256 exitBootstrapDepositsTokenOut = (bootstrap * acquiredTokenOut) / exitLiquidityPlusBootstrapDeposits;
+    uint256 exitLiquidityTokenOut = (acquiredTokenOut - exitBootstrapDepositsTokenOut);
+    uint256 share = exitLiquidityTokenOut / 10;
 
     assertTrue(exit10.inExitMode(), 'Check inExitMode');
+    assertEq(exit + bootstrap, exitLiquidityPlusBootstrapDeposits, 'Check Exit Bucket');
     assertEq(_getLiquidity() - pending, reserve, 'Check reserve amount');
-    assertGt(_balance(token0, address(exit10)), 0, 'Check acquired USD > 0');
-    assertEq(exit + bootstrap, exitLiquidityPlusBootstrap, 'Check Exit Bucket');
-    assertEq(exit10.bootstrapRewardsPlusRefund(), exitBootstrapUSD + share, 'Check Bootstrap USD share amount');
+    assertGt(_balance(tokenOut, address(exit10)), 0, 'Check acquired TOKEN_OUT > 0');
+
+    assertEq(
+      exit10.bootstrapRewardsPlusRefund(),
+      exitBootstrapDepositsTokenOut + share,
+      'Check Bootstrap TOKEN_OUT share amount'
+    );
     assertEq(exit10.teamPlusBackersRewards(), share * 2, 'Check team plus backers'); // 20%
-    assertEq(AcquiredUSD - (exitBootstrapUSD + share * 3), exit10.exitTokenRewardsFinal(), 'Check exit liquidity');
-    assertEq(_balance(token1, address(exit10)), 0, 'Check balance token1 == 0');
+    assertEq(
+      acquiredTokenOut - (exitBootstrapDepositsTokenOut + share * 3),
+      exit10.exitTokenRewardsFinal(),
+      'Check exit liquidity'
+    );
+    assertEq(_balance(tokenIn, address(exit10)), 0, 'Check balance TOKEN_IN == 0');
   }
 
   function test_exit10_backInRange_claimAndDistributeFees() public {
     (uint256 bondId, uint256 bondAmount) = _skipBootAndCreateBond();
     skip(accrualParameter);
     exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
-    _generateFees(token0, token1, 100000_000000);
+    _generateFees(token0, token1, _tokenAmount(address(token0), 100_000));
     _createBond();
     _eth10k();
     exit10.exit10();
     // Go back into range
-    _swap(weth, usdc, 10_000 ether);
-    _generateFees(token0, token1, 100000_000000);
+    uint256 saleAmount = _tokenAmount(address(token1), 10_000);
+    deal(address(token1), address(this), saleAmount);
+    _maxApprove(address(token1), address(UNISWAP_V3_ROUTER));
+    _swap(address(token1), address(token0), saleAmount);
+    _generateFees(token0, token1, _tokenAmount(address(token0), 100_000));
     uint256 preBalance0 = _balance(token0, exit10.BENEFICIARY());
     uint256 preBalance1 = _balance(token1, exit10.BENEFICIARY());
     exit10.claimAndDistributeFees();

@@ -24,7 +24,7 @@ contract Exit10_stoClaimTest is ABaseExit10Test {
     exit10.stoClaim();
 
     // record pre-action state
-    uint256 initialBalanceUSDC = _balance0();
+    uint256 initialBalanceTokenOut = _balance(exit10.TOKEN_OUT());
     uint256 precision = 1e18;
     uint256 stoTokenShare = (_balance(sto) * precision) / stoSupply;
 
@@ -32,8 +32,8 @@ contract Exit10_stoClaimTest is ABaseExit10Test {
 
     assertEq(_balance(sto), 0, 'STO tokens burned');
     assertEq(
-      _balance0(),
-      initialBalanceUSDC + (exit10.teamPlusBackersRewards() * stoTokenShare) / precision,
+      _balance(exit10.TOKEN_OUT()),
+      initialBalanceTokenOut + (exit10.teamPlusBackersRewards() * stoTokenShare) / precision,
       'USD balance increased'
     );
   }

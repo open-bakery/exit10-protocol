@@ -285,9 +285,9 @@ contract FeeSplitterTest is ABaseTest {
   }
 
   function _checkBalances(address _target, uint256 _amountTokenOut, uint256 _amountTokenIn) internal {
-    uint roundAmount = 1;
-    assertEq(_amountTokenOut / roundAmount, _balance(USDC, _target) / roundAmount, 'Check balance token out');
-    assertEq(_amountTokenIn / roundAmount, _balance(WETH, _target) / roundAmount, 'Check balance token in');
+    uint256 diff = 1;
+    assertApproxEqAbs(_amountTokenOut, _balance(USDC, _target), diff, 'Check balance token out');
+    assertApproxEqAbs(_amountTokenIn, _balance(WETH, _target), diff, 'Check balance token in');
   }
 
   function _usdcAmount(uint256 _amount) internal view returns (uint256) {

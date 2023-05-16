@@ -31,6 +31,9 @@ abstract contract ABaseExit10Test is ABaseTest {
 
   uint256 initialBalance = 1_000_000_000 ether;
   uint256 deployTime;
+  uint256 defaultValue = 100;
+  uint256 amount0;
+  uint256 amount1;
 
   address weth = vm.envAddress('WETH');
   address usdc = vm.envAddress('USDC');
@@ -117,6 +120,9 @@ abstract contract ABaseExit10Test is ABaseTest {
     token0 = ERC20(exit10.POOL().token0());
     token1 = ERC20(exit10.POOL().token1());
 
+    amount0 = _tokenAmount(address(token0), defaultValue);
+    amount1 = _Convert0ToToken1(amount0);
+
     _maxApprove(weth, usdc, address(UNISWAP_V3_ROUTER));
     _mintAndApprove(address(token0), initialBalance, address(exit10));
     _mintAndApprove(address(token1), initialBalance, address(exit10));
@@ -178,11 +184,11 @@ abstract contract ABaseExit10Test is ABaseTest {
   }
 
   function _createBond() internal returns (uint256 _bondId, uint128 _liquidityAdded) {
-    return _createBond(10000_000000, 10 ether);
+    return _createBond(amount0, amount1);
   }
 
   function _createBond(address _as) internal returns (uint256 _bondId, uint128 _liquidityAdded) {
-    (_bondId, _liquidityAdded, , ) = exit10.createBond(_addLiquidityParams(_as, 10000_000000, 10 ether));
+    (_bondId, _liquidityAdded, , ) = exit10.createBond(_addLiquidityParams(_as, amount0, amount1));
   }
 
   function _skipBootstrap() internal {
@@ -190,7 +196,7 @@ abstract contract ABaseExit10Test is ABaseTest {
   }
 
   function _skipToExit() internal {
-    exit10.bootstrapLock(_addLiquidityParams(10000_000000, 10 ether));
+    exit10.bootstrapLock(_addLiquidityParams(amount0, amount1));
     _skipBootstrap();
     _eth10k();
     exit10.exit10();
@@ -240,11 +246,25 @@ abstract contract ABaseExit10Test is ABaseTest {
   }
 
   function _eth10k() internal {
-    uint256 amount = 200_000_000_000000;
-    do {
-      deal(exit10.TOKEN_OUT(), address(this), amount);
-      _swap(exit10.TOKEN_OUT(), exit10.TOKEN_IN(), amount);
-    } while (_currentTick(exit10) >= tickLower);
+    // tokenOut == USDC
+    // tokenIN == WETH
+
+    address tokenOut = exit10.TOKEN_OUT();
+    address tokenIn = exit10.TOKEN_IN();
+    uint256 amount = _tokenAmount(tokenOut, 200_000_000);
+
+    if (tokenOut < tokenIn) {
+      do {
+        deal(tokenOut, address(this), amount);
+        _swap(tokenOut, tokenIn, amount);
+      } while (_currentTick(exit10) >= tickLower);
+    } else if (tokenIn < tokenOut) {
+      do {
+        deal(tokenOut, address(this), amount);
+        _swap(tokenOut, tokenIn, amount);
+      } while (_currentTick(exit10) <= tickUpper);
+    }
+
     // We need to skip at least one second in order to make sure
     // we are able to pass the OracleLibrary.getBlockStartingTickAndLiquidity() check
     skip(1);
@@ -384,13 +404,22 @@ abstract contract ABaseExit10Test is ABaseTest {
   function _returnPriceInUSD() internal view returns (uint256) {
     uint160 sqrtPriceX96;
     (sqrtPriceX96, , , , , , ) = exit10.POOL().slot0();
-    uint256 a = uint256(sqrtPriceX96) * uint256(sqrtPriceX96) * USDC_DECIMALS;
+    uint256 a = uint256(sqrtPriceX96) * uint256(sqrtPriceX96) * 10 ** ERC20(exit10.POOL().token0()).decimals();
     uint256 b = 1 << 192;
     uint256 uintPrice = a / b;
-    return (1 ether * 1e6) / uintPrice;
+    if (exit10.TOKEN_OUT() < exit10.TOKEN_IN()) {
+      return (1 ether * 1e6) / uintPrice;
+    } else {
+      return uintPrice;
+    }
   }
 
   function _getBootstrapCap() internal view virtual returns (uint256) {
     return vm.envUint('BOOTSTRAP_LIQUIDITY_CAP');
+  }
+
+  function _Convert0ToToken1(uint256 _amount0) internal view returns (uint256) {
+    (uint160 sqrtPriceX96, , , , , , ) = exit10.POOL().slot0();
+    return convert0ToToken1(sqrtPriceX96, _amount0, token0.decimals());
   }
 }

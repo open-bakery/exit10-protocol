@@ -10,11 +10,15 @@ import { AMasterchefBase } from './AMasterchefBase.t.sol';
 contract SystemLogsTest is ABaseExit10Test {
   mapping(address => string) userName;
   bool showAsInteger;
+  address tokenOut;
+  address tokenIn;
 
   function setUp() public override {
     super.setUp();
     _setupNames();
     _distributeSTO();
+    address tokenOut = exit10.TOKEN_OUT();
+    address tokenIn = exit10.TOKEN_IN();
     // showAsInteger = true;
   }
 
@@ -25,9 +29,15 @@ contract SystemLogsTest is ABaseExit10Test {
     _displayRewardBalanceMasterchefs();
     _displayBuckets();
     _skip(bootstrapPeriod);
-    uint256 bondIdA = _createBond(alice, _tokenAmount(usdc, 10_000), _tokenAmount(weth, 100));
-    uint256 bondIdB = _createBond(bob, _tokenAmount(usdc, 10_000), _tokenAmount(weth, 100));
-    uint256 bondIdC = _createBond(charlie, _tokenAmount(usdc, 10_000), _tokenAmount(weth, 100));
+
+    uint256 deposit0 = _tokenAmount(address(token0), 10_000);
+    uint256 deposit1 = _tokenAmount(address(token1), 100);
+    if (tokenIn < tokenOut) {
+      (deposit0, deposit1) = (deposit1, deposit0);
+    }
+    uint256 bondIdA = _createBond(alice, deposit0, deposit1);
+    uint256 bondIdB = _createBond(bob, deposit0, deposit1);
+    uint256 bondIdC = _createBond(charlie, deposit0, deposit1);
     _displayBuckets();
     _skip(1);
     _convertBond(bondIdA, alice);
@@ -67,9 +77,14 @@ contract SystemLogsTest is ABaseExit10Test {
   function testScenario_1() public {
     _displayPrice();
     _skip(bootstrapPeriod);
-    uint256 bondIdA = _createBond(alice, _tokenAmount(usdc, 10_000), _tokenAmount(weth, 100));
-    uint256 bondIdB = _createBond(bob, _tokenAmount(usdc, 10_000), _tokenAmount(weth, 100));
-    uint256 bondIdC = _createBond(charlie, _tokenAmount(usdc, 10_000), _tokenAmount(weth, 100));
+    uint256 deposit0 = _tokenAmount(address(token0), 10_000);
+    uint256 deposit1 = _tokenAmount(address(token1), 100);
+    if (tokenIn < tokenOut) {
+      (deposit0, deposit1) = (deposit1, deposit0);
+    }
+    uint256 bondIdA = _createBond(alice, deposit0, deposit1);
+    uint256 bondIdB = _createBond(bob, deposit0, deposit1);
+    uint256 bondIdC = _createBond(charlie, deposit0, deposit1);
     _displayBuckets();
     _skip(1);
     _convertBond(bondIdA, alice);
@@ -112,7 +127,12 @@ contract SystemLogsTest is ABaseExit10Test {
     _displayRewardBalanceMasterchefs();
     _displayBuckets();
     _skip(bootstrapPeriod);
-    uint256 bondId = _createBond(alice, _tokenAmount(usdc, 100_000), _tokenAmount(weth, 100));
+    uint256 deposit0 = _tokenAmount(address(token0), 10_000);
+    uint256 deposit1 = _tokenAmount(address(token1), 100);
+    if (tokenIn < tokenOut) {
+      (deposit0, deposit1) = (deposit1, deposit0);
+    }
+    uint256 bondId = _createBond(alice, deposit0, deposit1);
     _skip(accrualParameter);
     _generateFees();
     _convertBond(bondId, alice);
@@ -182,9 +202,24 @@ contract SystemLogsTest is ABaseExit10Test {
   }
 
   function _bootstrapAll() internal {
-    (, , uint256 at0, uint256 at1) = _lockBootstrap(alice, _tokenAmount(usdc, 10_000), _tokenAmount(weth, 10));
-    (, , uint256 bt0, uint256 bt1) = _lockBootstrap(bob, _tokenAmount(usdc, 1_000), _tokenAmount(weth, 1));
-    (, , uint256 ct0, uint256 ct1) = _lockBootstrap(charlie, _tokenAmount(usdc, 100_000), _tokenAmount(weth, 100));
+    uint256 da0;
+    uint256 db0;
+    uint256 dc0;
+    uint256 da1;
+    uint256 db1;
+    uint256 dc1;
+
+    (da0, db0, dc0) = (_tokenAmount(token0, 10_000), _tokenAmount(token0, 1_000), _tokenAmount(token0, 100_000));
+    (da1, db1, dc1) = (_tokenAmount(token1, 10), _tokenAmount(token1, 1), _tokenAmount(token1, 100));
+
+    if (tokenIn < tokenOut) {
+      ((da0, db0, dc0), (da1, db1, dc1)) = ((da1, db1, dc1), (da0, db0, dc0));
+    }
+
+    (, , uint256 at0, uint256 at1) = _lockBootstrap(alice, da0, da1);
+    (, , uint256 bt0, uint256 bt1) = _lockBootstrap(bob, db0, db1);
+    (, , uint256 ct0, uint256 ct1) = _lockBootstrap(charlie, dc0, dc1);
+
     _displayTotal('TOTAL BOOTSTRAPPED', at0 + bt0 + ct0, at1 + bt1 + ct1);
     _displayBuckets();
   }
@@ -266,23 +301,23 @@ contract SystemLogsTest is ABaseExit10Test {
 
   function _lockBootstrap(
     address _user,
-    uint256 _usdcAmount,
-    uint256 _wethAmount
+    uint256 _token0Amount,
+    uint256 _token1Amount
   ) internal returns (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
-    deal(usdc, _user, _usdcAmount);
-    deal(weth, _user, _wethAmount);
+    deal(address(token0), _user, _token0Amount);
+    deal(address(token1), _user, _token1Amount);
 
     vm.startPrank(_user);
-    ERC20(weth).approve(address(exit10), _wethAmount);
-    ERC20(usdc).approve(address(exit10), _usdcAmount);
+    ERC20(token0).approve(address(exit10), _token0Amount);
+    ERC20(token1).approve(address(exit10), _token1Amount);
     (tokenId, liquidityAdded, amountAdded0, amountAdded1) = exit10.bootstrapLock(
-      _addLiquidityParams(_user, _usdcAmount, _wethAmount)
+      _addLiquidityParams(_user, _token0Amount, _token1Amount)
     );
     vm.stopPrank();
 
     string memory log0 = string.concat('User: ', userName[_user]);
-    string memory log1 = _displayAmount('Amount', usdc, amountAdded0);
-    string memory log2 = _displayAmount('Amount', weth, amountAdded1);
+    string memory log1 = _displayAmount('Amount', address(token0), amountAdded0);
+    string memory log2 = _displayAmount('Amount', address(token1), amountAdded1);
     string memory log3 = _displayAmount('Sum', usdc, _getSumInUSDC(amountAdded0, amountAdded1));
     _title('ENTERING BOOTSTRAP PHASE');
     console.log(log0);
@@ -292,21 +327,21 @@ contract SystemLogsTest is ABaseExit10Test {
     _spacer();
   }
 
-  function _createBond(address _user, uint256 _usdcAmount, uint256 _wethAmount) internal returns (uint _bondId) {
-    deal(usdc, _user, _usdcAmount);
-    deal(weth, _user, _wethAmount);
+  function _createBond(address _user, uint256 _amount0, uint256 _amount1) internal returns (uint _bondId) {
+    deal(address(token0), _user, _amount0);
+    deal(address(token1), _user, _amount1);
 
     vm.startPrank(_user);
-    ERC20(weth).approve(address(exit10), _wethAmount);
-    ERC20(usdc).approve(address(exit10), _usdcAmount);
+    ERC20(address(token0)).approve(address(exit10), _amount0);
+    ERC20(address(token1)).approve(address(exit10), _amount1);
     uint256 amountAdded0;
     uint256 amountAdded1;
-    (_bondId, , amountAdded0, amountAdded1) = exit10.createBond(_addLiquidityParams(_user, _usdcAmount, _wethAmount));
+    (_bondId, , amountAdded0, amountAdded1) = exit10.createBond(_addLiquidityParams(_user, _amount0, _amount1));
     vm.stopPrank();
 
     string memory log0 = string.concat('User: ', userName[_user]);
-    string memory log1 = _displayAmount('Amount', usdc, amountAdded0);
-    string memory log2 = _displayAmount('Amount', weth, amountAdded1);
+    string memory log1 = _displayAmount('Amount', address(token0), amountAdded0);
+    string memory log2 = _displayAmount('Amount', address(token1), amountAdded1);
     string memory log3 = _displayAmount('Sum', usdc, _getSumInUSDC(amountAdded0, amountAdded1));
     _title('CREATING BOND');
     console.log(log0);

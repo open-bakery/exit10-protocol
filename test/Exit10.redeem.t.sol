@@ -32,7 +32,7 @@ contract Exit10_redeemTest is ABaseExit10Test {
     (uint256 bondId, uint256 bondAmount) = _skipBootAndCreateBond();
     skip(accrualParameter);
     exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
-    _generateFees(token0, token1, 100000_000000);
+    _generateFees(token0, token1, _tokenAmount(address(token0), 100_000));
     uint128 liquidityToRemove = uint128(exit10.BLP().balanceOf(address(this)) / exit10.TOKEN_MULTIPLIER());
 
     exit10.redeem(_removeLiquidityParams(liquidityToRemove));

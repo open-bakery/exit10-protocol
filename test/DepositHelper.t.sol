@@ -166,16 +166,16 @@ contract DepositHelperTest is ABaseExit10Test {
     // change default parms
     deposit1 = _tokenAmount(address(token1), 100_000);
     deposit0 = _ratio(deposit1);
-    uint256 soldEther = 1000 ether;
+    uint256 soldToken1 = _tokenAmount(address(token1), 1000); //1000 ether;
 
     (, uint256 expectedAdded0, uint256 expectedAdded1) = _bootstrapLockVanilla();
 
     // prepare front runner
-    _mintAndApprove(alice, weth, soldEther, address(UNISWAP_V3_ROUTER));
-    _maxApproveFrom(alice, usdc, address(UNISWAP_V3_ROUTER));
-    uint256 wethBalanceBefore = _balance(weth, alice);
+    _mintAndApprove(alice, address(token1), soldToken1, address(UNISWAP_V3_ROUTER));
+    _maxApproveFrom(alice, address(token0), address(UNISWAP_V3_ROUTER));
+    uint256 balanceBefore1 = _balance(address(token1), alice);
 
-    uint256 amount0 = _tokenAmount(usdc, 10); // is relative small such that profit is not too high
+    uint256 amount0 = _tokenAmount(address(token0), 10); // is relative small such that profit is not too high
     uint256 swapAmount1 = _convert0ToToken1(amount0);
 
     uint256 snapshot = vm.snapshot();
@@ -206,14 +206,14 @@ contract DepositHelperTest is ABaseExit10Test {
 
     //frontrun lp
     vm.prank(alice);
-    uint256 receivedUsdc = UNISWAP_V3_ROUTER.exactInputSingle(
+    uint256 receivedToken0 = UNISWAP_V3_ROUTER.exactInputSingle(
       IUniswapV3Router.ExactInputSingleParams({
-        tokenIn: weth,
-        tokenOut: usdc,
+        tokenIn: address(token1),
+        tokenOut: address(token0),
         fee: 500,
         recipient: alice,
         deadline: block.timestamp,
-        amountIn: soldEther,
+        amountIn: soldToken1,
         amountOutMinimum: 0,
         sqrtPriceLimitX96: 0
       })
@@ -232,12 +232,12 @@ contract DepositHelperTest is ABaseExit10Test {
     vm.prank(alice);
     UNISWAP_V3_ROUTER.exactInputSingle(
       IUniswapV3Router.ExactInputSingleParams({
-        tokenIn: usdc,
-        tokenOut: weth,
+        tokenIn: address(token0),
+        tokenOut: address(token1),
         fee: 500,
         recipient: alice,
         deadline: block.timestamp,
-        amountIn: receivedUsdc,
+        amountIn: receivedToken0,
         amountOutMinimum: 0,
         sqrtPriceLimitX96: 0
       })
@@ -248,7 +248,11 @@ contract DepositHelperTest is ABaseExit10Test {
     assertEq(frontRunLiquidity, 0, 'frontRunLiquidity == 0');
 
     // // Frontrunner will not benefit
-    assertLt(_balance(weth, alice), wethBalanceBefore, 'frontRunnerAfterBalanceWeth < frontRunnerBeforeBalanceWeth');
+    assertLt(
+      _balance(address(token1), alice),
+      balanceBefore1,
+      'frontRunnerAfterBalanceToken1 < frontRunnerBeforeBalanceToken1'
+    );
   }
 
   function test_frontrunProtectionSuceedsWithToken0ToToken1Frontrun() public {
@@ -275,7 +279,7 @@ contract DepositHelperTest is ABaseExit10Test {
 
   function test_frontrunProtectionRevertsWithToken1ToToken0Frontrun() public {
     // prepare
-    uint256 flashLoanStart = _tokenAmount(weth, 1_000_000);
+    uint256 flashLoanStart = _tokenAmount(address(token1), 1_000_000);
     _maxApproveFrom(alice, address(token0), address(UNISWAP_V3_ROUTER));
     _mintAndApprove(alice, address(token1), flashLoanStart, address(UNISWAP_V3_ROUTER));
     uint256 attackerBeforeBalance1 = _balance(address(token1), alice);
@@ -304,7 +308,7 @@ contract DepositHelperTest is ABaseExit10Test {
 
     // BACKRUN
     vm.prank(alice);
-    UNISWAP_V3_ROUTER.exactInputSingle(_getSwapParamsFrom(usdc, weth, flashLoanEnd, alice));
+    UNISWAP_V3_ROUTER.exactInputSingle(_getSwapParamsFrom(address(token0), address(token1), flashLoanEnd, alice));
 
     // CHECKS
     assertLt(realizedLiquidity, expectedLiquidity, 'LP tokens minted did not increase');
@@ -380,7 +384,7 @@ contract DepositHelperTest is ABaseExit10Test {
       1e15
     ); // amounts to obtain 1e15 liquidity
     uint256 swapAmount0 = convert1ToToken0(sqrtRatioX96, amount1, token0.decimals()); // usdc amount to swap
-    ERC20(usdc).transfer(alice, amount0 + swapAmount0);
+    ERC20(address(token0)).transfer(alice, amount0 + swapAmount0);
     IUniswapV3Router.ExactInputSingleParams memory swapParams = _getSwapParams(
       address(token0),
       address(token1),
@@ -389,12 +393,12 @@ contract DepositHelperTest is ABaseExit10Test {
     // Set a very tight price slippage so Alice does not trade 100% of swapAmount
     swapParams.sqrtPriceLimitX96 = TickMath.getSqrtRatioAtTick(tick - 1);
     vm.startPrank(alice);
-    ERC20(usdc).approve(address(depositHelper), amount0 + swapAmount0);
+    ERC20(address(token0)).approve(address(depositHelper), amount0 + swapAmount0);
     depositHelper.swapAndCreateBond(amount0 + swapAmount0, 0, 10000, swapParams);
     vm.stopPrank();
-    uint256 usdcLeft = ERC20(usdc).balanceOf(address(depositHelper));
+    uint256 token0Left = ERC20(address(token0)).balanceOf(address(depositHelper));
     // No amount is left in the contract
-    assertEq(usdcLeft, 0, 'Check usdcLeft == 0');
+    assertEq(token0Left, 0, 'Check token0 left == 0');
   }
 
   function _getSwapParams(
@@ -443,7 +447,7 @@ contract DepositHelperTest is ABaseExit10Test {
     )
   {
     // change default parms
-    deposit1 = _tokenAmount(weth, 100_000);
+    deposit1 = _tokenAmount(address(token1), 100_000);
     deposit0 = _ratio(deposit1);
     _swapAmount0 = _tokenAmount(address(token0), 10); // is relative small such that profit is not too high
 
@@ -486,30 +490,5 @@ contract DepositHelperTest is ABaseExit10Test {
     vm.revertTo(snapshot); // restores the state
 
     return (_expectedLiquidity, _swapAmount0, _swapParams);
-  }
-
-  function sqrtPriceX96ToUint(uint160 _sqrtPriceX96, uint8 decimalsToken0) internal pure returns (uint256) {
-    uint256 numerator1 = uint256(_sqrtPriceX96) * uint256(_sqrtPriceX96);
-    uint256 numerator2 = 10 ** decimalsToken0;
-    return FullMath.mulDiv(numerator1, numerator2, 1 << 192);
-  }
-
-  function convert0ToToken1(
-    uint160 _sqrtPriceX96,
-    uint256 amount0,
-    uint8 decimalsToken0
-  ) internal pure returns (uint256 amount0ConvertedToToken1) {
-    uint256 price = sqrtPriceX96ToUint(_sqrtPriceX96, decimalsToken0);
-    amount0ConvertedToToken1 = (amount0 * (price)) / (10 ** decimalsToken0);
-  }
-
-  function convert1ToToken0(
-    uint160 _sqrtPriceX96,
-    uint256 amount1,
-    uint8 decimalsToken0
-  ) internal pure returns (uint256 amount1ConvertedToToken0) {
-    uint256 price = sqrtPriceX96ToUint(_sqrtPriceX96, decimalsToken0);
-    if (price == 0) return 0;
-    amount1ConvertedToToken0 = (amount1 * (10 ** decimalsToken0)) / (price);
   }
 }

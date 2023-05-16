@@ -16,7 +16,7 @@ contract Exit10_convertBondTest is ABaseExit10Test {
     uint256 exitBucket = _getLiquidity() - (liquidity / 2);
 
     assertEq(_balance(blp), (liquidity / 2) * exit10.TOKEN_MULTIPLIER(), 'BLP balance');
-    assertEq(_balance(exit), _getDiscountedExitAmount(liquidity / 2, exitDiscount), 'Check exit bucket');
+    assertEq(_balance(exit), _getDiscountedExitAmount(exitBucket, exitDiscount), 'Check exit bucket');
     assertEq(_balance(blp), (liquidity / 2) * exit10.TOKEN_MULTIPLIER(), 'BLP balance');
 
     _checkBalancesExit10(0, 0);
@@ -67,14 +67,18 @@ contract Exit10_convertBondTest is ABaseExit10Test {
 
   function test_convertBond_claimAndDistributeFees() public {
     (uint256 bondId, uint256 bondAmount) = _skipBootAndCreateBond();
-    _generateFees(token0, token1, 100000_000000);
+    _generateFees(token0, token1, _tokenAmount(address(token0), 1000));
     exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
     assertGt(_balance(token0, feeSplitter), 0, 'Check balance0 feeSplitter');
     assertGt(_balance(token1, feeSplitter), 0, 'Check balance1 feeSplitter');
   }
 
   function test_convertBond_mintMaxExitCap() public {
-    (uint256 bondId, uint256 bondAmount) = _skipBootAndCreateBond(100_000_000_000000, 1_000_000 ether);
+    (uint256 amount0, uint256 amount1) = (exit10.TOKEN_OUT() < exit10.TOKEN_IN())
+      ? (_tokenAmount(exit10.TOKEN_OUT(), 100_000_000), _tokenAmount(exit10.TOKEN_IN(), 1_000_000))
+      : (_tokenAmount(exit10.TOKEN_IN(), 1_000_000), _tokenAmount(exit10.TOKEN_OUT(), 100_000_000));
+
+    (uint256 bondId, uint256 bondAmount) = _skipBootAndCreateBond(amount0, amount1);
     exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
     assertEq(exit.totalSupply(), exit10.MAX_EXIT_SUPPLY(), 'Check exit token capmint');
     assertEq(exit.balanceOf(address(this)), exit10.BONDERS_EXIT_REWARD(), 'Check exit balance');

@@ -45,7 +45,7 @@ contract Exit10_cancelBondTest is ABaseExit10Test {
 
   function test_cancelBond_claimAndDistributeFees() public {
     (uint256 bondId, uint256 bondAmount) = _skipBootAndCreateBond();
-    _generateFees(token0, token1, 100000_000000);
+    _generateFees(token0, token1, _tokenAmount(address(token0), 100000));
     exit10.cancelBond(bondId, _removeLiquidityParams(bondAmount));
     assertGt(_balance(token0, feeSplitter), 0, 'Check balance0 feeSplitter');
     assertGt(_balance(token1, feeSplitter), 0, 'Check balance1 feeSplitter');

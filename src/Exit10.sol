@@ -520,7 +520,7 @@ contract Exit10 is UniswapBase, APermit {
   }
 
   function _getExitAmount(uint256 _liquidity) internal view returns (uint256) {
-    // One Exit token minted for 10 cents worth of liquidity captured
+    // One Exit token minted for 10 USD worth of liquidity captured
     return (_liquidity * DECIMAL_PRECISION) / LIQUIDITY_PER_USD / 10;
   }
 

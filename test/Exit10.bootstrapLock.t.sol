@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-import { ABaseExit10Test } from './ABaseExit10.t.sol';
+import { UniswapBase, ABaseExit10Test } from './ABaseExit10.t.sol';
 
 contract Exit10_bootstrapLockTest is ABaseExit10Test {
   function test_bootstrapLock() public {
@@ -17,6 +17,43 @@ contract Exit10_bootstrapLockTest is ABaseExit10Test {
     assertEq(_balance(boot), liquidityAdded * exit10.TOKEN_MULTIPLIER(), 'Check BOOT balance');
 
     _checkBalancesExit10(0, 0);
+    _checkBuckets(0, 0, 0, liquidityAdded);
+  }
+
+  function test_bootstrapLockWithPermit() public {
+    uint256 amount0 = _tokenAmount(address(token0), 1000);
+    uint256 amount1 = _tokenAmount(address(token1), 1000);
+
+    UniswapBase.AddLiquidity memory addParams = _addLiquidityParams(bob, amount0, amount1);
+    PermitParameters memory params0;
+    PermitParameters memory params1;
+
+    deal(address(token0), bob, amount0);
+    deal(address(token1), bob, amount1);
+
+    vm.startPrank(bob);
+    vm.expectRevert();
+    (, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) = exit10.bootstrapLock(addParams);
+
+    if (address(token0) == exit10.TOKEN_OUT()) {
+      params0 = _getPermitParams(bobPK, address(token0), bob, address(exit10), amount0, block.timestamp);
+      // mocking params for token that does not supports permit
+      params1 = _getMockPermitParams(address(token1), bob, address(exit10), amount1, block.timestamp);
+      _maxApprove(address(token1), address(exit10));
+    } else {
+      params1 = _getPermitParams(bobPK, address(token1), bob, address(exit10), amount1, block.timestamp);
+      // mocking params for token that does not supports permit
+      params0 = _getMockPermitParams(address(token0), bob, address(exit10), amount0, block.timestamp);
+      _maxApprove(address(token0), address(exit10));
+    }
+
+    (, liquidityAdded, amountAdded0, amountAdded1) = exit10.bootstrapLockWithPermit(addParams, params0, params1);
+
+    vm.stopPrank();
+
+    assertGt(amountAdded0, 0);
+    assertGt(amountAdded1, 0);
+    assertGt(liquidityAdded, 0, 'Check liquidityAdded');
     _checkBuckets(0, 0, 0, liquidityAdded);
   }
 

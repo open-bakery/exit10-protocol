@@ -12,8 +12,9 @@ import { FeeSplitter } from './FeeSplitter.sol';
 import { UniswapBase } from './UniswapBase.sol';
 import { MasterchefExit } from './MasterchefExit.sol';
 import { STOToken } from './STOToken.sol';
+import { APermit } from './APermit.sol';
 
-contract Exit10 is UniswapBase {
+contract Exit10 is UniswapBase, APermit {
   using SafeERC20 for IERC20;
   using Math for uint256;
 
@@ -163,7 +164,7 @@ contract Exit10 is UniswapBase {
 
   function bootstrapLock(
     AddLiquidity memory params
-  ) external payable returns (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
+  ) public payable returns (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
     _requireNoExitMode();
     require(_isBootstrapOngoing(), 'EXIT10: Bootstrap ended');
     require(!isBootstrapCapReached, 'EXIT10: Bootstrap cap reached');
@@ -207,7 +208,7 @@ contract Exit10 is UniswapBase {
 
   function createBond(
     AddLiquidity memory params
-  ) external payable returns (uint256 bondID, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
+  ) public payable returns (uint256 bondID, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
     _requireNoExitMode();
     require(!_isBootstrapOngoing(), 'EXIT10: Bootstrap ongoing');
 
@@ -236,6 +237,24 @@ contract Exit10 is UniswapBase {
     _safeTransferTokens(params.depositor, params.amount0Desired - amountAdded0, params.amount1Desired - amountAdded1);
 
     emit CreateBond(params.depositor, bondID, liquidityAdded, amountAdded0, amountAdded1);
+  }
+
+  function bootstrapLockWithPermit(
+    AddLiquidity memory params,
+    PermitParameters memory permitParams0,
+    PermitParameters memory permitParams1
+  ) external payable returns (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
+    _permitTokens(permitParams0, permitParams1);
+    return bootstrapLock(params);
+  }
+
+  function createBondWithPermit(
+    AddLiquidity memory params,
+    PermitParameters memory permitParams0,
+    PermitParameters memory permitParams1
+  ) external payable returns (uint256 bondID, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
+    _permitTokens(permitParams0, permitParams1);
+    return createBond(params);
   }
 
   function cancelBond(

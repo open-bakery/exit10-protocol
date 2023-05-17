@@ -4,8 +4,9 @@ import { IERC20, SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/Saf
 import { IUniswapV3Router } from '../src/interfaces/IUniswapV3Router.sol';
 import { IWETH9 } from '../src/interfaces/IWETH9.sol';
 import { Exit10, UniswapBase } from './Exit10.sol';
+import { APermit } from './APermit.sol';
 
-contract DepositHelper {
+contract DepositHelper is APermit {
   using SafeERC20 for IERC20;
   uint256 private constant MAX_UINT_256 = type(uint256).max;
   uint256 private constant DEADLINE = 1e10;
@@ -44,12 +45,36 @@ contract DepositHelper {
     _maxApproveTokens(EXIT_10);
   }
 
+  function swapAndBootstrapLockWithPermit(
+    uint256 initialAmount0,
+    uint256 initialAmount1,
+    uint256 slippage,
+    IUniswapV3Router.ExactInputSingleParams memory swapParams,
+    PermitParameters memory permitParams0,
+    PermitParameters memory permitParams1
+  ) external payable returns (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
+    _permitTokens(permitParams0, permitParams1);
+    return swapAndBootstrapLock(initialAmount0, initialAmount1, slippage, swapParams);
+  }
+
+  function swapAndCreateBondWithPermit(
+    uint256 initialAmount0,
+    uint256 initialAmount1,
+    uint256 slippage,
+    IUniswapV3Router.ExactInputSingleParams memory swapParams,
+    PermitParameters memory permitParams0,
+    PermitParameters memory permitParams1
+  ) external payable returns (uint256 bondId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
+    _permitTokens(permitParams0, permitParams1);
+    return swapAndCreateBond(initialAmount0, initialAmount1, slippage, swapParams);
+  }
+
   function swapAndBootstrapLock(
     uint256 initialAmount0,
     uint256 initialAmount1,
     uint256 slippage,
     IUniswapV3Router.ExactInputSingleParams memory swapParams
-  ) external payable returns (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
+  ) public payable returns (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
     (tokenId, liquidityAdded, amountAdded0, amountAdded1) = Exit10(EXIT_10).bootstrapLock(
       _depositAndSwap(initialAmount0, initialAmount1, slippage, swapParams)
     );
@@ -62,7 +87,7 @@ contract DepositHelper {
     uint256 initialAmount1,
     uint256 slippage,
     IUniswapV3Router.ExactInputSingleParams memory swapParams
-  ) external payable returns (uint256 bondId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
+  ) public payable returns (uint256 bondId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
     (bondId, liquidityAdded, amountAdded0, amountAdded1) = Exit10(EXIT_10).createBond(
       _depositAndSwap(initialAmount0, initialAmount1, slippage, swapParams)
     );

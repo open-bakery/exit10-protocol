@@ -79,15 +79,62 @@ contract DepositHelperTest is ABaseExit10Test {
     _checkBuckets(0, 0, 0, beforeLiquidity + addedLiquidity);
   }
 
-  function test_swapAndBootstrapLock_token0Token1_ZeroSwap() public {
+  function test_swapAndBootstrapLock_ZeroSwap() public {
     (uint256 expectedLiquidity, uint256 expectedAdded0, uint256 expectedAdded1) = _bootstrapLockVanilla();
 
     (, uint128 addedLiquidity, uint256 added0, uint256 added1) = depositHelper.swapAndBootstrapLock(
       expectedAdded0,
       expectedAdded1,
       SLIPPAGE,
-      _getSwapParams(usdc, weth, 0)
+      _getSwapParams(address(token0), address(token1), 0)
     );
+
+    assertEq(added0, expectedAdded0, 'Expected added0');
+    assertEq(added1, expectedAdded1, 'Expected added1');
+    assertEq(addedLiquidity, expectedLiquidity, 'Expected liquidity');
+  }
+
+  function test_swapAndBootstrapLockWithPermit_ZeroSwap() public {
+    (uint256 expectedLiquidity, uint256 expectedAdded0, uint256 expectedAdded1) = _bootstrapLockVanilla();
+
+    IUniswapV3Router.ExactInputSingleParams memory swapParams = _getSwapParams(address(token0), address(token1), 0);
+
+    PermitParameters memory params0;
+    PermitParameters memory params1;
+
+    deal(address(token0), bob, expectedAdded0);
+    deal(address(token1), bob, expectedAdded1);
+
+    vm.startPrank(bob);
+    vm.expectRevert();
+    (, uint128 addedLiquidity, uint256 added0, uint256 added1) = depositHelper.swapAndBootstrapLock(
+      expectedAdded0,
+      expectedAdded1,
+      SLIPPAGE,
+      swapParams
+    );
+
+    if (address(token0) == exit10.TOKEN_OUT()) {
+      params0 = _getPermitParams(bobPK, address(token0), bob, address(depositHelper), expectedAdded0, block.timestamp);
+      // mocking params for token that does not supports permit
+      params1 = _getMockPermitParams(address(token1), bob, address(depositHelper), expectedAdded1, block.timestamp);
+      _maxApprove(address(token1), address(depositHelper));
+    } else {
+      params1 = _getPermitParams(bobPK, address(token1), bob, address(depositHelper), expectedAdded1, block.timestamp);
+      // mocking params for token that does not supports permit
+      params0 = _getMockPermitParams(address(token0), bob, address(depositHelper), expectedAdded0, block.timestamp);
+      _maxApprove(address(token0), address(depositHelper));
+    }
+
+    (, addedLiquidity, added0, added1) = depositHelper.swapAndBootstrapLockWithPermit(
+      expectedAdded0,
+      expectedAdded1,
+      SLIPPAGE,
+      swapParams,
+      params0,
+      params1
+    );
+    vm.stopPrank();
 
     assertEq(added0, expectedAdded0, 'Expected added0');
     assertEq(added1, expectedAdded1, 'Expected added1');
@@ -160,6 +207,55 @@ contract DepositHelperTest is ABaseExit10Test {
     // liquidityBefore includes what was added to bootstarpBasket in setUp
     _checkBuckets(beforeLiquidity - stateBootstrapBefore + addedLiquidity, 0, 0, stateBootstrapBefore);
     _checkBondData(bondId, addedLiquidity, 0, block.timestamp, 0, uint8(Exit10.BondStatus.active));
+  }
+
+  function test_swapAndCreateBondWithPermit() public {
+    _skipBootstrap();
+    (uint256 expectedLiquidity, uint256 expectedAdded0, uint256 expectedAdded1) = _createBondVanilla(); // vanilla bootstrap lock to compare with
+
+    IUniswapV3Router.ExactInputSingleParams memory swapParams = _getSwapParams(address(token0), address(token1), 0);
+
+    PermitParameters memory params0;
+    PermitParameters memory params1;
+
+    deal(address(token0), bob, expectedAdded0);
+    deal(address(token1), bob, expectedAdded1);
+
+    vm.startPrank(bob);
+    vm.expectRevert();
+    (uint256 bondId, uint128 addedLiquidity, uint256 added0, uint256 added1) = depositHelper.swapAndCreateBond(
+      expectedAdded0,
+      expectedAdded1,
+      SLIPPAGE,
+      swapParams
+    );
+
+    if (address(token0) == exit10.TOKEN_OUT()) {
+      params0 = _getPermitParams(bobPK, address(token0), bob, address(depositHelper), expectedAdded0, block.timestamp);
+      // mocking params for token that does not supports permit
+      params1 = _getMockPermitParams(address(token1), bob, address(depositHelper), expectedAdded1, block.timestamp);
+      _maxApprove(address(token1), address(depositHelper));
+    } else {
+      params1 = _getPermitParams(bobPK, address(token1), bob, address(depositHelper), expectedAdded1, block.timestamp);
+      // mocking params for token that does not supports permit
+      params0 = _getMockPermitParams(address(token0), bob, address(depositHelper), expectedAdded0, block.timestamp);
+      _maxApprove(address(token0), address(depositHelper));
+    }
+
+    (bondId, addedLiquidity, added0, added1) = depositHelper.swapAndCreateBondWithPermit(
+      expectedAdded0,
+      expectedAdded1,
+      SLIPPAGE,
+      swapParams,
+      params0,
+      params1
+    );
+    vm.stopPrank();
+
+    assertEq(added0, expectedAdded0, 'Expected added0');
+    assertEq(added1, expectedAdded1, 'Expected added1');
+    assertEq(addedLiquidity, expectedLiquidity, 'Expected liquidity');
+    assertEq(IERC721(exit10.NFT()).balanceOf(bob), 1, 'NFT balance');
   }
 
   function test_frontrunDepositHelperUnit_Revert() public {

@@ -7,16 +7,22 @@ import { IUniswapV2Factory } from '../src/interfaces/IUniswapV2Factory.sol';
 import { IUniswapV2Router } from '../src/interfaces/IUniswapV2Router.sol';
 import { FullMath } from '../lib/v3-core/contracts/libraries/FullMath.sol';
 import { Exit10 } from '../src/Exit10.sol';
+import { APermit } from '../src/APermit.sol';
+import { BaseToken } from '../src/BaseToken.sol';
 
-abstract contract ABaseTest is Test {
+abstract contract ABaseTest is Test, APermit {
   uint256 constant MAX_UINT_256 = type(uint256).max;
   uint256 constant RESOLUTION = 10000;
   address constant ZERO_ADDRESS = address(0);
 
   address me = address(this);
-  address alice = address(0x0a);
-  address bob = address(0x0b);
-  address charlie = address(0x0c);
+
+  address alice = vm.envAddress('ALICE_ADDRESS');
+  uint256 alicePK = vm.envUint('ALICE_KEY');
+  address bob = vm.envAddress('BOB_ADDRESS');
+  uint256 bobPK = vm.envUint('BOB_KEY');
+  address charlie = vm.envAddress('CHARLIE_ADDRESS');
+  uint256 charliePK = vm.envUint('CHARLIE_KEY');
 
   IUniswapV2Factory immutable UNISWAP_V2_FACTORY = IUniswapV2Factory(vm.envAddress('UNISWAP_V2_FACTORY'));
   IUniswapV2Router immutable UNISWAP_V2_ROUTER = IUniswapV2Router(vm.envAddress('UNISWAP_V2_ROUTER'));
@@ -197,5 +203,63 @@ abstract contract ABaseTest is Test {
     uint256 price = sqrtPriceX96ToUint(_sqrtPriceX96, decimalsToken0);
     if (price == 0) return 0;
     amount1ConvertedToToken0 = (amount1 * (10 ** decimalsToken0)) / (price);
+  }
+
+  function _getPermitParams(
+    uint256 _privateKey,
+    address _token,
+    address _owner,
+    address _spender,
+    uint256 _value,
+    uint256 _deadline
+  ) internal view returns (PermitParameters memory _permitParams) {
+    bytes32 hash = keccak256(
+      abi.encodePacked(
+        hex'1901',
+        BaseToken(_token).DOMAIN_SEPARATOR(),
+        keccak256(
+          abi.encode(
+            keccak256('Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)'),
+            _owner,
+            _spender,
+            _value,
+            BaseToken(_token).nonces(_owner),
+            _deadline
+          )
+        )
+      )
+    );
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(_privateKey, hash);
+    return
+      PermitParameters({
+        token: _token,
+        owner: _owner,
+        spender: _spender,
+        value: _value,
+        deadline: _deadline,
+        v: v,
+        r: r,
+        s: s
+      });
+  }
+
+  function _getMockPermitParams(
+    address _token,
+    address _owner,
+    address _spender,
+    uint256 _value,
+    uint256 _deadline
+  ) internal pure returns (PermitParameters memory _permitParams) {
+    return
+      PermitParameters({
+        token: _token,
+        owner: _owner,
+        spender: _spender,
+        value: _value,
+        deadline: _deadline,
+        v: 0,
+        r: bytes32('0x32'),
+        s: bytes32('0x32')
+      });
   }
 }

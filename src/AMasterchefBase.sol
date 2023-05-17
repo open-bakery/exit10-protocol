@@ -92,9 +92,9 @@ abstract contract AMasterchefBase is APermit, Ownable {
     emit Deposit(msg.sender, pid, amount);
   }
 
-  function depositWithPermit(uint256 pid, PermitParameters memory _permitParams) external {
+  function depositWithPermit(uint256 pid, uint256 amount, PermitParameters memory _permitParams) external {
     _permitToken(_permitParams);
-    deposit(pid, _permitParams.value);
+    deposit(pid, amount);
   }
 
   function withdraw(uint256 pid, uint256 amount) public {

@@ -33,6 +33,7 @@ contract Masterchef_depositTest is AMasterchefBaseTest {
 
     masterchef.depositWithPermit(
       0,
+      amount1,
       _getPermitParams(bobPK, token1, bob, address(masterchef), amount1, block.timestamp)
     );
     vm.stopPrank();

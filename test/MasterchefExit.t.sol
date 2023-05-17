@@ -31,7 +31,11 @@ contract MasterchefExitTest is ABaseTest {
     vm.expectRevert();
     mc.deposit(0, amount);
 
-    mc.depositWithPermit(0, _getPermitParams(bobPK, address(stakeToken), bob, address(mc), amount, block.timestamp));
+    mc.depositWithPermit(
+      0,
+      amount,
+      _getPermitParams(bobPK, address(stakeToken), bob, address(mc), amount, block.timestamp)
+    );
     vm.stopPrank();
 
     assertEq(_balance(address(stakeToken), address(mc)), amount);

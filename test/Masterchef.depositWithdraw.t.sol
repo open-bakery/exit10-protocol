@@ -20,6 +20,26 @@ contract Masterchef_depositTest is AMasterchefBaseTest {
     assertEq(_balance(token1, address(masterchef)), amount1 - amount2);
   }
 
+  function test_depositWithPermit() public {
+    uint256 amount1 = 10 ether;
+    deal(token1, bob, amount1);
+
+    _add();
+    _updateRewards();
+
+    vm.startPrank(bob);
+    vm.expectRevert();
+    masterchef.deposit(0, amount1);
+
+    masterchef.depositWithPermit(
+      0,
+      _getPermitParams(bobPK, token1, bob, address(masterchef), amount1, block.timestamp)
+    );
+    vm.stopPrank();
+
+    assertEq(_balance(token1, address(masterchef)), amount1);
+  }
+
   function test_depositWithdraw_UserInfo() public {
     uint256 amount1 = 36 ether;
     uint256 amount2 = 23 ether;

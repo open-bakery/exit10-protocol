@@ -9,7 +9,7 @@ contract MasterchefExit is AMasterchefBase {
   event UpdateRewards(address indexed caller, uint256 amount);
   event StopRewards(uint256 undistributedRewards);
 
-  function deposit(uint256 pid, uint256 amount) external override {
+  function deposit(uint256 pid, uint256 amount) public override {
     PoolInfo storage pool = poolInfo[pid];
     UserInfo storage user = userInfo[pid][msg.sender];
     _requireNonZeroAmount(amount);

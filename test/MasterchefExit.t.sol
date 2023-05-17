@@ -22,6 +22,21 @@ contract MasterchefExitTest is ABaseTest {
     rewardToken.mint(address(mc), rewardAmount);
   }
 
+  function test_depositWithPermit() public {
+    _init();
+    uint256 amount = 10 ether;
+    deal(address(stakeToken), bob, amount);
+
+    vm.startPrank(bob);
+    vm.expectRevert();
+    mc.deposit(0, amount);
+
+    mc.depositWithPermit(0, _getPermitParams(bobPK, address(stakeToken), bob, address(mc), amount, block.timestamp));
+    vm.stopPrank();
+
+    assertEq(_balance(address(stakeToken), address(mc)), amount);
+  }
+
   function test_updateRewards_RevertIf_NotOwner() public {
     vm.prank(alice);
     vm.expectRevert(bytes('Ownable: caller is not the owner'));

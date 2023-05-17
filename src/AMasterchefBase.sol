@@ -3,8 +3,9 @@ pragma solidity ^0.8.0;
 import { IERC20, SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import { Math } from '@openzeppelin/contracts/utils/math/Math.sol';
 import { Ownable } from '@openzeppelin/contracts/access/Ownable.sol';
+import { APermit } from './APermit.sol';
 
-abstract contract AMasterchefBase is Ownable {
+abstract contract AMasterchefBase is APermit, Ownable {
   using SafeERC20 for IERC20;
 
   event SetRewardDistributor(address indexed caller, address indexed rewardDistributor);
@@ -70,7 +71,7 @@ abstract contract AMasterchefBase is Ownable {
     poolToken[token] = true;
   }
 
-  function deposit(uint256 pid, uint256 amount) external virtual {
+  function deposit(uint256 pid, uint256 amount) public virtual {
     PoolInfo storage pool = poolInfo[pid];
     UserInfo storage user = userInfo[pid][msg.sender];
     _updatePool(pool);
@@ -89,6 +90,11 @@ abstract contract AMasterchefBase is Ownable {
     pool.totalStaked += amount;
 
     emit Deposit(msg.sender, pid, amount);
+  }
+
+  function depositWithPermit(uint256 pid, PermitParameters memory _permitParams) external {
+    _permitToken(_permitParams);
+    deposit(pid, _permitParams.value);
   }
 
   function withdraw(uint256 pid, uint256 amount) public {

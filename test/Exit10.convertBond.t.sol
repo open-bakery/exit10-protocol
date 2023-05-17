@@ -16,7 +16,7 @@ contract Exit10_convertBondTest is ABaseExit10Test {
     uint256 exitBucket = _getLiquidity() - (liquidity / 2);
 
     assertEq(_balance(blp), (liquidity / 2) * exit10.TOKEN_MULTIPLIER(), 'BLP balance');
-    assertEq(_balance(exit), _getDiscountedExitAmount(exitBucket, exitDiscount), 'Check exit bucket');
+    assertEq(_balance(exit), _getExitAmount(exitBucket), 'Check exit minted');
     assertEq(_balance(blp), (liquidity / 2) * exit10.TOKEN_MULTIPLIER(), 'BLP balance');
 
     _checkBalancesExit10(0, 0);

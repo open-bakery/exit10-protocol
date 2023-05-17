@@ -64,10 +64,9 @@ contract FuzzTest is ABaseExit10Test {
     uint256 exitBucket = _getLiquidity() - (liquidity / 2);
 
     assertEq(_balance(blp), (liquidity / 2) * exit10.TOKEN_MULTIPLIER(), 'BLP balance');
-    uint256 exitBalance = _getDiscountedExitAmount(liquidity - accruedAmount, exitDiscount) + exitSupply >
-      exit10.MAX_EXIT_SUPPLY()
+    uint256 exitBalance = _getExitAmount(liquidity - accruedAmount) + exitSupply > exit10.MAX_EXIT_SUPPLY()
       ? exit10.MAX_EXIT_SUPPLY() - exitSupply
-      : _getDiscountedExitAmount(liquidity - accruedAmount, exitDiscount);
+      : _getExitAmount(liquidity - accruedAmount);
     assertEq(_balance(exit), exitBalance, 'Check exit bucket');
     assertEq(_balance(blp), (liquidity / 2) * exit10.TOKEN_MULTIPLIER(), 'BLP balance');
     _checkBalancesExit10(0, 0);

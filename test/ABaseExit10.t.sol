@@ -42,7 +42,6 @@ abstract contract ABaseExit10Test is ABaseTest {
   address nonfungiblePositionManager = vm.envAddress('UNISWAP_V3_NPM');
   uint256 accrualParameter = vm.envUint('ACCRUAL_PARAMETER');
   uint256 bootstrapPeriod = vm.envUint('BOOTSTRAP_PERIOD');
-  uint256 bootstrapTarget = vm.envUint('BOOTSTRAP_TARGET_LIQUIDITY');
   uint256 liquidityPerUsd = vm.envUint('LIQUIDITY_PER_USDC');
   uint256 exitDiscount = vm.envUint('EXIT_DISCOUNT');
   uint256 bootstrapCap = vm.envUint('BOOTSTRAP_LIQUIDITY_CAP');
@@ -98,7 +97,6 @@ abstract contract ABaseExit10Test is ABaseTest {
       feeSplitter: feeSplitter,
       beneficiary: beneficiary,
       bootstrapPeriod: bootstrapPeriod,
-      bootstrapTarget: bootstrapTarget,
       bootstrapCap: _getBootstrapCap(),
       accrualParameter: accrualParameter,
       liquidityPerUsd: liquidityPerUsd,
@@ -358,47 +356,13 @@ abstract contract ABaseExit10Test is ABaseTest {
     return _balance(token1);
   }
 
-  function _getDiscountedExitAmount(uint256 _liquidity, uint256 _discountPercentage) internal view returns (uint256) {
-    return _addPercentToAmount(_getExitAmount(_liquidity), _discountPercentage);
-  }
-
   function _getExitAmount(uint256 _liquidity) internal view virtual returns (uint256) {
-    (, , uint256 bootstrapBucket, uint256 exitBucket) = exit10.getBuckets();
-    uint256 bootstrapValueRelativeToTarget = _getPercentFromTarget(bootstrapBucket) <= 5000
-      ? 5000
-      : _getPercentFromTarget(bootstrapBucket);
-    uint256 projectedPricePerExit = (liquidityPerUsd * bootstrapValueRelativeToTarget) / RESOLUTION;
-    uint256 actualPricePerExit = _getpricePerExitWithMaxSupply(exitBucket);
-    uint256 pricePerExit = actualPricePerExit > projectedPricePerExit ? actualPricePerExit : projectedPricePerExit;
-    return ((_liquidity * DECIMAL_PRECISION) / pricePerExit);
-  }
-
-  function _liquidityPerUsd(uint256 _liquidity, uint256 _amount0, uint256 _amount1) internal view returns (uint256) {
-    uint256 wethAmountInUSD = (_amount1 * _returnPriceInUSD()) / DECIMAL_PRECISION;
-    uint256 totalAmount = wethAmountInUSD + _amount0;
-    return (_liquidity * USDC_DECIMALS) / totalAmount;
+    return (_liquidity * DECIMAL_PRECISION) / liquidityPerUsd / 10;
   }
 
   function _getTotalDepositedUSD(uint256 _amount0, uint256 _amount1) internal view returns (uint256) {
     uint256 wethAmountInUSD = (_amount1 * _returnPriceInUSD()) / DECIMAL_PRECISION;
     return wethAmountInUSD + _amount0;
-  }
-
-  function _getPercentFromTarget(uint256 _amountBootstrapped) internal view virtual returns (uint256) {
-    return (_amountBootstrapped * RESOLUTION) / _getLiquidityForBootstrapTarget();
-  }
-
-  function _getLiquidityForBootstrapTarget() internal view returns (uint256) {
-    return (bootstrapTarget * liquidityPerUsd) / USDC_DECIMALS;
-  }
-
-  function _getpricePerExitWithMaxSupply(uint256 _exitBucket) internal view virtual returns (uint256) {
-    uint256 exitTokenShareOfBucket = (_exitBucket * 7000) / RESOLUTION;
-    return (exitTokenShareOfBucket * DECIMAL_PRECISION) / exit10.MAX_EXIT_SUPPLY();
-  }
-
-  function _getFinalLiquidityFromAmount(uint256 _amount) internal view returns (uint256) {
-    return (_amount * liquidityPerUsd) / USDC_DECIMALS;
   }
 
   function _returnPriceInUSD() internal view returns (uint256) {

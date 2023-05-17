@@ -28,7 +28,6 @@ contract Exit10 is UniswapBase, APermit {
     address feeSplitter; // Distribution to STO + BOOT and BLP stakers
     address beneficiary; // Address to receive fees if pool goes back into range after Exit10
     uint256 bootstrapPeriod;
-    uint256 bootstrapTarget;
     uint256 bootstrapCap;
     uint256 liquidityPerUsd; // Amount of liquidity per USD that is minted passed the upper range of the 500-10000 pool
     uint256 exitDiscount;
@@ -96,7 +95,6 @@ contract Exit10 is UniswapBase, APermit {
   address public immutable FEE_SPLITTER;
 
   uint256 public immutable BOOTSTRAP_FINISH;
-  uint256 public immutable BOOTSTRAP_TARGET_LIQUIDITY;
   uint256 public immutable BOOTSTRAP_LIQUIDITY_CAP;
   uint256 public immutable ACCRUAL_PARAMETER;
   uint256 public immutable LIQUIDITY_PER_USD;
@@ -149,7 +147,6 @@ contract Exit10 is UniswapBase, APermit {
     BENEFICIARY = params_.beneficiary;
 
     BOOTSTRAP_FINISH = params_.bootstrapPeriod + block.timestamp;
-    BOOTSTRAP_TARGET_LIQUIDITY = params_.bootstrapTarget;
     BOOTSTRAP_LIQUIDITY_CAP = params_.bootstrapCap;
     ACCRUAL_PARAMETER = params_.accrualParameter;
     LIQUIDITY_PER_USD = params_.liquidityPerUsd;
@@ -305,8 +302,7 @@ contract Exit10 is UniswapBase, APermit {
     pendingBucket -= params.liquidity;
     reserveBucket += accruedLiquidity;
 
-    uint256 exitAccrued = _getExitAmount(bond.bondAmount - accruedLiquidity); // Protocol acquired liquidity
-    exitTokenAmount = exitAccrued + ((exitAccrued * EXIT_DISCOUNT) / RESOLUTION);
+    exitTokenAmount = _getExitAmount(bond.bondAmount - accruedLiquidity); // Protocol acquired liquidity
 
     BLP.mint(msg.sender, boostTokenAmount);
     _mintExitCapped(msg.sender, exitTokenAmount);
@@ -524,20 +520,8 @@ contract Exit10 is UniswapBase, APermit {
   }
 
   function _getExitAmount(uint256 _liquidity) internal view returns (uint256) {
-    // bootstrapTargetLiquidityAtExit is the amount of liquidity used to project the final value of Exit.
-    uint256 bootstrapTargetLiquidityAtExit = (BOOTSTRAP_TARGET_LIQUIDITY * LIQUIDITY_PER_USD) / TOKEN_OUT_DECIMALS;
-
-    uint256 bootstrapValueRelativeToTarget = (bootstrapTargetLiquidityAtExit == 0)
-      ? 0
-      : (bootstrapBucket * RESOLUTION) / bootstrapTargetLiquidityAtExit;
-
-    uint256 projectedPricePerExit = (LIQUIDITY_PER_USD * Math.max(bootstrapValueRelativeToTarget, 5000)) / RESOLUTION;
-
-    uint256 actualPricePerExit = _getpricePerExitWithMaxSupply(_exitBucket());
-
-    uint256 pricePerExit = Math.max(actualPricePerExit, projectedPricePerExit);
-
-    return ((_liquidity * DECIMAL_PRECISION) / pricePerExit);
+    // One Exit token minted for 10 cents worth of liquidity captured
+    return (_liquidity * DECIMAL_PRECISION) / LIQUIDITY_PER_USD / 10;
   }
 
   function _safeTokenClaim(
@@ -625,11 +609,6 @@ contract Exit10 is UniswapBase, APermit {
 
   function _requireActiveStatus(BondStatus _status) internal pure {
     require(_status == BondStatus.active, 'EXIT10: Bond must be active');
-  }
-
-  function _getpricePerExitWithMaxSupply(uint256 _exitBucketAmount) internal pure returns (uint256) {
-    uint256 exitTokenShareOfBucket = (_exitBucketAmount * 7000) / RESOLUTION; // 70% of the exitBucket
-    return (exitTokenShareOfBucket * DECIMAL_PRECISION) / MAX_EXIT_SUPPLY;
   }
 
   function _calculateFinalShares(

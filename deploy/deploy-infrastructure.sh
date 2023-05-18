@@ -4,6 +4,9 @@ export ETH_FROM=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
 SD="$(dirname "$(readlink -f "$0")")"
 BYTECODES="$SD/bytecode"
 
+# load deployment specific config
+source "$SD/../config/$DEPLOYMENT/deployment.ini"
+
 function extract_contract_address() {
   cat < /dev/stdin | grep contractAddress | awk '{ print $2 }' | cut -c 3-43 | tr '[:upper:]' '[:lower:]'
 }
@@ -18,24 +21,24 @@ V3_TPD_ADDRESS_="ee6a57ec80ea46401049e92587e52f5ec1c24785"
 MAX_ALLOWANCE="0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 
 # Token
+USDC_BYTECODE=$(cat "$BYTECODES/USDC")
+WETH_BYTECODE=$(cat "$BYTECODES/WETH")
 
-if [ $isETHToken1 -eq 1 ]
+if [ $TOKEN_OUT_FIRST -eq 1 ]
 then
-  USDC_BYTECODE=$(cat "$BYTECODES/USDC")
-  USDC_ADDRESS=$(cast send --create "$USDC_BYTECODE" | extract_contract_address)
-
-  WETH_BYTECODE=$(cat "$BYTECODES/WETH")
-  WETH_ADDRESS=$(cast send --create "$WETH_BYTECODE" | extract_contract_address)
+  TOKEN0_ADDRESS=$(cast send --create "$USDC_BYTECODE" | extract_contract_address)
+  TOKEN1_ADDRESS=$(cast send --create "$WETH_BYTECODE" | extract_contract_address)
+  USDC_ADDRESS=$TOKEN0_ADDRESS
+  WETH_ADDRESS=$TOKEN1_ADDRESS
 else
-  WETH_BYTECODE=$(cat "$BYTECODES/WETH")
-  WETH_ADDRESS=$(cast send --create "$WETH_BYTECODE" | extract_contract_address)
-
-  USDC_BYTECODE=$(cat "$BYTECODES/USDC")
-  USDC_ADDRESS=$(cast send --create "$USDC_BYTECODE" | extract_contract_address)
+  TOKEN0_ADDRESS=$(cast send --create "$WETH_BYTECODE" | extract_contract_address)
+  TOKEN1_ADDRESS=$(cast send --create "$USDC_BYTECODE" | extract_contract_address)
+  WETH_ADDRESS=$TOKEN0_ADDRESS
+  USDC_ADDRESS=$TOKEN1_ADDRESS
 fi
 
-cast balance $ETH_FROM 
-  cast send --value 200000000000000000000000 "0x$WETH_ADDRESS" "deposit()" > /dev/null
+cast send --value 200000000000000000000000 "0x$WETH_ADDRESS" "deposit()" > /dev/null
+
 # Uniswap V2
 V2_FACTORY_BYTECODE=$(cat "$BYTECODES/UniswapV2Factory")
 V2_FACTORY_ADDRESS=$(cast send --create "$V2_FACTORY_BYTECODE" | extract_contract_address)
@@ -64,14 +67,12 @@ cast send "0x$USDC_ADDRESS" "approve(address,uint256)" "0x$V3_ROUTER_ADDRESS" $M
 cast send "0x$V3_FACTORY_ADDRESS" "createPool(address,address,uint24)" "0x$USDC_ADDRESS" "0x$WETH_ADDRESS" 500 > /dev/null
 POOL_ADDRESS=$(cast call "0x$V3_FACTORY_ADDRESS" "getPool(address,address,uint24)" "0x$WETH_ADDRESS" "0x$USDC_ADDRESS" 500 | cut -c 27-66)
 
-if [ $isETHToken1 -eq 1 ]
-then
-  cast send "0x$POOL_ADDRESS" "initialize(uint160)" "1980704062856608439838598758400000" > /dev/null
-  cast send "0x$V3_NPM_ADDRESS" "mint((address,address,uint24,int24,int24,uint256,uint256,uint256,uint256,address,uint256))(uint256,uint128,uint256,uint256)" "(0x$USDC_ADDRESS,0x$WETH_ADDRESS,500,-886800,886800,99000000000000,40740000000000000000000,0,0,$ETH_FROM,10000000000000000000000000000)" > /dev/null
-else
-  cast send "0x$POOL_ADDRESS" "initialize(uint160)" "3443146727825487316858170" > /dev/null
-  cast send "0x$V3_NPM_ADDRESS" "mint((address,address,uint24,int24,int24,uint256,uint256,uint256,uint256,address,uint256))(uint256,uint128,uint256,uint256)" "(0x$WETH_ADDRESS,0x$USDC_ADDRESS,500,-886800,886800,40740000000000000000000,99000000000000,0,0,$ETH_FROM,10000000000000000000000000000)" > /dev/null
-fi
+cast send "0x$POOL_ADDRESS" "initialize(uint160)" "$INIT_SQRT_PRICE" > /dev/null
+cast send "0x$V3_NPM_ADDRESS" "mint((address,address,uint24,int24,int24,uint256,uint256,uint256,uint256,address,uint256))(uint256,uint128,uint256,uint256)" "(0x$TOKEN0_ADDRESS,0x$TOKEN1_ADDRESS,500,-886800,886800,$MINT_TOKEN0,$MINT_TOKEN1,0,0,$ETH_FROM,10000000000000000000000000000)" > /dev/null
+
+# Lido
+LIDO_BYTECODE=$(cat "$BYTECODES/Lido")
+LIDO_ADDRESS=$(cast send --create "$LIDO_BYTECODE" | extract_contract_address)
 
 # Our stuff
 SWAPPER_BYTECODE=$(sed < "$BYTECODES/Swapper" "s/$V3_FACTORY_ADDRESS_/$V3_FACTORY_ADDRESS/;s/$V3_ROUTER_ADDRESS_/$V3_ROUTER_ADDRESS/")
@@ -82,7 +83,8 @@ cast send >> /dev/null
 
 BLOCK=$(cast rpc eth_blockNumber | jq -r . | awk -n '{print $1+1}')
 
-echo "WETH=0x$WETH_ADDRESS
+echo "# LOCAL INFRASTRUCTURE CONFIG
+WETH=0x$WETH_ADDRESS
 USDC=0x$USDC_ADDRESS
 UNISWAP_V3_FACTORY=0x$V3_FACTORY_ADDRESS
 UNISWAP_V3_ROUTER=0x$V3_ROUTER_ADDRESS
@@ -91,6 +93,7 @@ SWAPPER=0x$SWAPPER_ADDRESS
 POOL=0x$POOL_ADDRESS
 UNISWAP_V2_FACTORY=0x$V2_FACTORY_ADDRESS
 UNISWAP_V2_ROUTER=0x$V2_ROUTER_ADDRESS
+LIDO=0x$LIDO_ADDRESS
 START_BLOCK=$BLOCK
-" > "$SD/../config/local.ini"
 
+" > "$SD/../config/$DEPLOYMENT/infrastructure.ini"

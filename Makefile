@@ -2,72 +2,94 @@
 # (-include to ignore error if it does not exist)
 SHELL := /bin/bash
 -include .env
+DEPLOYMENT = local
+DEPLOYMENT_FLIP = "local-flip"
+ANVIL_PORT = 8545
+ANVIL_PORT_FLIP = 8546
+CHAIN_ID = 31337
+CHAIN_ID_FLIP = 31338
+RPC_URL = "http://localhost:$(ANVIL_PORT)"
+RPC_URL_FLIP = "http://localhost:$(ANVIL_PORT_FLIP)"
+
 
 reinit:
 	git submodule deinit --force .
 	git submodule update --init --recursive
 
-SED_REPLACE="s/{{WETH}}/$$WETH/;s/{{USDC}}/$$USDC/;s/{{UNISWAP_V3_FACTORY}}/$$UNISWAP_V3_FACTORY/;s/{{UNISWAP_V3_ROUTER}}/$$UNISWAP_V3_ROUTER/;s/{{UNISWAP_V3_NPM}}/$$UNISWAP_V3_NPM/;s/{{SWAPPER}}/$$SWAPPER/;s/{{UNISWAP_V2_ROUTER}}/$$UNISWAP_V2_ROUTER/;s/{{UNISWAP_V2_FACTORY}}/$$UNISWAP_V2_FACTORY/;s/{{POOL}}/$$POOL/"
+#SED_REPLACE="s/{{WETH}}/$$WETH/;s/{{USDC}}/$$USDC/;s/{{UNISWAP_V3_FACTORY}}/$$UNISWAP_V3_FACTORY/;s/{{UNISWAP_V3_ROUTER}}/$$UNISWAP_V3_ROUTER/;s/{{UNISWAP_V3_NPM}}/$$UNISWAP_V3_NPM/;s/{{SWAPPER}}/$$SWAPPER/;s/{{UNISWAP_V2_ROUTER}}/$$UNISWAP_V2_ROUTER/;s/{{UNISWAP_V2_FACTORY}}/$$UNISWAP_V2_FACTORY/;s/{{POOL}}/$$POOL/"
 
 kill-anvil:
-	@if pidof anvil > /dev/null 2>&1; then \
+	@if lsof -t -i :$(ANVIL_PORT) > /dev/null 2>&1; then \
 		echo "Anvil is already running, killing it..."; \
-		kill $$(pidof anvil); \
+		kill $$(lsof -t -i :$(ANVIL_PORT)); \
 	fi
 
 wait-for-anvil:
 	@echo "Waiting for anvil to be online...";
-	@while ! curl -s http://127.0.0.1:8545 > /dev/null; do sleep 1; done
-	@echo "Anvil online and outputting to anvil.log";
-	@echo 'Kill it with: kill $(pidof anvil)'
+	@while ! curl -s http://127.0.0.1:$(ANVIL_PORT) > /dev/null; do sleep 1; done
+	@echo "Anvil online and outputting to anvil-$(ANVIL_PORT).log";
 
 start-anvil-local:
+	@echo "Starting anvil on port $(ANVIL_PORT)...";
 	$(MAKE) kill-anvil
-	@echo "Starting anvil...";
-	@anvil --balance 1000000 > anvil.log &
+	@anvil --port $(ANVIL_PORT) --chain-id $(CHAIN_ID) --balance 1000000 > "anvil-$(ANVIL_PORT).log" &
 	$(MAKE) wait-for-anvil
 
 start-anvil-mainnet-fork:
-	$(MAKE) kill-anvil
 	@echo "Starting anvil mainnet fork...";
+	$(MAKE) kill-anvil
 	@anvil --fork-url $(RPC_URL)
 	$(MAKE) wait-for-anvil
 
-deploy-infrastructure:
-	@echo "Deploying infrastrucure locally..."
-	@./deploy/deploy-infrastructure.sh
-	@echo "Deployed!"
+merge-config:
+	@#cat ./config/common.ini ./config/infrastructure/$(DEPLOYMENT).ini ./config/deployment/$(DEPLOYMENT).ini .env.secret > .env
+	@awk 'FNR==1{print ""}{print}' ./config/common.ini ./config/$(DEPLOYMENT)/infrastructure.ini ./config/$(DEPLOYMENT)/deployment.ini .env.secret > .env
 
 dev:
+	@echo "RUN dev deployment=$(DEPLOYMENT), anvil_port=$(ANVIL_PORT)"
 	#trap "kill $(jobs -p)" SIGINT SIGTERM EXIT
 	$(MAKE) start-anvil-local
-	$(MAKE) deploy-infrastructure isETHToken1=1
-	@source ./config/local.ini ; sed < .env.template > .env $(SED_REPLACE)
+	@ETH_RPC_URL="http://localhost:$(ANVIL_PORT)" DEPLOYMENT=$(DEPLOYMENT) ./deploy/deploy-infrastructure.sh
+	$(MAKE) merge-config
 
 dev-flip:
-	#trap "kill $(jobs -p)" SIGINT SIGTERM EXIT
-	$(MAKE) start-anvil-local
-	$(MAKE) deploy-infrastructure isETHToken1=0
-	@source ./config/local.ini ; sed < .env.template > .env $(SED_REPLACE)
+	$(MAKE) dev DEPLOYMENT=$(DEPLOYMENT_FLIP) ANVIL_PORT=$(ANVIL_PORT_FLIP)
 
-dev-ui:
+dev-twochain:
 	$(MAKE) dev
-	./deploy/deploy-exit10.sh
-	./deploy/deploy-dev-data.sh
-	./deploy/export-to-ui.sh
-	./deploy/export-to-subgraph.sh
+	$(MAKE) dev-flip
+
 
 dev-mainnet-fork:
 	#trap "kill $(jobs -p)" SIGINT SIGTERM EXIT
 	$(MAKE) start-anvil-mainnet-fork
 	$(MAKE) deploy-infrastructure
-	@source ./config/mainnet.ini ; sed < .env.template > .env $(SED_REPLACE)
+	$(MAKE) merge-config
+
+dev-ui:
+	@echo "RUN dev-ui $(DEPLOYMENT)"
+	$(MAKE) dev
+	@ETH_RPC_URL=$(RPC_URL) DEPLOYMENT=$(DEPLOYMENT) ./deploy/deploy-exit10.sh
+	@ETH_RPC_URL=$(RPC_URL) DEPLOYMENT=$(DEPLOYMENT) ./deploy/deploy-dev-data.sh
+	DEPLOYMENT=$(DEPLOYMENT) ./deploy/export-to-ui.sh
+	DEPLOYMENT=$(DEPLOYMENT) ./deploy/export-to-subgraph.sh
+
+dev-ui-flip:
+	$(MAKE) dev-ui DEPLOYMENT="local-flip" ANVIL_PORT="8546" CHAIN_ID="31338"
+
+dev-ui-twochain:
+	$(MAKE) dev-ui
+	$(MAKE) dev-ui-flip
+
 
 gas-report:
 	forge test -vv --nmc "SystemLogsTest|FuzzTest" --gas-report --fork-url $(RPC_URL)
 
 testAll:
 	forge test -vv --fork-url $(RPC_URL)
+
+testAllFlip:
+	forge test -vv --fork-url $(RPC_URL_FLIP)
 
 tests:
 	forge test -vv  --nmc "SystemLogsTest|FuzzTest" --fork-url $(RPC_URL)
@@ -84,3 +106,7 @@ systemLogs:
 fuzz:
 	forge test -vv --mc FuzzTest --fork-url $(RPC_URL)
 
+param:
+	@echo $$param
+	@source ./config/param1.ini && echo $$PARAM1
+	./some-script.sh

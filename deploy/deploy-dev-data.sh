@@ -17,8 +17,8 @@ LIQ_32="1814685397254940"
 LIQ_64="3629370794509880"
 
 SD="$(dirname "$(readlink -f "$0")")"
-source "$SD/../.env";
-source "$SD/../config/local.ini";
+source <(grep "=" "$SD/../.env")
+source <(grep "=" "$SD/../config/$DEPLOYMENT/exit10.ini")
 
 ALICE=$ALICE_ADDRESS
 BOB=$BOB_ADDRESS
@@ -28,8 +28,7 @@ A=$ALICE
 B=$BOB
 C=$CHARLIE
 D=$DAVE
-MC0=$MASTERCHEF0
-MC1=$MASTERCHEF1
+MC=$MASTERCHEF
 MCE=$MASTERCHEF_EXIT
 
 echo "A=$A"
@@ -68,15 +67,30 @@ function approve_all() {
   approve "$C" "$1" "$2"
 }
 
+function unapprove() {
+  echo "$1: unapprove $3 $2"
+  cast send --from "$1" "$3" "approve(address,uint256)" "$2" 0 > /dev/null
+}
+
+function liq_params() {
+  if [ $TOKEN_OUT_FIRST -eq 1 ]
+  then
+    echo "$1$DEC_A,$2$DEC_B"
+  else
+    echo "$2$DEC_B,$1$DEC_A"
+  fi
+}
+
 function bootstrap_lock() {
   echo "$1: bootstrapLock $2"
-  cast send --from "$1" --value "$3$DEC_B" "$EXIT10" "bootstrapLock((address,uint256,uint256,uint256,uint256,uint256))" "($1,$2$DEC_A,0,0,0,$DEADLINE)" > /dev/null
+  cast send --from "$1" --value "$3$DEC_B" "$EXIT10" "bootstrapLock((address,uint256,uint256,uint256,uint256,uint256))" "($1,$(liq_params $2 0),0,0,$DEADLINE)" > /dev/null
 }
 
 function create_bond() {
   bondId=$((bondId+1))
   echo "$1: createBond $bondId ($2+$3)"
-  cast send --from "$1" "$EXIT10" "createBond((address,uint256,uint256,uint256,uint256,uint256))" "($1,$2$DEC_A,$3$DEC_B,0,0,$DEADLINE)" > /dev/null
+  cast send --from "$1" "$EXIT10" "createBond((address,uint256,uint256,uint256,uint256,uint256))" "($1,$(liq_params $2 $3),0,0,$DEADLINE)" > /dev/null
+#  cast send --from "$1" "$EXIT10" "createBond((address,uint256,uint256,uint256,uint256,uint256))" "($1,$2$DEC_A,$3$DEC_B,0,0,$DEADLINE)" > /dev/null
   liquidity=$(cast call "$EXIT10" "getBondData(uint256)" "$bondId" | cut -c 1-66)
   liquidityDec=$(from_hex $liquidity)
   bondLiquidity+=("$liquidityDec")
@@ -111,6 +125,7 @@ function swap_usdc_exit() {
 
 function swap_exit_usdc() {
   echo "$1: swap exit->usdc $2"
+  echo "balance: $(cast call $EXIT "balanceOf(address)" $1)"
   cast send --from "$1" "$UNISWAP_V2_ROUTER" "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)" "$2$DEC_18" "0" "[$EXIT,$USDC]" "$1" "$DEADLINE" > /dev/null
 }
 
@@ -121,34 +136,23 @@ function stake() {
 
 function stake_sto() {
   echo "$1: stake STO $2"
-  stake "$1" $MC0 "0" $2
+  stake "$1" $MC "0" $2
 }
 
 function stake_boot() {
   echo "$1: stake BOOT $2"
-  stake "$1" $MC0 "1" $2
+  stake "$1" $MC "1" $2
 }
 
 function stake_blp() {
   echo "$1: stake BLP $2"
-  stake "$1" $MC1 "0" $2
+  stake "$1" $MCE "1" $2
 }
 
 function stake_all_blp() {
   echo "$1: stake all BLP"
   local BALANCE=$(cast call "$BALANCE" "balanceOf(address)" "$1")
-  stake "$1" $MC1 "0" $BALANCE
-}
-
-function stake_exit() {
-  echo "$1: stake EXIT $2"
-  stake "$1" $MCE "0" $2
-}
-
-function stake_all_exit() {
-  echo "$1: stake all EXIT"
-  local BALANCE=$(cast call "$EXIT" "balanceOf(address)" "$1")
-  stake "$1" $MCE "0" $BALANCE
+  stake "$1" $MCE "1" $BALANCE
 }
 
 function lp_exit() {
@@ -163,6 +167,18 @@ function lp_all_exit() {
   echo "lp all exit $BALANCE"
   cast send --from "$1" "$UNISWAP_V2_ROUTER" "addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint256)" "$USDC" "$EXIT" "1000000$DEC_A" "$BALANCE" "0" "0" "$1" "$DEADLINE" > /dev/null
 }
+
+function stake_exit_lp() {
+  echo "$1: stake EXIT LP $2"
+  stake "$1" $MCE "0" $2
+}
+
+function stake_all_exit_lp() {
+  echo "$1: stake all EXIT"
+  local BALANCE=$(cast call "$EXIT_LP" "balanceOf(address)" "$1")
+  stake "$1" $MCE "0" $BALANCE
+}
+
 
 function update_fees() {
   echo "$1: updateFees"
@@ -217,25 +233,18 @@ approve_all "$EXIT10" "$USDC"
 echo "approve deposit helper"
 approve_all "$DEPOSIT_HELPER" "$WETH"
 approve_all "$DEPOSIT_HELPER" "$USDC"
-echo "approve mc0"
-approve_all "$MASTERCHEF0" "$STO"
-approve_all "$MASTERCHEF0" "$BOOT"
-echo "approve mc1"
-approve_all "$MASTERCHEF1" "$BLP"
+echo "approve masterchef"
+approve_all "$MC" "$STO"
+approve_all "$MC" "$BOOT"
+echo "approve masterchefExits"
+approve_all "$MASTERCHEF_EXIT" "$BLP"
+approve_all "$MASTERCHEF_EXIT" "$EXIT_LP"
 echo "approve v3 router"
 approve_all "$UNISWAP_V3_ROUTER" "$USDC"
 approve_all "$UNISWAP_V3_ROUTER" "$WETH"
 echo "approve v2 router"
 approve_all "$UNISWAP_V2_ROUTER" "$USDC"
 approve_all "$UNISWAP_V2_ROUTER" "$EXIT"
-
-# charlie and bob
-
-#cast send --from "$DAVE_ADDRESS" "$BOOT" "approve(address,uint256)" "$MASTERCHEF0" $MAX_ALLOWANCE > /dev/null
-#cast send --from "$DAVE_ADDRESS" "$WETH" "approve(address,uint256)" "$EXIT10" $MAX_ALLOWANCE > /dev/null
-#cast send --from "$DAVE_ADDRESS" "$USDC" "approve(address,uint256)" "$EXIT10" $MAX_ALLOWANCE > /dev/null
-
-# bob is using router directly
 
 
 # first phase -> bootstrap ongoing
@@ -328,10 +337,15 @@ update_fees "$A"
 skip_day 1
 
 
-# day 19: first EXIST minted
+# day 19: first EXIT minted
 convert_bond "$A" 2
+echo "BLP addr: $BLP";
+echo "A BLP Balance:"
+cast call "$BLP" "balanceOf(address)" "$A"
 stake_blp "$A" "6400"
-lp_exit "$A" "6400" "12800"
+# cast call "$EXIT" "balanceOf(address)" "$A"
+# balance at this point: 824.781027387355204012
+lp_exit "$A" "4000" "400"
 skip_day 1
 
 # day 20
@@ -353,13 +367,13 @@ update_fees "$B"
 convert_bond "$C" 4
 stake_blp "$C" "12000"
 lp_all_exit "$C"
-swap_exit_usdc "$A" "4000"
+swap_exit_usdc "$A" "300"
 skip_day 1
 
 # day 24
 generate_volume
 update_fees "$B"
-swap_usdc_exit "$C" "60000"
+swap_usdc_exit "$C" "6000"
 create_bond "$B" "32000" "32" # 14
 update_fees "$A"
 skip_day 1
@@ -369,7 +383,7 @@ skip_day 1
 generate_volume
 update_fees "$B"
 convert_bond "$C" 8
-swap_exit_usdc "$C" "5000"
+swap_exit_usdc "$C" "150"
 skip_day 1
 
 # day 26
@@ -386,9 +400,19 @@ skip_day 1
 generate_volume
 update_fees "$B"
 convert_bond "$B" 9
-swap_exit_usdc "$C" "5000"
+cast call "$EXIT" "balanceOf(address)" "$C"
+# balance at this point: 79 something
+swap_exit_usdc "$C" "60"
 skip_day 1
 
 # day 29
 skip_day 1
 
+unapprove "$B" "$EXIT10" "$WETH"
+unapprove "$B" "$EXIT10" "$USDC"
+unapprove "$B" "$DEPOSIT_HELPER" "$WETH"
+unapprove "$B" "$DEPOSIT_HELPER" "$USDC"
+unapprove "$B" "$MC" "$STO"
+unapprove "$B" "$MC" "$BOOT"
+unapprove "$B" "$MCE" "$BLP"
+unapprove "$B" "$MCE" "$EXIT_LP"

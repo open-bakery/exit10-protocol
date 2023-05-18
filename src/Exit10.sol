@@ -489,18 +489,24 @@ contract Exit10 is UniswapBase, APermit {
         }
       }
 
-      if (TOKEN_IN < TOKEN_OUT) {
-        (amountCollected0, amountCollected1) = (amountCollected1, amountCollected0);
+      uint256 amountTokenOut;
+      uint256 amountTokenIn;
+
+      if (TOKEN_OUT < TOKEN_IN) {
+        (amountTokenOut, amountTokenIn) = (amountCollected0, amountCollected1);
+      } else {
+        (amountTokenOut, amountTokenIn) = (amountCollected1, amountCollected0);
       }
 
       // In case Exit10 is called and we need to distribute pending bootstrap fees
       if (_isOutOfTickRange()) {
-        if (TOKEN_IN < TOKEN_OUT) {
-          (bootstrapFees0, bootstrapFees1) = (bootstrapFees1, bootstrapFees0);
+        if (TOKEN_OUT < TOKEN_IN) {
+          amountTokenOut += bootstrapFees0;
+          amountTokenIn += bootstrapFees1;
+        } else {
+          amountTokenOut += bootstrapFees1;
+          amountTokenIn += bootstrapFees0;
         }
-
-        amountCollected0 += bootstrapFees0;
-        amountCollected1 += bootstrapFees1;
         bootstrapFees0 = 0;
         bootstrapFees1 = 0;
       }
@@ -508,8 +514,8 @@ contract Exit10 is UniswapBase, APermit {
       FeeSplitter(FEE_SPLITTER).collectFees(
         pendingBucket,
         _totalLiquidityBefore - bootstrapBucket,
-        amountCollected0,
-        amountCollected1
+        amountTokenOut,
+        amountTokenIn
       );
     } else {
       // In case liquidity from Pending + Reserve buckets goes back in range after Exit10

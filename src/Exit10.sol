@@ -70,6 +70,7 @@ contract Exit10 is UniswapBase, APermit {
 
   bool public isBootstrapCapReached;
   bool public inExitMode;
+  bool public exitTriggered;
   bool private hasUpdatedRewards;
 
   mapping(uint256 => BondData) private idToBondData;
@@ -329,6 +330,8 @@ contract Exit10 is UniswapBase, APermit {
   }
 
   function exit10() external {
+    exitTriggered = true;
+
     _requireNoExitMode();
     _requireOutOfTickRange();
 
@@ -499,7 +502,7 @@ contract Exit10 is UniswapBase, APermit {
       }
 
       // In case Exit10 is called and we need to distribute pending bootstrap fees
-      if (_isOutOfTickRange()) {
+      if (exitTriggered) {
         if (TOKEN_OUT < TOKEN_IN) {
           amountTokenOut += bootstrapFees0;
           amountTokenIn += bootstrapFees1;
@@ -585,18 +588,6 @@ contract Exit10 is UniswapBase, APermit {
     return (block.timestamp < BOOTSTRAP_FINISH);
   }
 
-  function _isOutOfTickRange() internal view returns (bool) {
-    (int24 blockStartTick, ) = OracleLibrary.getBlockStartingTickAndLiquidity(address(POOL));
-    int24 currentTick = _currentTick();
-    int24 tickDiff = blockStartTick > currentTick ? blockStartTick - currentTick : currentTick - blockStartTick;
-    bool limit = (tickDiff < 100); // 100 ticks is about 1% in price difference
-    if (TOKEN_IN > TOKEN_OUT) {
-      return (currentTick <= TICK_LOWER && limit);
-    } else {
-      return (currentTick >= TICK_UPPER && limit);
-    }
-  }
-
   function _requireExitMode() internal view {
     require(inExitMode, 'EXIT10: Not in Exit mode');
   }
@@ -606,7 +597,15 @@ contract Exit10 is UniswapBase, APermit {
   }
 
   function _requireOutOfTickRange() internal view {
-    require(_isOutOfTickRange(), 'EXIT10: Not out of tick range');
+    (int24 blockStartTick, ) = OracleLibrary.getBlockStartingTickAndLiquidity(address(POOL));
+    int24 currentTick = _currentTick();
+    int24 tickDiff = blockStartTick > currentTick ? blockStartTick - currentTick : currentTick - blockStartTick;
+    bool limit = (tickDiff < 100); // 100 ticks is about 1% in price difference
+    if (TOKEN_IN > TOKEN_OUT) {
+      require(currentTick <= TICK_LOWER && limit, 'EXIT10: Not out of tick range');
+    } else {
+      require(currentTick >= TICK_UPPER && limit, 'EXIT10: Not out of tick range');
+    }
   }
 
   function _requireCallerOwnsBond(uint256 _bondID) internal view {

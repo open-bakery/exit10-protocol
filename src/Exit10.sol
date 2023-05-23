@@ -72,6 +72,7 @@ contract Exit10 is UniswapBase {
 
   bool public isBootstrapCapReached;
   bool public inExitMode;
+  bool public exitTriggered;
   bool private hasUpdatedRewards;
 
   mapping(uint256 => BondData) private idToBondData;
@@ -306,6 +307,8 @@ contract Exit10 is UniswapBase {
   }
 
   function exit10() external {
+    exitTriggered = true;
+
     _requireNoExitMode();
     _requireOutOfTickRange();
 
@@ -472,7 +475,7 @@ contract Exit10 is UniswapBase {
       }
 
       // In case Exit10 is called and we need to distribute pending bootstrap fees
-      if (_isOutOfTickRange()) {
+      if (exitTriggered) {
         amountCollected0 += bootstrapFees0;
         amountCollected1 += bootstrapFees1;
         bootstrapFees0 = 0;

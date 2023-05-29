@@ -210,8 +210,8 @@ abstract contract ABaseExit10Test is ABaseTest {
 
   function _setUpExitPool(Exit10 _exit10, address _lp) internal {
     MasterchefExit(_exit10.MASTERCHEF()).add(100, _lp);
-    // _exit10.EXIT().mint(_exit10.MASTERCHEF(), _exit10.LP_EXIT_REWARD());
-    // MasterchefExit(_exit10.MASTERCHEF()).updateRewards(_exit10.LP_EXIT_REWARD());
+    // _exit10.EXIT().mint(_exit10.MASTERCHEF(), _exit10.FARM_EXIT_REWARD());
+    // MasterchefExit(_exit10.MASTERCHEF()).updateRewards(_exit10.FARM_EXIT_REWARD());
     MasterchefExit(_exit10.MASTERCHEF()).transferOwnership(address(_exit10));
   }
 
@@ -357,7 +357,7 @@ abstract contract ABaseExit10Test is ABaseTest {
   }
 
   function _getExitAmount(uint256 _liquidity) internal view virtual returns (uint256) {
-    return (_liquidity * DECIMAL_PRECISION) / liquidityPerUsd / 10;
+    return (_liquidity * DECIMAL_PRECISION) / liquidityPerUsd / 100;
   }
 
   function _getTotalDepositedUSD(uint256 _amount0, uint256 _amount1) internal view returns (uint256) {

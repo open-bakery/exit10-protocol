@@ -76,9 +76,9 @@ contract Exit10 is UniswapBase, APermit {
   mapping(uint256 => BondData) private idToBondData;
 
   uint256 public constant TOKEN_MULTIPLIER = 1e8;
-  uint256 public constant LP_EXIT_REWARD = 3_000_000 ether;
-  uint256 public constant BONDERS_EXIT_REWARD = 7_000_000 ether;
-  uint256 public constant MAX_EXIT_SUPPLY = LP_EXIT_REWARD + BONDERS_EXIT_REWARD;
+  uint256 public constant FARM_EXIT_REWARD = 9_000_000 ether;
+  uint256 public constant BONDERS_EXIT_REWARD = 1_000_000 ether;
+  uint256 public constant MAX_EXIT_SUPPLY = FARM_EXIT_REWARD + BONDERS_EXIT_REWARD;
   uint128 private constant MAX_UINT_128 = type(uint128).max;
   uint256 private constant MAX_UINT_256 = type(uint256).max;
   uint256 private constant DEADLINE = 1e10;
@@ -211,8 +211,8 @@ contract Exit10 is UniswapBase, APermit {
     require(!_isBootstrapOngoing(), 'EXIT10: Bootstrap ongoing');
 
     if (!hasUpdatedRewards) {
-      EXIT.mint(MASTERCHEF, LP_EXIT_REWARD);
-      MasterchefExit(MASTERCHEF).updateRewards(LP_EXIT_REWARD);
+      EXIT.mint(MASTERCHEF, FARM_EXIT_REWARD);
+      MasterchefExit(MASTERCHEF).updateRewards(FARM_EXIT_REWARD);
       hasUpdatedRewards = true;
     }
 
@@ -342,7 +342,7 @@ contract Exit10 is UniswapBase, APermit {
     // Stop and burn Exit rewards.
     uint256 burnAmount = Math.min(
       IERC20(EXIT).balanceOf(MASTERCHEF),
-      MasterchefExit(MASTERCHEF).stopRewards(LP_EXIT_REWARD)
+      MasterchefExit(MASTERCHEF).stopRewards(FARM_EXIT_REWARD)
     );
     EXIT.burn(MASTERCHEF, burnAmount);
     exitTokenSupplyFinal = EXIT.totalSupply();
@@ -533,8 +533,8 @@ contract Exit10 is UniswapBase, APermit {
   }
 
   function _getExitAmount(uint256 _liquidity) internal view returns (uint256) {
-    // One Exit token minted for 10 USD worth of liquidity captured
-    return (_liquidity * DECIMAL_PRECISION) / LIQUIDITY_PER_USD / 10;
+    // One Exit token minted for 100 USD worth of liquidity captured
+    return (_liquidity * DECIMAL_PRECISION) / LIQUIDITY_PER_USD / 100;
   }
 
   function _safeTokenClaim(

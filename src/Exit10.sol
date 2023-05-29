@@ -65,12 +65,8 @@ contract Exit10 is UniswapBase, APermit {
   // STO TOKEN
   uint256 public teamPlusBackersRewards;
 
-  uint256 public bootstrapFees0;
-  uint256 public bootstrapFees1;
-
   bool public isBootstrapCapReached;
   bool public inExitMode;
-  bool public exitTriggered;
   bool private hasUpdatedRewards;
 
   mapping(uint256 => BondData) private idToBondData;
@@ -330,8 +326,6 @@ contract Exit10 is UniswapBase, APermit {
   }
 
   function exit10() external {
-    exitTriggered = true;
-
     _requireNoExitMode();
     _requireOutOfTickRange();
 
@@ -450,52 +444,9 @@ contract Exit10 is UniswapBase, APermit {
   function claimAndDistributeFees() public {
     (uint256 amountCollected0, uint256 amountCollected1) = _collect(address(this), MAX_UINT_128, MAX_UINT_128);
 
-    if (amountCollected0 + amountCollected1 + bootstrapFees0 + bootstrapFees1 == 0) return;
+    if (amountCollected0 + amountCollected1 == 0) return;
 
     if (!inExitMode) {
-      uint128 _totalLiquidityBefore = _liquidityAmount();
-      if (_totalLiquidityBefore != 0) {
-        uint256 cacheBootstrapFees0 = bootstrapBucket.mulDiv(
-          amountCollected0,
-          _totalLiquidityBefore,
-          Math.Rounding.Down
-        );
-        uint256 cacheBootstrapFees1 = bootstrapBucket.mulDiv(
-          amountCollected1,
-          _totalLiquidityBefore,
-          Math.Rounding.Down
-        );
-
-        bootstrapFees0 += cacheBootstrapFees0;
-        bootstrapFees1 += cacheBootstrapFees1;
-        amountCollected0 -= cacheBootstrapFees0;
-        amountCollected1 -= cacheBootstrapFees1;
-
-        if (bootstrapFees0 != 0 && bootstrapFees1 != 0) {
-          try
-            INPM(NPM).increaseLiquidity(
-              INPM.IncreaseLiquidityParams({
-                tokenId: positionId,
-                amount0Desired: bootstrapFees0,
-                amount1Desired: bootstrapFees1,
-                amount0Min: 0,
-                amount1Min: 0,
-                deadline: DEADLINE
-              })
-            )
-          returns (uint128, uint256 amountAdded0, uint256 amountAdded1) {
-            // Liquidity Added Success
-            unchecked {
-              bootstrapFees0 -= amountAdded0;
-              bootstrapFees1 -= amountAdded1;
-            }
-          } catch {
-            // Liquidity Added Fail
-            // Continue and distribute amountCollected
-          }
-        }
-      }
-
       uint256 amountTokenOut;
       uint256 amountTokenIn;
 
@@ -505,25 +456,7 @@ contract Exit10 is UniswapBase, APermit {
         (amountTokenOut, amountTokenIn) = (amountCollected1, amountCollected0);
       }
 
-      // In case Exit10 is called and we need to distribute pending bootstrap fees
-      if (exitTriggered) {
-        if (TOKEN_OUT < TOKEN_IN) {
-          amountTokenOut += bootstrapFees0;
-          amountTokenIn += bootstrapFees1;
-        } else {
-          amountTokenOut += bootstrapFees1;
-          amountTokenIn += bootstrapFees0;
-        }
-        bootstrapFees0 = 0;
-        bootstrapFees1 = 0;
-      }
-
-      FeeSplitter(FEE_SPLITTER).collectFees(
-        pendingBucket,
-        _totalLiquidityBefore - bootstrapBucket,
-        amountTokenOut,
-        amountTokenIn
-      );
+      FeeSplitter(FEE_SPLITTER).collectFees(amountTokenOut, amountTokenIn);
     } else {
       // In case liquidity from Pending + Reserve buckets goes back in range after Exit10
       _safeTransferTokens(BENEFICIARY, amountCollected0, amountCollected1);

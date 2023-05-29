@@ -86,7 +86,7 @@ abstract contract ABaseExit10Test is ABaseTest {
     masterchef1 = new Masterchef(weth, rewardsDuration);
     masterchefExit = new MasterchefExit(address(exit), rewardsDurationExit);
 
-    feeSplitter = address(new FeeSplitter(address(masterchef0), address(masterchef1), vm.envAddress('SWAPPER')));
+    feeSplitter = address(new FeeSplitter(address(masterchef0), vm.envAddress('SWAPPER')));
     Exit10.DeployParams memory params = Exit10.DeployParams({
       NFT: address(nft),
       STO: address(sto),

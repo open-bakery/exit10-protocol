@@ -15,29 +15,17 @@ contract FeeSplitter is Ownable {
   uint32 constant ORACLE_SECONDS = 60;
   uint256 constant MAX_UINT_256 = type(uint256).max;
 
-  address immutable MASTERCHEF_0; // STO - BOOT Stakers
-  address immutable MASTERCHEF_1; // BLP Stakers
+  address immutable MASTERCHEF; // STO - BOOT Stakers
   address immutable SWAPPER;
-
   address public exit10;
-  uint256 public pendingBucketTokenOut; // USDC
-  uint256 public pendingBucketTokenIn; // WETH
-  uint256 public remainingBucketsTokenOut; // USDC
-  uint256 public remainingBucketsTokenIn; // WETH
 
   event SetExit10(address indexed caller, address indexed exit10);
-  event CollectFees(uint256 pendingBucket, uint256 remainingBuckets, uint256 amountTokenOut, uint256 amountTokenIn);
-  event UpdateFees(
-    address indexed caller,
-    uint256 amountExchangedIn,
-    uint256 rewardsMasterchef0,
-    uint256 rewardsMasterchef1
-  );
+  event CollectFees(uint256 amountTokenOut, uint256 amountTokenIn);
+  event UpdateFees(address indexed caller, uint256 amountExchangedIn, uint256 rewardsMasterchef, uint256 rewardsExit10);
   event Swap(uint256 amountIn, uint256 amountOut);
 
-  constructor(address masterchef0_, address masterchef1_, address swapper_) {
-    MASTERCHEF_0 = masterchef0_;
-    MASTERCHEF_1 = masterchef1_;
+  constructor(address masterchef_, address swapper_) {
+    MASTERCHEF = masterchef_;
     SWAPPER = swapper_;
   }
 
@@ -49,86 +37,46 @@ contract FeeSplitter is Ownable {
   function setExit10(address exit10_) external onlyOwner {
     exit10 = exit10_;
     IERC20(Exit10(exit10).TOKEN_OUT()).approve(SWAPPER, MAX_UINT_256);
-    IERC20(Exit10(exit10).TOKEN_IN()).approve(MASTERCHEF_0, MAX_UINT_256);
-    IERC20(Exit10(exit10).TOKEN_IN()).approve(MASTERCHEF_1, MAX_UINT_256);
+    IERC20(Exit10(exit10).TOKEN_IN()).approve(MASTERCHEF, MAX_UINT_256);
     renounceOwnership();
 
     emit SetExit10(msg.sender, exit10);
   }
 
-  function collectFees(
-    uint256 pendingBucket,
-    uint256 totalBuckets,
-    uint256 amountTokenOut,
-    uint256 amountTokenIn
-  ) external onlyAuthorized {
+  function collectFees(uint256 amountTokenOut, uint256 amountTokenIn) external onlyAuthorized {
     if (amountTokenOut != 0) {
       IERC20(Exit10(exit10).TOKEN_OUT()).safeTransferFrom(exit10, address(this), amountTokenOut);
-      uint256 portionOfPendingBucketTokenOut = _calcPortionOfValue(pendingBucket, totalBuckets, amountTokenOut);
-      pendingBucketTokenOut += portionOfPendingBucketTokenOut;
-      remainingBucketsTokenOut += (amountTokenOut - portionOfPendingBucketTokenOut);
     }
-
     if (amountTokenIn != 0) {
       IERC20(Exit10(exit10).TOKEN_IN()).safeTransferFrom(exit10, address(this), amountTokenIn);
-      uint256 portionOfPendingBucketTokenIn = _calcPortionOfValue(pendingBucket, totalBuckets, amountTokenIn);
-      pendingBucketTokenIn += portionOfPendingBucketTokenIn;
-      remainingBucketsTokenIn += (amountTokenIn - portionOfPendingBucketTokenIn);
     }
 
-    emit CollectFees(pendingBucket, totalBuckets - pendingBucket, amountTokenOut, amountTokenIn);
+    emit CollectFees(amountTokenOut, amountTokenIn);
   }
 
   function updateFees(uint256 swapAmountOut) external returns (uint256 totalExchangedIn) {
     uint256 balanceTokenOut = IERC20(Exit10(exit10).TOKEN_OUT()).balanceOf(address(this));
 
     swapAmountOut = Math.min(swapAmountOut, balanceTokenOut);
-
     if (swapAmountOut != 0) {
       totalExchangedIn = _swap(swapAmountOut);
-
-      uint256 notExchangedOut;
-      uint256 notExchangedPendingShareOut;
-
-      if (swapAmountOut != balanceTokenOut) {
-        unchecked {
-          notExchangedOut = balanceTokenOut - swapAmountOut;
-        }
-        notExchangedPendingShareOut = _calcPortionOfValue(
-          pendingBucketTokenOut,
-          pendingBucketTokenOut + remainingBucketsTokenOut,
-          notExchangedOut
-        );
-      }
-
-      /// @dev We use the tokenOut ratio because the tokenIn was just exchanged from that portion.
-      uint256 exchangedPendingShareIn = _calcPortionOfValue(
-        pendingBucketTokenOut,
-        pendingBucketTokenOut + remainingBucketsTokenOut,
-        totalExchangedIn
-      );
-
-      pendingBucketTokenIn += exchangedPendingShareIn;
-      remainingBucketsTokenIn += (totalExchangedIn - exchangedPendingShareIn);
-
-      pendingBucketTokenOut = notExchangedPendingShareOut;
-      remainingBucketsTokenOut = (notExchangedOut - notExchangedPendingShareOut);
     }
 
-    uint256 mc0TokenIn = (pendingBucketTokenIn << 2) / 10; // 40%
-    uint256 mc1TokenIn = remainingBucketsTokenIn + (pendingBucketTokenIn - mc0TokenIn); // 60%
+    uint256 balanceTokenIn = IERC20(Exit10(exit10).TOKEN_IN()).balanceOf(address(this));
 
-    pendingBucketTokenIn = 0;
-    remainingBucketsTokenIn = 0;
+    uint256 mcTokenIn = (balanceTokenIn << 1) / 10; // 20%
+    uint256 exit10TokenIn = balanceTokenIn - mcTokenIn; // 80%
 
-    if (mc0TokenIn != 0) {
-      Masterchef(MASTERCHEF_0).updateRewards(mc0TokenIn);
+    if (mcTokenIn != 0) {
+      Masterchef(MASTERCHEF).updateRewards(mcTokenIn);
     }
-    if (mc1TokenIn != 0) {
-      Masterchef(MASTERCHEF_1).updateRewards(mc1TokenIn);
+    if (exit10TokenIn != 0) {
+      // Invest tokenIn and send it to Exit10
+      // For now just send it to Exit10 as tokenIn
+      IERC20(Exit10(exit10).TOKEN_IN()).safeTransfer(exit10, exit10TokenIn);
     }
 
-    emit UpdateFees(msg.sender, totalExchangedIn, mc0TokenIn, mc1TokenIn);
+    emit UpdateFees(msg.sender, totalExchangedIn, mcTokenIn, exit10TokenIn);
   }
 
   function _swap(uint256 _amount) internal returns (uint256 _amountAcquired) {
@@ -145,11 +93,5 @@ contract FeeSplitter is Ownable {
     _amountAcquired = ISwapper(SWAPPER).swap(params);
 
     emit Swap(_amount, _amountAcquired);
-  }
-
-  // returns _shareOfTotal/_total fraction of _value. The order of operation is reversed to keep precision
-  function _calcPortionOfValue(uint256 _shareOfTotal, uint256 _total, uint256 _value) internal pure returns (uint256) {
-    if (_total == 0) return 0;
-    return (_shareOfTotal * _value) / _total;
   }
 }

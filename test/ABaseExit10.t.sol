@@ -56,9 +56,8 @@ abstract contract ABaseExit10Test is ABaseTest {
   uint256 constant USDC_DECIMALS = 1e6;
   uint256 constant ORACLE_SECONDS = 60;
 
-  Masterchef masterchef0; // 50% BOOT 50% STO
-  Masterchef masterchef1; // BLP
-  MasterchefExit masterchefExit; // EXIT/USDC LP Uniswap v2
+  Masterchef masterchef; // 50% BOOT 50% STO
+  MasterchefExit masterchefExit; // EXIT/USDC LP Uniswap v2 20% | BLP 80%
 
   UniswapBase.BaseDeployParams baseParams =
     UniswapBase.BaseDeployParams({
@@ -82,11 +81,10 @@ abstract contract ABaseExit10Test is ABaseTest {
     nft = new NFT('Bond Data', 'BND', nftLockPeriod);
 
     // Deploy dependency contracts
-    masterchef0 = new Masterchef(weth, rewardsDuration);
-    masterchef1 = new Masterchef(weth, rewardsDuration);
+    masterchef = new Masterchef(weth, rewardsDuration);
     masterchefExit = new MasterchefExit(address(exit), rewardsDurationExit);
 
-    feeSplitter = address(new FeeSplitter(address(masterchef0), vm.envAddress('SWAPPER')));
+    feeSplitter = address(new FeeSplitter(address(masterchef), vm.envAddress('SWAPPER')));
     Exit10.DeployParams memory params = Exit10.DeployParams({
       NFT: address(nft),
       STO: address(sto),
@@ -107,8 +105,8 @@ abstract contract ABaseExit10Test is ABaseTest {
     nft.setExit10(address(exit10));
     FeeSplitter(feeSplitter).setExit10(address(exit10));
     lp = _pairForUniswapV2(address(UNISWAP_V2_FACTORY), usdc, address(exit));
-    _setUpExitPool(exit10, lp);
-    _setMasterchefs(feeSplitter);
+    _setMasterchef(feeSplitter);
+    _setMasterchefExit(exit10, lp, address(blp));
 
     boot.transferOwnership(address(exit10));
     sto.transferOwnership(address(exit10));
@@ -129,12 +127,16 @@ abstract contract ABaseExit10Test is ABaseTest {
     _mintAndApprove(alice, address(token1), initialBalance, address(exit10));
   }
 
-  function _setMasterchefs(address _rewardDistributor) internal {
-    masterchef0.add(50, address(sto));
-    masterchef0.add(50, address(boot));
-    masterchef1.add(100, address(blp));
-    masterchef0.transferOwnership(_rewardDistributor);
-    masterchef1.transferOwnership(_rewardDistributor);
+  function _setMasterchef(address _rewardDistributor) internal {
+    masterchef.add(50, address(sto));
+    masterchef.add(50, address(boot));
+    masterchef.transferOwnership(_rewardDistributor);
+  }
+
+  function _setMasterchefExit(Exit10 _exit10, address _lp, address _blp) internal {
+    MasterchefExit(_exit10.MASTERCHEF()).add(20, _lp);
+    MasterchefExit(_exit10.MASTERCHEF()).add(80, _blp);
+    MasterchefExit(_exit10.MASTERCHEF()).transferOwnership(address(_exit10));
   }
 
   function _bootstrapLock(
@@ -206,13 +208,6 @@ abstract contract ABaseExit10Test is ABaseTest {
     _eth10k();
     exit10.exit10();
     return bondId;
-  }
-
-  function _setUpExitPool(Exit10 _exit10, address _lp) internal {
-    MasterchefExit(_exit10.MASTERCHEF()).add(100, _lp);
-    // _exit10.EXIT().mint(_exit10.MASTERCHEF(), _exit10.FARM_EXIT_REWARD());
-    // MasterchefExit(_exit10.MASTERCHEF()).updateRewards(_exit10.FARM_EXIT_REWARD());
-    MasterchefExit(_exit10.MASTERCHEF()).transferOwnership(address(_exit10));
   }
 
   function _addLiquidity(

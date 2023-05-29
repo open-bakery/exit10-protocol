@@ -129,7 +129,15 @@ contract Exit10 is UniswapBase, APermit {
     uint256 teamPlusBackersRewards,
     uint256 exitTokenRewards
   );
-  event ClaimRewards(address indexed caller, address indexed token, uint256 amountBurned, uint256 amountClaimed);
+  event BootClaim(address indexed caller, address indexed token, uint256 amountBurned, uint256 amountClaimed);
+  event StoClaim(address indexed caller, address indexed token, uint256 amountBurned, uint256 amountClaimed);
+  event ExitClaim(
+    address indexed caller,
+    address indexed token,
+    uint256 amountBurned,
+    uint256 liquidityClaimed,
+    uint256 feesClaimed
+  );
   event ClaimAndDistributeFees(address indexed caller, uint256 amountClaimed0, uint256 amountClaimed1);
 
   constructor(BaseDeployParams memory baseParams_, DeployParams memory params_) UniswapBase(baseParams_) {
@@ -384,33 +392,44 @@ contract Exit10 is UniswapBase, APermit {
   }
 
   function bootstrapClaim() external returns (uint256 claim) {
-    uint256 bootBalance = IERC20(BOOT).balanceOf(msg.sender);
+    _requireExitMode();
+    BaseToken boot = BOOT;
+    uint256 bootBalance = boot.balanceOf(msg.sender);
 
-    claim = _safeTokenClaim(BOOT, bootBalance / TOKEN_MULTIPLIER, bootstrapBucketFinal, bootstrapRewardsPlusRefund);
+    claim = _getClaimableAmount(bootBalance / TOKEN_MULTIPLIER, bootstrapBucketFinal, bootstrapRewardsPlusRefund);
 
+    boot.burn(msg.sender, bootBalance);
     _safeTransferToken(TOKEN_OUT, msg.sender, claim);
 
-    emit ClaimRewards(msg.sender, address(BOOT), bootBalance, claim);
+    emit BootClaim(msg.sender, address(BOOT), bootBalance, claim);
   }
 
   function stoClaim() external returns (uint256 claim) {
+    _requireExitMode();
     BaseToken sto = STO;
-    uint256 stoBalance = IERC20(sto).balanceOf(msg.sender);
-    claim = _safeTokenClaim(sto, stoBalance, STOToken(address(sto)).MAX_SUPPLY(), teamPlusBackersRewards);
+    uint256 stoBalance = sto.balanceOf(msg.sender);
 
+    claim = _getClaimableAmount(stoBalance, STOToken(address(sto)).MAX_SUPPLY(), teamPlusBackersRewards);
+
+    sto.burn(msg.sender, stoBalance);
     _safeTransferToken(TOKEN_OUT, msg.sender, claim);
 
-    emit ClaimRewards(msg.sender, address(STO), stoBalance, claim);
+    emit StoClaim(msg.sender, address(STO), stoBalance, claim);
   }
 
-  function exitClaim() external returns (uint256 claim) {
+  function exitClaim() external returns (uint256 claimedLiquidity, uint256 claimedFees) {
+    _requireExitMode();
     BaseToken exit = EXIT;
-    uint256 exitBalance = IERC20(exit).balanceOf(msg.sender);
-    claim = _safeTokenClaim(exit, exitBalance, exitTokenSupplyFinal, exitTokenRewardsFinal);
+    uint256 exitBalance = exit.balanceOf(msg.sender);
 
-    _safeTransferToken(TOKEN_OUT, msg.sender, claim);
+    claimedLiquidity = _getClaimableAmount(exitBalance, exitTokenSupplyFinal, exitTokenRewardsFinal);
+    claimedFees = _getClaimableAmount(exitBalance, exit.totalSupply(), IERC20(TOKEN_IN).balanceOf(address(this)));
 
-    emit ClaimRewards(msg.sender, address(exit), exitBalance, claim);
+    exit.burn(msg.sender, exitBalance);
+    _safeTransferToken(TOKEN_OUT, msg.sender, claimedLiquidity);
+    _safeTransferToken(TOKEN_IN, msg.sender, claimedFees);
+
+    emit ExitClaim(msg.sender, address(exit), exitBalance, claimedLiquidity, claimedFees);
   }
 
   function getBondData(
@@ -470,17 +489,13 @@ contract Exit10 is UniswapBase, APermit {
     return (_liquidity * DECIMAL_PRECISION) / LIQUIDITY_PER_USD / 100;
   }
 
-  function _safeTokenClaim(
-    BaseToken _token,
-    uint256 _amount,
-    uint256 _finalTotalSupply,
-    uint256 _rewardsFinalTotalSupply
-  ) internal returns (uint256 _claimableRewards) {
-    _requireExitMode();
-    require(_amount != 0, 'EXIT10: Amount must be != 0');
-
-    _token.burn(msg.sender, IERC20(_token).balanceOf(msg.sender));
-    _claimableRewards = _amount.mulDiv(_rewardsFinalTotalSupply, _finalTotalSupply, Math.Rounding.Down);
+  function _getClaimableAmount(
+    uint256 _shares,
+    uint256 _totalSupply,
+    uint256 _totalAssets
+  ) internal pure returns (uint256 _claimable) {
+    require(_shares != 0, 'EXIT10: Amount must be != 0');
+    _claimable = _shares.mulDiv(_totalAssets, _totalSupply, Math.Rounding.Down);
   }
 
   function _depositTokens(uint256 _amount0, uint256 _amount1) internal {

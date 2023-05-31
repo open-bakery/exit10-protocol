@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import { console } from 'forge-std/console.sol';
+import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import { Script } from 'forge-std/Script.sol';
 import { Strings } from '@openzeppelin/contracts/utils/Strings.sol';
 import { FeeSplitter, ABaseExit10Test } from './ABaseExit10.t.sol';
@@ -19,7 +19,7 @@ contract SystemLogsTest is ABaseExit10Test {
     _distributeSTO();
     address tokenOut = exit10.TOKEN_OUT();
     address tokenIn = exit10.TOKEN_IN();
-    // showAsInteger = true;
+    showAsInteger = true;
   }
 
   function testScenario_0() public {
@@ -54,12 +54,12 @@ contract SystemLogsTest is ABaseExit10Test {
     _generateClaimAndDistributeFees();
     _distributeRewardsToMasterchefs();
     _skip(accrualParameter);
-    _claimEthRewards(alice, address(masterchef0), 0);
-    _claimEthRewards(bob, address(masterchef0), 0);
-    _claimEthRewards(charlie, address(masterchef0), 0);
-    _claimEthRewards(alice, address(masterchef0), 1);
-    _claimEthRewards(bob, address(masterchef0), 1);
-    _claimEthRewards(charlie, address(masterchef0), 1);
+    _claimEthRewards(alice, address(masterchef), 0);
+    _claimEthRewards(bob, address(masterchef), 0);
+    _claimEthRewards(charlie, address(masterchef), 0);
+    _claimEthRewards(alice, address(masterchef), 1);
+    _claimEthRewards(bob, address(masterchef), 1);
+    _claimEthRewards(charlie, address(masterchef), 1);
     _stakeBlpAll(true);
     _toTheMoon();
     _skip(accrualParameter);
@@ -122,7 +122,7 @@ contract SystemLogsTest is ABaseExit10Test {
 
   function testScenario_3() public {
     _bootstrapAndStakeBootAll();
-    _stake(alice, address(masterchef0), 0, address(sto));
+    _stake(alice, address(masterchef), 0, address(sto));
     _generateClaimAndDistributeFees();
     _displayRewardBalanceMasterchefs();
     _displayBuckets();
@@ -143,9 +143,9 @@ contract SystemLogsTest is ABaseExit10Test {
     _claimExitRewards(alice);
     _distributeRewardsToMasterchefs();
     _skip(accrualParameter);
-    _claimEthRewards(bob, address(masterchef0), 1);
-    _claimEthRewards(alice, address(masterchef0), 0);
-    _stake(alice, address(masterchef1), 0, address(blp));
+    _claimEthRewards(bob, address(masterchef), 1);
+    _claimEthRewards(alice, address(masterchef), 0);
+    _stake(alice, address(masterchefExit), 1, address(blp));
     _unstake(alice, address(masterchefExit), 0, lp);
     _skip(accrualParameter);
     _stake(alice, address(masterchefExit), 0, lp);
@@ -153,21 +153,21 @@ contract SystemLogsTest is ABaseExit10Test {
     _unstake(alice, address(masterchefExit), 0, lp);
     _toTheMoon();
     _skip(accrualParameter);
-    _claimEthRewards(alice, address(masterchef1), 0);
-    _unstake(alice, address(masterchef1), 0, address(blp));
+    _claimEthRewards(alice, address(masterchef), 0);
+    _unstake(alice, address(masterchefExit), 1, address(blp));
     _redeem(alice);
     _exit10();
     _stake(alice, address(masterchefExit), 0, lp);
     _unstake(alice, address(masterchefExit), 0, lp);
     _breakLP(alice);
     _exitClaim(alice);
-    _unstake(alice, address(masterchef0), 0, address(sto));
+    _unstake(alice, address(masterchef), 0, address(sto));
     _stoClaim(alice);
-    _unstake(alice, address(masterchef0), 1, address(boot));
+    _unstake(alice, address(masterchef), 1, address(boot));
     _bootstrapClaim(alice);
     _displayTreasury();
-    _unstake(bob, address(masterchef0), 1, address(boot));
-    _unstake(charlie, address(masterchef0), 1, address(boot));
+    _unstake(bob, address(masterchef), 1, address(boot));
+    _unstake(charlie, address(masterchef), 1, address(boot));
     _stoClaim(bob);
     _stoClaim(charlie);
     _bootstrapClaim(bob);
@@ -231,25 +231,25 @@ contract SystemLogsTest is ABaseExit10Test {
 
   function _stakeBootstrapAll(bool _isStake) internal {
     if (_isStake) {
-      _stake(alice, address(masterchef0), 1, address(boot));
-      _stake(bob, address(masterchef0), 1, address(boot));
-      _stake(charlie, address(masterchef0), 1, address(boot));
+      _stake(alice, address(masterchef), 1, address(boot));
+      _stake(bob, address(masterchef), 1, address(boot));
+      _stake(charlie, address(masterchef), 1, address(boot));
     } else {
-      _unstake(alice, address(masterchef0), 1, address(boot));
-      _unstake(bob, address(masterchef0), 1, address(boot));
-      _unstake(charlie, address(masterchef0), 1, address(boot));
+      _unstake(alice, address(masterchef), 1, address(boot));
+      _unstake(bob, address(masterchef), 1, address(boot));
+      _unstake(charlie, address(masterchef), 1, address(boot));
     }
   }
 
   function _stakeStoAll(bool _isStake) internal {
     if (_isStake) {
-      _stake(alice, address(masterchef0), 0, address(sto));
-      _stake(bob, address(masterchef0), 0, address(sto));
-      _stake(charlie, address(masterchef0), 0, address(sto));
+      _stake(alice, address(masterchef), 0, address(sto));
+      _stake(bob, address(masterchef), 0, address(sto));
+      _stake(charlie, address(masterchef), 0, address(sto));
     } else {
-      _unstake(alice, address(masterchef0), 0, address(sto));
-      _unstake(bob, address(masterchef0), 0, address(sto));
-      _unstake(charlie, address(masterchef0), 0, address(sto));
+      _unstake(alice, address(masterchef), 0, address(sto));
+      _unstake(bob, address(masterchef), 0, address(sto));
+      _unstake(charlie, address(masterchef), 0, address(sto));
     }
   }
 
@@ -289,13 +289,13 @@ contract SystemLogsTest is ABaseExit10Test {
 
   function _stakeBlpAll(bool _isStake) internal {
     if (_isStake) {
-      _stake(alice, address(masterchef1), 0, address(blp));
-      _stake(bob, address(masterchef1), 0, address(blp));
-      _stake(charlie, address(masterchef1), 0, address(blp));
+      _stake(alice, address(masterchefExit), 1, address(blp));
+      _stake(bob, address(masterchefExit), 1, address(blp));
+      _stake(charlie, address(masterchefExit), 1, address(blp));
     } else {
-      _unstake(alice, address(masterchef1), 0, address(blp));
-      _unstake(bob, address(masterchef1), 0, address(blp));
-      _unstake(charlie, address(masterchef1), 0, address(blp));
+      _unstake(alice, address(masterchefExit), 1, address(blp));
+      _unstake(bob, address(masterchefExit), 1, address(blp));
+      _unstake(charlie, address(masterchefExit), 1, address(blp));
     }
   }
 
@@ -455,7 +455,7 @@ contract SystemLogsTest is ABaseExit10Test {
   function _exitClaim(address _user) internal {
     uint256 balance = exit.balanceOf(_user);
     vm.startPrank(_user);
-    uint256 claim = exit10.exitClaim();
+    (uint256 claim, , ) = exit10.exitClaim();
     vm.stopPrank();
 
     string memory log0 = string.concat('User: ', userName[_user]);
@@ -502,25 +502,25 @@ contract SystemLogsTest is ABaseExit10Test {
   }
 
   function _distributeRewardsToMasterchefs() internal {
-    uint256 prevBalanceMc0 = ERC20(weth).balanceOf(address(masterchef0));
-    uint256 prevBalanceMc1 = ERC20(weth).balanceOf(address(masterchef1));
+    uint256 prevBalanceMc0 = ERC20(weth).balanceOf(address(masterchef));
+    uint256 prevBalanceMc1 = ERC20(weth).balanceOf(address(exit10));
     uint256 usdcToSell = ERC20(usdc).balanceOf(address(feeSplitter));
     uint256 ETHAcquired = FeeSplitter(feeSplitter).updateFees(usdcToSell);
-    uint256 depositedRewardsMc0 = ERC20(weth).balanceOf(address(masterchef0)) - prevBalanceMc0;
-    uint256 depositedRewardsMc1 = ERC20(weth).balanceOf(address(masterchef1)) - prevBalanceMc1;
+    uint256 depositedRewardsMc0 = ERC20(weth).balanceOf(address(masterchef)) - prevBalanceMc0;
+    uint256 depositedRewardsMc1 = ERC20(weth).balanceOf(address(exit10)) - prevBalanceMc1;
 
     _title('WETH REWARD DISTRIBUTION');
     console.log(_displayAmount('Total Sold', usdc, usdcToSell));
     console.log(_displayAmount('Total Acquired', weth, ETHAcquired));
-    console.log(_displayAmount('Distributed To Masterchef0', weth, depositedRewardsMc0));
-    console.log(_displayAmount('Distributed To Masterchef1', weth, depositedRewardsMc1));
+    console.log(_displayAmount('Distributed To masterchef', weth, depositedRewardsMc0));
+    console.log(_displayAmount('Distributed To exit10', weth, depositedRewardsMc1));
     _spacer();
     _displayRewardBalanceMasterchefs();
   }
 
   function _lpExit(address _user) internal returns (uint _amountAddedExit, uint _amountAddedUsdc, uint _liquidity) {
     uint balanceExit = exit.balanceOf(_user);
-    uint amountUsdc = _tokenAmount(usdc, balanceExit / 1e18);
+    uint amountUsdc = _tokenAmount(usdc, balanceExit / 1e6);
     deal(usdc, _user, amountUsdc);
     vm.startPrank(_user);
     (_amountAddedExit, _amountAddedUsdc, _liquidity) = _addLiquidity(address(exit), usdc, balanceExit, amountUsdc);
@@ -650,9 +650,9 @@ contract SystemLogsTest is ABaseExit10Test {
     sto.mint(charlie, 150_000 ether);
     vm.stopPrank();
 
-    _maxApproveFrom(alice, address(sto), address(masterchef0));
-    _maxApproveFrom(bob, address(sto), address(masterchef0));
-    _maxApproveFrom(charlie, address(sto), address(masterchef0));
+    _maxApproveFrom(alice, address(sto), address(masterchef));
+    _maxApproveFrom(bob, address(sto), address(masterchef));
+    _maxApproveFrom(charlie, address(sto), address(masterchef));
   }
 
   function _displaySupplies() internal view {
@@ -678,15 +678,17 @@ contract SystemLogsTest is ABaseExit10Test {
   }
 
   function _displayRewardBalanceMasterchefs() internal view {
-    _displayBalance('Masterchef0', address(masterchef0), weth);
-    _displayBalance('Masterchef1', address(masterchef1), weth);
-    _displayBalance('Masterchef2', address(masterchefExit), address(exit));
+    _displayBalance('masterchef', address(masterchef), weth);
+    _displayBalance('exit10', address(exit10), weth);
+    _displayBalance('MasterchefExit', address(masterchefExit), address(exit));
   }
 
   function _displayTreasury() internal view {
-    uint256 balance = ERC20(usdc).balanceOf(address(exit10));
-    _title('USDC IN CONTRACT');
-    console.log(_displayAmount('Amount', usdc, balance));
+    uint256 balanceUSDC = ERC20(usdc).balanceOf(address(exit10));
+    uint256 balanceWETH = ERC20(weth).balanceOf(address(exit10));
+    _title('TOKENS IN CONTRACT');
+    console.log(_displayAmount('Amount', usdc, balanceUSDC));
+    console.log(_displayAmount('Amount', weth, balanceWETH));
     _spacer();
   }
 

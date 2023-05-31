@@ -17,7 +17,7 @@ contract FeeSplitter is Ownable {
 
   address immutable MASTERCHEF; // STO - BOOT Stakers
   address immutable SWAPPER;
-  address public exit10;
+  address payable public exit10;
 
   event SetExit10(address indexed caller, address indexed exit10);
   event CollectFees(uint256 amountTokenOut, uint256 amountTokenIn);
@@ -34,7 +34,7 @@ contract FeeSplitter is Ownable {
     _;
   }
 
-  function setExit10(address exit10_) external onlyOwner {
+  function setExit10(address payable exit10_) external onlyOwner {
     exit10 = exit10_;
     IERC20(Exit10(exit10).TOKEN_OUT()).approve(SWAPPER, MAX_UINT_256);
     IERC20(Exit10(exit10).TOKEN_IN()).approve(MASTERCHEF, MAX_UINT_256);

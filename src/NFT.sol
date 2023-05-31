@@ -23,7 +23,7 @@ contract NFT is ERC721Enumerable, Ownable {
     TRANSFER_LOCKOUT_PERIOD_SECONDS = transferLockoutPeriodSeconds_;
   }
 
-  function setExit10(address exit10_) external onlyOwner {
+  function setExit10(address payable exit10_) external onlyOwner {
     require(exit10_ != address(0), 'NFT: exit10_ must be non-zero');
     exit10 = Exit10(exit10_);
     renounceOwnership();

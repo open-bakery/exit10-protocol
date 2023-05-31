@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-import { console } from 'forge-std/console.sol';
 import { ERC20 } from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import { IERC721 } from '@openzeppelin/contracts/token/ERC721/IERC721.sol';
 import { ABaseExit10Test } from './ABaseExit10.t.sol';
@@ -30,7 +29,7 @@ contract DepositHelperTest is ABaseExit10Test {
     super.setUp();
     unitToken1 = _tokenAmount(token1, 1);
     deposit1 = _tokenAmount(address(token1), 2);
-    depositHelper = new DepositHelper(address(UNISWAP_V3_ROUTER), address(exit10), weth);
+    depositHelper = new DepositHelper(address(UNISWAP_V3_ROUTER), payable(exit10), weth);
     _maxApprove(address(token0), address(token1), address(depositHelper));
     (, , token0PerToken1, ) = exit10.bootstrapLock(_addLiquidityParams(_convert1ToToken0(unitToken1 * 10), unitToken1));
     deposit0 = _ratio(deposit1);

@@ -9,10 +9,11 @@ import { IUniswapV3Pool } from './interfaces/IUniswapV3Pool.sol';
 import { INFT } from './interfaces/INFT.sol';
 import { BaseToken } from './BaseToken.sol';
 import { FeeSplitter } from './FeeSplitter.sol';
-import { UniswapBase } from './UniswapBase.sol';
+import { IWETH9, UniswapBase } from './UniswapBase.sol';
 import { MasterchefExit } from './MasterchefExit.sol';
 import { STOToken } from './STOToken.sol';
 import { APermit } from './APermit.sol';
+import { ILido } from './interfaces/ILido.sol';
 
 contract Exit10 is UniswapBase, APermit {
   using SafeERC20 for IERC20;
@@ -27,6 +28,7 @@ contract Exit10 is UniswapBase, APermit {
     address masterchef; // EXIT/USDC Stakers
     address feeSplitter; // Distribution to STO + BOOT and BLP stakers
     address beneficiary; // Address to receive fees if pool goes back into range after Exit10
+    address lido;
     uint256 bootstrapPeriod;
     uint256 bootstrapCap;
     uint256 liquidityPerUsd; // Amount of liquidity per USD that is minted passed the upper range of the 500-10000 pool
@@ -87,6 +89,7 @@ contract Exit10 is UniswapBase, APermit {
   BaseToken public immutable EXIT;
   INFT public immutable NFT;
 
+  address public immutable LIDO;
   address public immutable BENEFICIARY;
   address public immutable MASTERCHEF;
   address public immutable FEE_SPLITTER;
@@ -136,7 +139,8 @@ contract Exit10 is UniswapBase, APermit {
     address indexed token,
     uint256 amountBurned,
     uint256 liquidityClaimed,
-    uint256 feesClaimed
+    uint256 feesClaimed,
+    uint256 stakedEthClaimed
   );
   event ClaimAndDistributeFees(address indexed caller, uint256 amountClaimed0, uint256 amountClaimed1);
 
@@ -150,6 +154,7 @@ contract Exit10 is UniswapBase, APermit {
     MASTERCHEF = params_.masterchef;
     FEE_SPLITTER = params_.feeSplitter;
     BENEFICIARY = params_.beneficiary;
+    LIDO = params_.lido;
 
     BOOTSTRAP_FINISH = params_.bootstrapPeriod + block.timestamp;
     BOOTSTRAP_LIQUIDITY_CAP = params_.bootstrapCap;
@@ -163,6 +168,8 @@ contract Exit10 is UniswapBase, APermit {
     IERC20(IUniswapV3Pool(POOL).token0()).approve(FEE_SPLITTER, MAX_UINT_256);
     IERC20(IUniswapV3Pool(POOL).token1()).approve(FEE_SPLITTER, MAX_UINT_256);
   }
+
+  receive() external payable {}
 
   function bootstrapLock(
     AddLiquidity memory params
@@ -239,6 +246,13 @@ contract Exit10 is UniswapBase, APermit {
     _safeTransferTokens(params.depositor, params.amount0Desired - amountAdded0, params.amount1Desired - amountAdded1);
 
     emit CreateBond(params.depositor, bondID, liquidityAdded, amountAdded0, amountAdded1);
+  }
+
+  function stakeEth(uint256 amount) external returns (uint256 share) {
+    _requireNoExitMode();
+    IWETH9(WETH).withdraw(amount);
+    share = ILido(LIDO).submit{ value: address(this).balance }(BENEFICIARY);
+    require(share > 0, 'Exit10: Deposited zero amount');
   }
 
   function bootstrapLockWithPermit(
@@ -417,7 +431,7 @@ contract Exit10 is UniswapBase, APermit {
     emit StoClaim(msg.sender, address(STO), stoBalance, claim);
   }
 
-  function exitClaim() external returns (uint256 claimedLiquidity, uint256 claimedFees) {
+  function exitClaim() external returns (uint256 claimedLiquidity, uint256 claimedFees, uint256 claimedStakedEth) {
     _requireExitMode();
     BaseToken exit = EXIT;
     uint256 exitBalance = exit.balanceOf(msg.sender);
@@ -425,11 +439,17 @@ contract Exit10 is UniswapBase, APermit {
     claimedLiquidity = _getClaimableAmount(exitBalance, exitTokenSupplyFinal, exitTokenRewardsFinal);
     claimedFees = _getClaimableAmount(exitBalance, exit.totalSupply(), IERC20(TOKEN_IN).balanceOf(address(this)));
 
+    uint256 shares;
+    if (LIDO != address(0))
+      shares = _getClaimableAmount(exitBalance, exit.totalSupply(), ILido(LIDO).sharesOf(address(this)));
+
     exit.burn(msg.sender, exitBalance);
+
     _safeTransferToken(TOKEN_OUT, msg.sender, claimedLiquidity);
     _safeTransferToken(TOKEN_IN, msg.sender, claimedFees);
+    if (shares != 0) claimedStakedEth = ILido(LIDO).transferShares(msg.sender, shares);
 
-    emit ExitClaim(msg.sender, address(exit), exitBalance, claimedLiquidity, claimedFees);
+    emit ExitClaim(msg.sender, address(exit), exitBalance, claimedLiquidity, claimedFees, claimedStakedEth);
   }
 
   function getBondData(

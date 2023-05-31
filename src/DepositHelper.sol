@@ -13,7 +13,7 @@ contract DepositHelper is APermit {
   uint256 private constant RESOLUTION = 10_000;
 
   address private immutable UNISWAP_V3_ROUTER;
-  address private immutable EXIT_10;
+  address payable private immutable EXIT_10;
   address private immutable WETH;
   address private immutable TOKEN_0;
   address private immutable TOKEN_1;
@@ -34,7 +34,7 @@ contract DepositHelper is APermit {
   event ProcessEth(address indexed caller, uint256 amount);
   event Swap(address indexed caller, uint256 amountIn, uint256 amountOut);
 
-  constructor(address uniswapV3Router_, address exit10_, address weth_) {
+  constructor(address uniswapV3Router_, address payable exit10_, address weth_) {
     UNISWAP_V3_ROUTER = uniswapV3Router_;
     EXIT_10 = exit10_;
     WETH = weth_;

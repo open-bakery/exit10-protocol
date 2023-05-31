@@ -11,6 +11,7 @@ import { FeeSplitter } from '../src/FeeSplitter.sol';
 import { MasterchefExit } from '../src/Exit10.sol';
 import { Masterchef } from '../src/Masterchef.sol';
 import { Exit10 } from '../src/Exit10.sol';
+import { MockLido } from '../src/mocks/MockLido.sol';
 
 abstract contract ABaseExit10Test is ABaseTest {
   Exit10 exit10;
@@ -35,6 +36,7 @@ abstract contract ABaseExit10Test is ABaseTest {
   uint256 amount0;
   uint256 amount1;
 
+  address lido;
   address weth = vm.envAddress('WETH');
   address usdc = vm.envAddress('USDC');
   address beneficiary = vm.envAddress('BENEFICIARY');
@@ -72,6 +74,8 @@ abstract contract ABaseExit10Test is ABaseTest {
     });
 
   function setUp() public virtual {
+    lido = address(new MockLido());
+
     deployTime = block.timestamp;
     // Deploy tokens
     sto = new STOToken(bytes32('merkle_root'));
@@ -94,6 +98,7 @@ abstract contract ABaseExit10Test is ABaseTest {
       masterchef: address(masterchefExit),
       feeSplitter: feeSplitter,
       beneficiary: beneficiary,
+      lido: _getLidoAddress(),
       bootstrapPeriod: bootstrapPeriod,
       bootstrapCap: _getBootstrapCap(),
       accrualParameter: accrualParameter,
@@ -102,8 +107,8 @@ abstract contract ABaseExit10Test is ABaseTest {
     });
 
     exit10 = new Exit10(baseParams, params);
-    nft.setExit10(address(exit10));
-    FeeSplitter(feeSplitter).setExit10(address(exit10));
+    nft.setExit10(payable(exit10));
+    FeeSplitter(feeSplitter).setExit10(payable(exit10));
     lp = _pairForUniswapV2(address(UNISWAP_V2_FACTORY), usdc, address(exit));
     _setMasterchef(feeSplitter);
     _setMasterchefExit(exit10, lp, address(blp));
@@ -375,6 +380,10 @@ abstract contract ABaseExit10Test is ABaseTest {
 
   function _getBootstrapCap() internal view virtual returns (uint256) {
     return vm.envUint('BOOTSTRAP_LIQUIDITY_CAP');
+  }
+
+  function _getLidoAddress() internal view virtual returns (address) {
+    return lido;
   }
 
   function _Convert0ToToken1(uint256 _amount0) internal view returns (uint256) {

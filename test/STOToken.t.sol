@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 import { STOToken } from '../src/STOToken.sol';
 import { ABaseTest } from './ABase.t.sol';
-import { console } from 'forge-std/console.sol';
 
 contract STOTokenTest is ABaseTest {
   STOToken sto;

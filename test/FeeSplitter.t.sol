@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-import { console } from 'forge-std/console.sol';
 import { BaseToken } from '../src/BaseToken.sol';
 import { FeeSplitter } from '../src/FeeSplitter.sol';
 import { Masterchef } from '../src/Masterchef.sol';
@@ -36,7 +35,7 @@ contract FeeSplitterTest is ABaseTest {
     masterchef = address(mc0);
 
     feeSplitter = new FeeSplitter(masterchef, swapper);
-    feeSplitter.setExit10(me); // = address(this)
+    feeSplitter.setExit10(payable(me)); // = address(this)
     exit10 = feeSplitter.exit10();
 
     mc0.add(10, address(0x01));

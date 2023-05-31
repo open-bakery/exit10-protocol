@@ -32,7 +32,6 @@ contract Exit10 is UniswapBase, APermit {
     uint256 bootstrapPeriod;
     uint256 bootstrapCap;
     uint256 liquidityPerUsd; // Amount of liquidity per USD that is minted passed the upper range of the 500-10000 pool
-    uint256 exitDiscount;
     uint256 accrualParameter; // The number of seconds it takes to accrue 50% of the cap, represented as an 18 digit fixed-point number.
   }
 
@@ -81,7 +80,6 @@ contract Exit10 is UniswapBase, APermit {
   uint256 private constant MAX_UINT_256 = type(uint256).max;
   uint256 private constant DEADLINE = 1e10;
   uint256 private constant DECIMAL_PRECISION = 1e18;
-  uint256 private constant RESOLUTION = 10000;
 
   BaseToken public immutable STO;
   BaseToken public immutable BOOT;
@@ -98,8 +96,6 @@ contract Exit10 is UniswapBase, APermit {
   uint256 public immutable BOOTSTRAP_LIQUIDITY_CAP;
   uint256 public immutable ACCRUAL_PARAMETER;
   uint256 public immutable LIQUIDITY_PER_USD;
-  uint256 public immutable EXIT_DISCOUNT;
-  uint256 public immutable TOKEN_OUT_DECIMALS;
 
   event BootstrapLock(
     address indexed recipient,
@@ -160,8 +156,6 @@ contract Exit10 is UniswapBase, APermit {
     BOOTSTRAP_LIQUIDITY_CAP = params_.bootstrapCap;
     ACCRUAL_PARAMETER = params_.accrualParameter;
     LIQUIDITY_PER_USD = params_.liquidityPerUsd;
-    EXIT_DISCOUNT = params_.exitDiscount;
-    TOKEN_OUT_DECIMALS = 10 ** ERC20(TOKEN_OUT).decimals();
 
     IERC20(IUniswapV3Pool(POOL).token0()).approve(NPM, MAX_UINT_256);
     IERC20(IUniswapV3Pool(POOL).token1()).approve(NPM, MAX_UINT_256);

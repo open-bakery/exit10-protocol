@@ -340,7 +340,11 @@ contract Exit10 is UniswapBase, APermit {
     inExitMode = true;
 
     // Stop and burn Exit rewards.
-    EXIT.burn(MASTERCHEF, MasterchefExit(MASTERCHEF).stopRewards(LP_EXIT_REWARD));
+    uint256 burnAmount = Math.min(
+      IERC20(EXIT).balanceOf(MASTERCHEF),
+      MasterchefExit(MASTERCHEF).stopRewards(LP_EXIT_REWARD)
+    );
+    EXIT.burn(MASTERCHEF, burnAmount);
     exitTokenSupplyFinal = EXIT.totalSupply();
     exitBucketBootstrapBucketFinal = _liquidityAmount() - (pendingBucket + reserveBucket);
     bootstrapBucketFinal = bootstrapBucket;

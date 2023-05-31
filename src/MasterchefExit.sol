@@ -32,6 +32,9 @@ contract MasterchefExit is AMasterchefBase {
   }
 
   function updateRewards(uint256 amount) external override onlyOwner {
+    // Updates pool to account for the previous rewardRate.
+    _massUpdatePools();
+
     _requireNonZeroAmount(amount);
     require(totalAllocPoint != 0, 'MasterchefExit: Must add a pool prior to adding rewards');
     require(rewardRate == 0, 'MasterchefExit: Can only deposit rewards once');

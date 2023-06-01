@@ -45,8 +45,8 @@ contract NFT is ERC721Enumerable, Ownable {
     (tokenAmount, , , , ) = exit10.getBondData(tokenID);
   }
 
-  function getBondClaimed(uint256 tokenID) external view returns (uint256 claimedBoostedToken) {
-    (, claimedBoostedToken, , , ) = exit10.getBondData(tokenID);
+  function getBondClaimed(uint256 tokenID) external view returns (uint256 claimedBLP) {
+    (, claimedBLP, , , ) = exit10.getBondData(tokenID);
   }
 
   function getBondStartTime(uint256 tokenID) external view returns (uint256 startTime) {

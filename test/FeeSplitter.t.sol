@@ -9,7 +9,7 @@ import { ABaseTest } from './ABase.t.sol';
 contract FeeSplitterTest is ABaseTest {
   BaseToken STO = new BaseToken('Share Token', 'STO');
   BaseToken BOOT = new BaseToken('Bootstrap Token', 'BOOT');
-  BaseToken BLP = new BaseToken('Boosted LP', 'BLP');
+  BaseToken BLP = new BaseToken('Base LP', 'BLP');
 
   address public USDC = vm.envAddress('USDC');
   address public WETH = vm.envAddress('WETH');

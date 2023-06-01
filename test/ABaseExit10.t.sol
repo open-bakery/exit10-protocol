@@ -79,7 +79,7 @@ abstract contract ABaseExit10Test is ABaseTest {
     // Deploy tokens
     sto = new STOToken(bytes32('merkle_root'));
     boot = new BaseToken('Bootstap', 'BOOT');
-    blp = new BaseToken('Boost LP', 'BLP');
+    blp = new BaseToken('Base LP', 'BLP');
     exit = new BaseToken('Exit Liquidity', 'EXIT');
     nft = new NFT('Bond Data', 'BND', nftLockPeriod);
 
@@ -277,15 +277,16 @@ abstract contract ABaseExit10Test is ABaseTest {
   function _checkBondData(
     uint256 _bondId,
     uint256 _bondAmount,
-    uint256 _claimedBoostAmount,
+    uint256 _claimedBLP,
     uint256 _startTime,
     uint256 _endTime,
     uint8 _status
   ) internal {
-    (uint256 bondAmount, uint256 claimedBoostToken, uint64 startTime, uint64 endTime, uint8 status) = exit10
-      .getBondData(_bondId);
+    (uint256 bondAmount, uint256 claimedBLP, uint64 startTime, uint64 endTime, uint8 status) = exit10.getBondData(
+      _bondId
+    );
     assertEq(bondAmount, _bondAmount, 'Check bond amount');
-    assertEq(claimedBoostToken, _claimedBoostAmount, 'Check bond claimed boosted tokens');
+    assertEq(claimedBLP, _claimedBLP, 'Check bond claimed blp tokens');
     assertEq(startTime, uint64(_startTime), 'Check bond startTime');
     assertEq(endTime, uint64(_endTime), 'Check bond endTime');
     assertEq(status, _status, 'Check bond status');

@@ -37,7 +37,7 @@ contract Exit10 is UniswapBase, APermit {
 
   struct BondData {
     uint256 bondAmount;
-    uint256 claimedBoostAmount;
+    uint256 claimedBLP;
     uint64 startTime;
     uint64 endTime;
     BondStatus status;
@@ -296,7 +296,7 @@ contract Exit10 is UniswapBase, APermit {
   function convertBond(
     uint256 bondID,
     RemoveLiquidity memory params
-  ) external returns (uint256 boostTokenAmount, uint256 exitTokenAmount) {
+  ) external returns (uint256 blpTokenAmount, uint256 exitTokenAmount) {
     _requireNoExitMode();
     _requireCallerOwnsBond(bondID);
     BondData memory bond = idToBondData[bondID];
@@ -306,21 +306,21 @@ contract Exit10 is UniswapBase, APermit {
 
     params.liquidity = uint128(bond.bondAmount);
     uint256 accruedLiquidity = _getAccruedLiquidity(bond);
-    boostTokenAmount = accruedLiquidity * TOKEN_MULTIPLIER;
+    blpTokenAmount = accruedLiquidity * TOKEN_MULTIPLIER;
 
     idToBondData[bondID].status = BondStatus.converted;
     idToBondData[bondID].endTime = uint64(block.timestamp);
-    idToBondData[bondID].claimedBoostAmount = boostTokenAmount;
+    idToBondData[bondID].claimedBLP = blpTokenAmount;
 
     pendingBucket -= params.liquidity;
     reserveBucket += accruedLiquidity;
 
     exitTokenAmount = _getExitAmount(bond.bondAmount - accruedLiquidity); // Protocol acquired liquidity
 
-    BLP.mint(msg.sender, boostTokenAmount);
+    BLP.mint(msg.sender, blpTokenAmount);
     _mintExitCapped(msg.sender, exitTokenAmount);
 
-    emit ConvertBond(msg.sender, bondID, bond.bondAmount, boostTokenAmount, exitTokenAmount);
+    emit ConvertBond(msg.sender, bondID, bond.bondAmount, blpTokenAmount, exitTokenAmount);
   }
 
   function redeem(RemoveLiquidity memory params) external returns (uint256 amountRemoved0, uint256 amountRemoved1) {
@@ -448,13 +448,9 @@ contract Exit10 is UniswapBase, APermit {
 
   function getBondData(
     uint256 bondID
-  )
-    external
-    view
-    returns (uint256 bondAmount, uint256 claimedBoostAmount, uint64 startTime, uint64 endTime, uint8 status)
-  {
+  ) external view returns (uint256 bondAmount, uint256 claimedBLP, uint64 startTime, uint64 endTime, uint8 status) {
     BondData memory bond = idToBondData[bondID];
-    return (bond.bondAmount, bond.claimedBoostAmount, bond.startTime, bond.endTime, uint8(bond.status));
+    return (bond.bondAmount, bond.claimedBLP, bond.startTime, bond.endTime, uint8(bond.status));
   }
 
   function getBuckets() external view returns (uint256 pending, uint256 reserve, uint256 exit, uint256 bootstrap) {

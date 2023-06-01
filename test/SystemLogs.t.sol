@@ -374,12 +374,12 @@ contract SystemLogsTest is ABaseExit10Test {
   function _convertBond(uint _bondId, address _user) internal {
     (uint bondAmount, , , , ) = exit10.getBondData(_bondId);
     vm.startPrank(_user);
-    (uint boostTokenAmount, uint exitTokenAmount) = exit10.convertBond(_bondId, _removeLiquidityParams(bondAmount));
+    (uint blpTokenAmount, uint exitTokenAmount) = exit10.convertBond(_bondId, _removeLiquidityParams(bondAmount));
     vm.stopPrank();
 
     string memory log0 = string.concat('User: ', userName[_user]);
     string memory log1 = string.concat('Amount Bond: ', Strings.toString(bondAmount));
-    string memory log2 = _displayAmount('Amount', address(blp), boostTokenAmount);
+    string memory log2 = _displayAmount('Amount', address(blp), blpTokenAmount);
     string memory log3 = _displayAmount('Amount', address(exit), exitTokenAmount);
     _title('BOND CONVERTED');
     console.log(log0);

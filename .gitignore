@@ -1,5 +1,5 @@
 .env
-.env.template
+.env.secret
 node_modules
 yarn.lock
 out/
@@ -10,5 +10,7 @@ broadcast/
 .idea
 .reinitSubmodules.sh
 anvil.log
+anvil-8545.log
+anvil-8546.log
 .vscode
 config/local.ini

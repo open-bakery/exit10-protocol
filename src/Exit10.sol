@@ -116,6 +116,7 @@ contract Exit10 is UniswapBase, APermit {
     address indexed caller,
     uint256 bondID,
     uint256 bondAmount,
+    uint256 accrued,
     uint256 blpClaimed,
     uint256 exitClaimed
   );
@@ -320,7 +321,7 @@ contract Exit10 is UniswapBase, APermit {
     BLP.mint(msg.sender, blpTokenAmount);
     _mintExitCapped(msg.sender, exitTokenAmount);
 
-    emit ConvertBond(msg.sender, bondID, bond.bondAmount, blpTokenAmount, exitTokenAmount);
+    emit ConvertBond(msg.sender, bondID, bond.bondAmount, accruedLiquidity, blpTokenAmount, exitTokenAmount);
   }
 
   function redeem(RemoveLiquidity memory params) external returns (uint256 amountRemoved0, uint256 amountRemoved1) {

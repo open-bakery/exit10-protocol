@@ -1,18 +1,21 @@
 #!/bin/bash
 
+echo "Export to ui: $DEPLOYMENT"
 SD="$(dirname "$(readlink -f "$0")")"
-source "$SD/../.env"
-source "$SD/../config/local.ini"
+source <(grep "=" "$SD/../.env")
+source <(grep "=" "$SD/../config/$DEPLOYMENT/exit10.ini")
+echo "DEPLOYER_KEY: $DEPLOYER_KEY"
+echo "exit: $EXIT"
 
-CONTRACTS="Exit10 DepositHelper STOToken"
+CONTRACTS="Exit10 DepositHelper STOToken Masterchef MasterchefExit FeeSplitter"
 for contract in $CONTRACTS; do
   echo "export const $contract = $(jq .abi "$SD/../out/$contract.sol/$contract.json") as const" > "$EXIT10_UI_PATH/src/abis/$contract.ts"
 done
 
 
 echo "export default {
-  weth: '$WETH',
-  usdc: '$USDC',
+  a: '$USDC',
+  bw: '$WETH',
   uniswapV3Factory: '$UNISWAP_V3_FACTORY',
   uniswapV3Router: '$UNISWAP_V3_ROUTER',
   uniswapV3NPM: '$UNISWAP_V3_NPM',
@@ -27,14 +30,13 @@ echo "export default {
   boot: '$BOOT',
   blp: '$BLP',
   exit: '$EXIT',
-  masterchef0: '$MASTERCHEF0',
-  masterchef1: '$MASTERCHEF1',
+  masterchef: '$MASTERCHEF',
   masterchefExit: '$MASTERCHEF_EXIT',
   feeSplitter: '$FEE_SPLITTER',
   exit10: '$EXIT10',
   depositHelper: '$DEPOSIT_HELPER',
   exitLp: '$EXIT_LP',
-} as const;" > "$EXIT10_UI_PATH/src/const/knownAddresses/local.ts"
+} as const;" > "$EXIT10_UI_PATH/src/const/knownAddresses/$DEPLOYMENT.ts"
 
 # this oneliner below does it automatically but keeps the ugly UPPER_CASE.
 # Also we probably don't need all of them for the UI so let's keep it clean and explicit

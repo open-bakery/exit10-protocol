@@ -19,9 +19,9 @@ reinit:
 #SED_REPLACE="s/{{WETH}}/$$WETH/;s/{{USDC}}/$$USDC/;s/{{UNISWAP_V3_FACTORY}}/$$UNISWAP_V3_FACTORY/;s/{{UNISWAP_V3_ROUTER}}/$$UNISWAP_V3_ROUTER/;s/{{UNISWAP_V3_NPM}}/$$UNISWAP_V3_NPM/;s/{{SWAPPER}}/$$SWAPPER/;s/{{UNISWAP_V2_ROUTER}}/$$UNISWAP_V2_ROUTER/;s/{{UNISWAP_V2_FACTORY}}/$$UNISWAP_V2_FACTORY/;s/{{POOL}}/$$POOL/"
 
 kill-anvil:
-	@if lsof -t -i :$(ANVIL_PORT) > /dev/null 2>&1; then \
+	@if pidof anvil > /dev/null 2>&1; then \
 		echo "Anvil is already running, killing it..."; \
-		kill $$(lsof -t -i :$(ANVIL_PORT)); \
+		kill $$(pidof anvil); \
 	fi
 
 wait-for-anvil:

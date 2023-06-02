@@ -29,7 +29,7 @@ contract Exit10Test is ABaseExit10Test {
     assertEq(exit10.FEE_SPLITTER(), address(feeSplitter), 'setup FEE_SPLITTER');
     assertEq(exit10.BENEFICIARY(), address(beneficiary), 'setup BENEFICIARY');
 
-    assertEq(exit10.BOOTSTRAP_FINISH(), bootstrapPeriod + block.timestamp, 'setup BOOTSTRAP_FINISH');
+    assertEq(exit10.BOOTSTRAP_FINISH(), bootstrapDuration + block.timestamp, 'setup BOOTSTRAP_FINISH');
     assertEq(exit10.ACCRUAL_PARAMETER(), accrualParameter, 'setup ACCRUAL_PARAMETER');
   }
 }

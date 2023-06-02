@@ -40,7 +40,7 @@ contract Exit10_bootstrapLockCappedTest is ABaseExit10Test {
     exit10.bootstrapLock(params);
   }
 
-  function test_bootstrapLock_capped_revertIf_createBondBeforeBootstrapPeriodOver() public {
+  function test_bootstrapLock_capped_revertIf_createBondBeforebootstrapDurationOver() public {
     (uint256 amount0, uint256 amount1) = (exit10.TOKEN_OUT() < exit10.TOKEN_IN())
       ? (_tokenAmount(exit10.TOKEN_OUT(), 10_000_000), _tokenAmount(exit10.TOKEN_IN(), 10_000))
       : (_tokenAmount(exit10.TOKEN_IN(), 10_000), _tokenAmount(exit10.TOKEN_OUT(), 10_000_000));

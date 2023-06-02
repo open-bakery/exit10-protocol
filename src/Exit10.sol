@@ -29,7 +29,7 @@ contract Exit10 is UniswapBase, APermit {
     address feeSplitter; // Distribution to STO + BOOT and BLP stakers
     address beneficiary; // Address to receive fees if pool goes back into range after Exit10
     address lido;
-    uint256 bootstrapPeriod;
+    uint256 bootstrapDuration;
     uint256 bootstrapCap;
     uint256 liquidityPerUsd; // Amount of liquidity per USD that is minted passed the upper range of the 500-10000 pool
     uint256 accrualParameter; // The number of seconds it takes to accrue 50% of the cap, represented as an 18 digit fixed-point number.
@@ -153,7 +153,7 @@ contract Exit10 is UniswapBase, APermit {
     BENEFICIARY = params_.beneficiary;
     LIDO = params_.lido;
 
-    BOOTSTRAP_FINISH = params_.bootstrapPeriod + block.timestamp;
+    BOOTSTRAP_FINISH = params_.bootstrapDuration + block.timestamp;
     BOOTSTRAP_LIQUIDITY_CAP = params_.bootstrapCap;
     ACCRUAL_PARAMETER = params_.accrualParameter;
     LIQUIDITY_PER_USD = params_.liquidityPerUsd;

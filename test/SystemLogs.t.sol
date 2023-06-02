@@ -28,7 +28,7 @@ contract SystemLogsTest is ABaseExit10Test {
     _generateClaimAndDistributeFees();
     _displayRewardBalanceMasterchefs();
     _displayBuckets();
-    _skip(bootstrapPeriod);
+    _skip(bootstrapDuration);
 
     uint256 deposit0 = _tokenAmount(address(token0), 10_000);
     uint256 deposit1 = _tokenAmount(address(token1), 100);
@@ -76,7 +76,7 @@ contract SystemLogsTest is ABaseExit10Test {
 
   function testScenario_1() public {
     _displayPrice();
-    _skip(bootstrapPeriod);
+    _skip(bootstrapDuration);
     uint256 deposit0 = _tokenAmount(address(token0), 10_000);
     uint256 deposit1 = _tokenAmount(address(token1), 100);
     if (tokenIn < tokenOut) {
@@ -126,7 +126,7 @@ contract SystemLogsTest is ABaseExit10Test {
     _generateClaimAndDistributeFees();
     _displayRewardBalanceMasterchefs();
     _displayBuckets();
-    _skip(bootstrapPeriod);
+    _skip(bootstrapDuration);
     uint256 deposit0 = _tokenAmount(address(token0), 10_000);
     uint256 deposit1 = _tokenAmount(address(token1), 100);
     if (tokenIn < tokenOut) {

@@ -43,7 +43,7 @@ abstract contract ABaseExit10Test is ABaseTest {
   address uniswapV3Factory = vm.envAddress('UNISWAP_V3_FACTORY');
   address nonfungiblePositionManager = vm.envAddress('UNISWAP_V3_NPM');
   uint256 accrualParameter = vm.envUint('ACCRUAL_PARAMETER');
-  uint256 bootstrapPeriod = vm.envUint('BOOTSTRAP_PERIOD');
+  uint256 bootstrapDuration = vm.envUint('BOOTSTRAP_DURATION');
   uint256 liquidityPerUsd = vm.envUint('LIQUIDITY_PER_USDC');
   uint256 bootstrapCap = vm.envUint('BOOTSTRAP_LIQUIDITY_CAP');
   uint24 fee = uint24(vm.envUint('FEE'));
@@ -98,7 +98,7 @@ abstract contract ABaseExit10Test is ABaseTest {
       feeSplitter: feeSplitter,
       beneficiary: beneficiary,
       lido: _getLidoAddress(),
-      bootstrapPeriod: bootstrapPeriod,
+      bootstrapDuration: bootstrapDuration,
       bootstrapCap: _getBootstrapCap(),
       accrualParameter: accrualParameter,
       liquidityPerUsd: liquidityPerUsd
@@ -195,7 +195,7 @@ abstract contract ABaseExit10Test is ABaseTest {
   }
 
   function _skipBootstrap() internal {
-    skip(bootstrapPeriod);
+    skip(bootstrapDuration);
   }
 
   function _skipToExit() internal {

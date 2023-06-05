@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
-import { ERC721, ERC721Enumerable } from '@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol';
+import { ERC721 } from '@openzeppelin/contracts/token/ERC721/ERC721.sol';
 import { Ownable } from '@openzeppelin/contracts/access/Ownable.sol';
 import { Exit10 } from './Exit10.sol';
+import { Artwork } from './artwork/Artwork.sol';
 
-contract NFT is ERC721Enumerable, Ownable {
+contract NFT is ERC721, Ownable {
   Exit10 public exit10;
+  address public artwork;
   uint256 public immutable TRANSFER_LOCKOUT_PERIOD_SECONDS;
+  uint256 public totalSupply;
 
   event SetExit10(address indexed caller, address exit10);
+  event SetArtwork(address indexed caller, address artwork);
 
   modifier onlyAuthorized() {
     require(msg.sender == address(exit10), 'NFT: Caller must be Exit10');
@@ -24,21 +28,24 @@ contract NFT is ERC721Enumerable, Ownable {
   }
 
   function setExit10(address payable exit10_) external onlyOwner {
-    require(exit10_ != address(0), 'NFT: exit10_ must be non-zero');
+    require(address(exit10) == address(0), 'NFT: exit10 can only be set once');
     exit10 = Exit10(exit10_);
-    renounceOwnership();
     emit SetExit10(msg.sender, exit10_);
   }
 
+  function setArtwork(address artwork_) external onlyOwner {
+    artwork = artwork_;
+    emit SetArtwork(msg.sender, artwork_);
+  }
+
   function mint(address recipient) external onlyAuthorized returns (uint256 tokenID) {
-    // We actually increase totalSupply in `ERC721Enumerable._beforeTokenTransfer` when we `_mint`.
-    tokenID = totalSupply() + 1;
+    tokenID = ++totalSupply;
     _mint(recipient, tokenID);
   }
 
   function tokenURI(uint256 tokenID) public view override returns (string memory) {
     require(_exists(tokenID), 'NFT: URI query for nonexistent token');
-    return ('uri');
+    return Artwork(artwork).tokenURI(tokenID);
   }
 
   function getBondAmount(uint256 tokenID) external view returns (uint256 tokenAmount) {

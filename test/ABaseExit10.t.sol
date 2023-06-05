@@ -7,6 +7,7 @@ import { ABaseTest } from './ABase.t.sol';
 import { BaseToken } from '../src/BaseToken.sol';
 import { STOToken } from '../src/STOToken.sol';
 import { NFT } from '../src/NFT.sol';
+import { Artwork } from '../src/artwork/Artwork.sol';
 import { FeeSplitter } from '../src/FeeSplitter.sol';
 import { MasterchefExit } from '../src/Exit10.sol';
 import { Masterchef } from '../src/Masterchef.sol';
@@ -15,6 +16,7 @@ import { MockLido } from '../src/mocks/MockLido.sol';
 
 abstract contract ABaseExit10Test is ABaseTest {
   Exit10 exit10;
+  address artwork;
   NFT nft;
   STOToken sto;
   BaseToken boot;
@@ -105,7 +107,9 @@ abstract contract ABaseExit10Test is ABaseTest {
     });
 
     exit10 = new Exit10(baseParams, params);
+    artwork = address(new Artwork(payable(exit10)));
     nft.setExit10(payable(exit10));
+    nft.setArtwork(artwork);
     FeeSplitter(feeSplitter).setExit10(payable(exit10));
     lp = _pairForUniswapV2(address(UNISWAP_V2_FACTORY), usdc, address(exit));
     _setMasterchef(feeSplitter);

@@ -29,6 +29,7 @@ contract Exit10 is UniswapBase, APermit {
     address feeSplitter; // Distribution to STO + BOOT and BLP stakers
     address beneficiary; // Address to receive fees if pool goes back into range after Exit10
     address lido;
+    uint256 bootstrapStart;
     uint256 bootstrapDuration;
     uint256 bootstrapCap;
     uint256 liquidityPerUsd; // Amount of liquidity per USD that is minted passed the upper range of the 500-10000 pool
@@ -92,6 +93,7 @@ contract Exit10 is UniswapBase, APermit {
   address public immutable MASTERCHEF;
   address public immutable FEE_SPLITTER;
 
+  uint256 public immutable BOOTSTRAP_START;
   uint256 public immutable BOOTSTRAP_FINISH;
   uint256 public immutable BOOTSTRAP_LIQUIDITY_CAP;
   uint256 public immutable ACCRUAL_PARAMETER;
@@ -153,7 +155,8 @@ contract Exit10 is UniswapBase, APermit {
     BENEFICIARY = params_.beneficiary;
     LIDO = params_.lido;
 
-    BOOTSTRAP_FINISH = params_.bootstrapDuration + block.timestamp;
+    BOOTSTRAP_START = params_.bootstrapStart;
+    BOOTSTRAP_FINISH = params_.bootstrapDuration + params_.bootstrapStart;
     BOOTSTRAP_LIQUIDITY_CAP = params_.bootstrapCap;
     ACCRUAL_PARAMETER = params_.accrualParameter;
     LIQUIDITY_PER_USD = params_.liquidityPerUsd;
@@ -170,6 +173,7 @@ contract Exit10 is UniswapBase, APermit {
     AddLiquidity memory params
   ) public payable returns (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) {
     _requireNoExitMode();
+    require(block.timestamp >= BOOTSTRAP_START, 'EXIT10: Bootstrap not started');
     require(_isBootstrapOngoing(), 'EXIT10: Bootstrap ended');
     require(!isBootstrapCapReached, 'EXIT10: Bootstrap cap reached');
 

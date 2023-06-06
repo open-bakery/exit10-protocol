@@ -3,6 +3,12 @@ pragma solidity ^0.8.0;
 import { UniswapBase, ABaseExit10Test } from './ABaseExit10.t.sol';
 
 contract Exit10_bootstrapLockTest is ABaseExit10Test {
+  function test_bootstrapLock_revert_berforeStartTime() public {
+    vm.warp(block.timestamp - 1);
+    vm.expectRevert(bytes('EXIT10: Bootstrap not started'));
+    exit10.bootstrapLock(_addLiquidityParams(10000_000000, 10 ether));
+  }
+
   function test_bootstrapLock() public {
     (uint256 tokenId, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) = exit10.bootstrapLock(
       _addLiquidityParams(10000_000000, 10 ether)

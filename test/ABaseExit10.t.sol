@@ -45,6 +45,7 @@ abstract contract ABaseExit10Test is ABaseTest {
   address uniswapV3Factory = vm.envAddress('UNISWAP_V3_FACTORY');
   address nonfungiblePositionManager = vm.envAddress('UNISWAP_V3_NPM');
   uint256 accrualParameter = vm.envUint('ACCRUAL_PARAMETER');
+  uint256 bootstrapStart = vm.envUint('BOOTSTRAP_START');
   uint256 bootstrapDuration = vm.envUint('BOOTSTRAP_DURATION');
   uint256 liquidityPerUsd = vm.envUint('LIQUIDITY_PER_USDC');
   uint256 bootstrapCap = vm.envUint('BOOTSTRAP_LIQUIDITY_CAP');
@@ -89,6 +90,8 @@ abstract contract ABaseExit10Test is ABaseTest {
     masterchef = new Masterchef(weth, rewardsDuration);
     masterchefExit = new MasterchefExit(address(exit), rewardsDurationExit);
 
+    bootstrapStart = block.timestamp;
+
     feeSplitter = address(new FeeSplitter(address(masterchef), vm.envAddress('SWAPPER')));
     Exit10.DeployParams memory params = Exit10.DeployParams({
       NFT: address(nft),
@@ -100,6 +103,7 @@ abstract contract ABaseExit10Test is ABaseTest {
       feeSplitter: feeSplitter,
       beneficiary: beneficiary,
       lido: _getLidoAddress(),
+      bootstrapStart: bootstrapStart,
       bootstrapDuration: bootstrapDuration,
       bootstrapCap: _getBootstrapCap(),
       accrualParameter: accrualParameter,

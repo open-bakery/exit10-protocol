@@ -13,15 +13,19 @@ contract Exit10_exitClaimTest is ABaseExit10Test {
     (uint256 bondIdAlice, uint256 bondAmountAlice) = _createBond(alice);
     skip(100);
     exit10.convertBond(bondIdAlice, _removeLiquidityParams(bondAmountAlice));
+    uint256 blpBalanceAlice = blp.balanceOf(address(alice));
+    blp.approve(address(masterchefExit), type(uint).max);
+    masterchefExit.deposit(1, blpBalanceAlice);
     vm.stopPrank();
 
     _generateFees(token0, token1, _tokenAmount(token0, 100_000_000));
     exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
+    uint256 blpBalance = blp.balanceOf(address(this));
+    blp.approve(address(masterchefExit), type(uint).max);
+    masterchefExit.deposit(1, blpBalance);
+
     FeeSplitter(feeSplitter).updateFees(0);
-    uint256 balanceWeth = _balance(weth, address(exit10));
     assertGt(_balance(exit10.TOKEN_IN(), address(exit10)), 0, 'Check balance of tokenIn in Exit10');
-    uint256 totalLidoShare = exit10.stakeEth(balanceWeth / 2);
-    assertGt(totalLidoShare, 0, 'Check added ETH to Lido');
 
     // exit10
     _eth10k();
@@ -32,6 +36,12 @@ contract Exit10_exitClaimTest is ABaseExit10Test {
     uint256 initialBalanceTokenIn = _balance(exit10.TOKEN_IN());
     uint256 initialLidoShare = ILido(exit10.LIDO()).sharesOf(address(exit10));
     uint256 initialBalanceExitTokenIn = _balance(exit10.TOKEN_IN(), address(exit10));
+
+    vm.prank(alice);
+    masterchefExit.withdraw(1, blpBalanceAlice);
+    masterchefExit.withdraw(1, blpBalance);
+    assertGt(_balance(exit), 0, 'Check exit balance');
+    assertGt(_balance(exit, alice), 0, 'Check exit balance');
     uint256 exitTokenShare = (_balance(exit) * precision) / exit.totalSupply();
 
     // claim as alice first so that we don't start with zero

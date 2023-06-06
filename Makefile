@@ -92,13 +92,13 @@ testAllFlip:
 	forge test -vv --fork-url $(RPC_URL_FLIP)
 
 tests:
-	forge test -vv  --nmc "SystemLogsTest|FuzzTest" --fork-url $(RPC_URL)
+	forge test -vv  --nmc "SystemLogsTest|FuzzTest|NFT_Test" --fork-url $(RPC_URL)
 
 trace:
-	forge test -vv --nmc "SystemLogsTest|FuzzTest" --fork-url $(RPC_URL)
+	forge test -vv --nmc "SystemLogsTest|FuzzTest|NFT_Test" --fork-url $(RPC_URL)
 
 single:
-	forge test -vvv --mt test_swapAndBootstrapLockWithPermit_ZeroSwap --fork-url $(RPC_URL)
+	forge test -vvv --mt testScenario_1 --fork-url $(RPC_URL)
 
 systemLogs:
 	forge test -vv --mc SystemLogsTest --fork-url $(RPC_URL)

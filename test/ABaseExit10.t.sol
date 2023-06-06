@@ -47,7 +47,6 @@ abstract contract ABaseExit10Test is ABaseTest {
   uint256 accrualParameter = vm.envUint('ACCRUAL_PARAMETER');
   uint256 bootstrapStart = vm.envUint('BOOTSTRAP_START');
   uint256 bootstrapDuration = vm.envUint('BOOTSTRAP_DURATION');
-  uint256 liquidityPerUsd = vm.envUint('LIQUIDITY_PER_USDC');
   uint256 bootstrapCap = vm.envUint('BOOTSTRAP_LIQUIDITY_CAP');
   uint24 fee = uint24(vm.envUint('FEE'));
   int24 tickLower = int24(vm.envInt('LOWER_TICK'));
@@ -106,8 +105,7 @@ abstract contract ABaseExit10Test is ABaseTest {
       bootstrapStart: bootstrapStart,
       bootstrapDuration: bootstrapDuration,
       bootstrapCap: _getBootstrapCap(),
-      accrualParameter: accrualParameter,
-      liquidityPerUsd: liquidityPerUsd
+      accrualParameter: accrualParameter
     });
 
     exit10 = new Exit10(baseParams, params);
@@ -361,10 +359,6 @@ abstract contract ABaseExit10Test is ABaseTest {
 
   function _balance1() internal view returns (uint256) {
     return _balance(token1);
-  }
-
-  function _getExitAmount(uint256 _liquidity) internal view virtual returns (uint256) {
-    return (_liquidity * DECIMAL_PRECISION) / liquidityPerUsd / 100;
   }
 
   function _getTotalDepositedUSD(uint256 _amount0, uint256 _amount1) internal view returns (uint256) {

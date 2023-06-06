@@ -32,7 +32,6 @@ contract Exit10 is UniswapBase, APermit {
     uint256 bootstrapStart;
     uint256 bootstrapDuration;
     uint256 bootstrapCap;
-    uint256 liquidityPerUsd; // Amount of liquidity per USD that is minted passed the upper range of the 500-10000 pool
     uint256 accrualParameter; // The number of seconds it takes to accrue 50% of the cap, represented as an 18 digit fixed-point number.
   }
 
@@ -74,13 +73,10 @@ contract Exit10 is UniswapBase, APermit {
   mapping(uint256 => BondData) private idToBondData;
 
   uint256 public constant TOKEN_MULTIPLIER = 1e8;
-  uint256 public constant FARM_EXIT_REWARD = 9_000_000 ether;
-  uint256 public constant BONDERS_EXIT_REWARD = 1_000_000 ether;
-  uint256 public constant MAX_EXIT_SUPPLY = FARM_EXIT_REWARD + BONDERS_EXIT_REWARD;
+  uint256 public constant MAX_EXIT_SUPPLY = 10_000_000 ether;
   uint128 private constant MAX_UINT_128 = type(uint128).max;
   uint256 private constant MAX_UINT_256 = type(uint256).max;
   uint256 private constant DEADLINE = 1e10;
-  uint256 private constant DECIMAL_PRECISION = 1e18;
 
   BaseToken public immutable STO;
   BaseToken public immutable BOOT;
@@ -97,7 +93,6 @@ contract Exit10 is UniswapBase, APermit {
   uint256 public immutable BOOTSTRAP_FINISH;
   uint256 public immutable BOOTSTRAP_LIQUIDITY_CAP;
   uint256 public immutable ACCRUAL_PARAMETER;
-  uint256 public immutable LIQUIDITY_PER_USD;
 
   event BootstrapLock(
     address indexed recipient,
@@ -114,14 +109,7 @@ contract Exit10 is UniswapBase, APermit {
     uint256 amountAdded1
   );
   event CancelBond(address indexed caller, uint256 bondID, uint256 amountReturned0, uint256 amountReturned1);
-  event ConvertBond(
-    address indexed caller,
-    uint256 bondID,
-    uint256 bondAmount,
-    uint256 accrued,
-    uint256 blpClaimed,
-    uint256 exitClaimed
-  );
+  event ConvertBond(address indexed caller, uint256 bondID, uint256 bondAmount, uint256 accrued, uint256 blpClaimed);
   event Redeem(address indexed caller, uint256 burnedBLP, uint256 amountReturned0, uint256 amountReturned1);
   event Exit(
     address indexed caller,
@@ -159,7 +147,6 @@ contract Exit10 is UniswapBase, APermit {
     BOOTSTRAP_FINISH = params_.bootstrapDuration + params_.bootstrapStart;
     BOOTSTRAP_LIQUIDITY_CAP = params_.bootstrapCap;
     ACCRUAL_PARAMETER = params_.accrualParameter;
-    LIQUIDITY_PER_USD = params_.liquidityPerUsd;
 
     IERC20(IUniswapV3Pool(POOL).token0()).approve(NPM, MAX_UINT_256);
     IERC20(IUniswapV3Pool(POOL).token1()).approve(NPM, MAX_UINT_256);
@@ -221,8 +208,8 @@ contract Exit10 is UniswapBase, APermit {
     require(!_isBootstrapOngoing(), 'EXIT10: Bootstrap ongoing');
 
     if (!hasUpdatedRewards) {
-      EXIT.mint(MASTERCHEF, FARM_EXIT_REWARD);
-      MasterchefExit(MASTERCHEF).updateRewards(FARM_EXIT_REWARD);
+      EXIT.mint(MASTERCHEF, MAX_EXIT_SUPPLY);
+      MasterchefExit(MASTERCHEF).updateRewards(MAX_EXIT_SUPPLY);
       hasUpdatedRewards = true;
     }
 
@@ -298,10 +285,7 @@ contract Exit10 is UniswapBase, APermit {
     emit CancelBond(msg.sender, bondID, amountCollected0, amountCollected1);
   }
 
-  function convertBond(
-    uint256 bondID,
-    RemoveLiquidity memory params
-  ) external returns (uint256 blpTokenAmount, uint256 exitTokenAmount) {
+  function convertBond(uint256 bondID, RemoveLiquidity memory params) external returns (uint256 blpTokenAmount) {
     _requireNoExitMode();
     _requireCallerOwnsBond(bondID);
     BondData memory bond = idToBondData[bondID];
@@ -320,12 +304,9 @@ contract Exit10 is UniswapBase, APermit {
     pendingBucket -= params.liquidity;
     reserveBucket += accruedLiquidity;
 
-    exitTokenAmount = _getExitAmount(bond.bondAmount - accruedLiquidity); // Protocol acquired liquidity
-
     BLP.mint(msg.sender, blpTokenAmount);
-    _mintExitCapped(msg.sender, exitTokenAmount);
 
-    emit ConvertBond(msg.sender, bondID, bond.bondAmount, accruedLiquidity, blpTokenAmount, exitTokenAmount);
+    emit ConvertBond(msg.sender, bondID, bond.bondAmount, accruedLiquidity, blpTokenAmount);
   }
 
   function redeem(RemoveLiquidity memory params) external returns (uint256 amountRemoved0, uint256 amountRemoved1) {
@@ -357,7 +338,7 @@ contract Exit10 is UniswapBase, APermit {
     // Stop and burn Exit rewards.
     uint256 burnAmount = Math.min(
       IERC20(EXIT).balanceOf(MASTERCHEF),
-      MasterchefExit(MASTERCHEF).stopRewards(FARM_EXIT_REWARD)
+      MasterchefExit(MASTERCHEF).stopRewards(MAX_EXIT_SUPPLY)
     );
     EXIT.burn(MASTERCHEF, burnAmount);
     exitTokenSupplyFinal = EXIT.totalSupply();
@@ -497,11 +478,6 @@ contract Exit10 is UniswapBase, APermit {
     }
 
     emit ClaimAndDistributeFees(msg.sender, amountCollected0, amountCollected1);
-  }
-
-  function _getExitAmount(uint256 _liquidity) internal view returns (uint256) {
-    // One Exit token minted for 100 USD worth of liquidity captured
-    return (_liquidity * DECIMAL_PRECISION) / LIQUIDITY_PER_USD / 100;
   }
 
   function _getClaimableAmount(

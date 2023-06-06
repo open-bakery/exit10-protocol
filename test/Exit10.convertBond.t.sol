@@ -16,7 +16,7 @@ contract Exit10_convertBondTest is ABaseExit10Test {
     uint256 exitBucket = _getLiquidity() - (liquidity / 2);
 
     assertEq(_balance(blp), (liquidity / 2) * exit10.TOKEN_MULTIPLIER(), 'BLP balance');
-    assertEq(_balance(exit), _getExitAmount(exitBucket), 'Check exit minted');
+    assertEq(_balance(exit), 0, 'Check exit minted');
     assertEq(_balance(blp), (liquidity / 2) * exit10.TOKEN_MULTIPLIER(), 'BLP balance');
 
     _checkBalancesExit10(0, 0);
@@ -81,6 +81,5 @@ contract Exit10_convertBondTest is ABaseExit10Test {
     (uint256 bondId, uint256 bondAmount) = _skipBootAndCreateBond(amount0, amount1);
     exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
     assertEq(exit.totalSupply(), exit10.MAX_EXIT_SUPPLY(), 'Check exit token capmint');
-    assertEq(exit.balanceOf(address(this)), exit10.BONDERS_EXIT_REWARD(), 'Check exit balance');
   }
 }

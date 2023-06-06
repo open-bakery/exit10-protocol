@@ -45,12 +45,9 @@ contract SystemLogsTest is ABaseExit10Test {
     _convertBond(bondIdB, bob);
     _skip(accrualParameter * 4);
     _convertBond(bondIdC, charlie);
+    _stakeBlpAll(true);
     _displayBuckets();
-    _lpAndStakeLpAll();
     _skip(accrualParameter);
-    _claimExitRewards(alice);
-    _claimExitRewards(bob);
-    _claimExitRewards(charlie);
     _generateClaimAndDistributeFees();
     _distributeRewardsToMasterchefs();
     _skip(accrualParameter);
@@ -60,10 +57,13 @@ contract SystemLogsTest is ABaseExit10Test {
     _claimEthRewards(alice, address(masterchef), 1);
     _claimEthRewards(bob, address(masterchef), 1);
     _claimEthRewards(charlie, address(masterchef), 1);
-    _stakeBlpAll(true);
+    _stakeBlpAll(false);
+    _lpAndStakeLpAll();
     _toTheMoon();
     _skip(accrualParameter);
-    _stakeBlpAll(false);
+    _claimExitRewards(alice);
+    _claimExitRewards(bob);
+    _claimExitRewards(charlie);
     _exit10();
     _unstakeLpAndBreakLpAll();
     _stakeBootstrapAll(false);
@@ -93,6 +93,9 @@ contract SystemLogsTest is ABaseExit10Test {
     _skip(accrualParameter * 4);
     _convertBond(bondIdC, charlie);
     _displayBuckets();
+    _stakeBlpAll(true);
+    _skip(accrualParameter);
+    _stakeBlpAll(false);
     _redeem(alice);
     _redeem(bob);
     _redeem(charlie);
@@ -137,6 +140,9 @@ contract SystemLogsTest is ABaseExit10Test {
     _generateFees();
     _convertBond(bondId, alice);
     _displayBuckets();
+    _stake(alice, address(masterchefExit), 1, address(blp));
+    _skip(accrualParameter);
+    _unstake(alice, address(masterchefExit), 1, address(blp));
     _lpExit(alice);
     _stake(alice, address(masterchefExit), 0, lp);
     _skip(accrualParameter);
@@ -374,18 +380,16 @@ contract SystemLogsTest is ABaseExit10Test {
   function _convertBond(uint _bondId, address _user) internal {
     (uint bondAmount, , , , ) = exit10.getBondData(_bondId);
     vm.startPrank(_user);
-    (uint blpTokenAmount, uint exitTokenAmount) = exit10.convertBond(_bondId, _removeLiquidityParams(bondAmount));
+    uint blpTokenAmount = exit10.convertBond(_bondId, _removeLiquidityParams(bondAmount));
     vm.stopPrank();
 
     string memory log0 = string.concat('User: ', userName[_user]);
     string memory log1 = string.concat('Amount Bond: ', Strings.toString(bondAmount));
     string memory log2 = _displayAmount('Amount', address(blp), blpTokenAmount);
-    string memory log3 = _displayAmount('Amount', address(exit), exitTokenAmount);
     _title('BOND CONVERTED');
     console.log(log0);
     console.log(log1);
     console.log(log2);
-    console.log(log3);
     _spacer();
   }
 

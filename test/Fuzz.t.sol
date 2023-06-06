@@ -56,17 +56,13 @@ contract FuzzTest is ABaseExit10Test {
     uint256 liquidity = _getLiquidity();
     skip(accrualParameter); // skips to half
 
-    uint256 accruedAmount = exit10.getAccruedAmount(bondId);
-    uint256 exitSupply = exit.totalSupply();
     exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
 
     uint64 endTime = uint64(block.timestamp);
     uint256 exitBucket = _getLiquidity() - (liquidity / 2);
 
     assertEq(_balance(blp), (liquidity / 2) * exit10.TOKEN_MULTIPLIER(), 'BLP balance');
-    uint256 exitBalance = _getExitAmount(liquidity - accruedAmount) + exitSupply > exit10.MAX_EXIT_SUPPLY()
-      ? exit10.MAX_EXIT_SUPPLY() - exitSupply
-      : _getExitAmount(liquidity - accruedAmount);
+    uint256 exitBalance = 0;
     assertEq(_balance(exit), exitBalance, 'Check exit bucket');
     assertEq(_balance(blp), (liquidity / 2) * exit10.TOKEN_MULTIPLIER(), 'BLP balance');
     _checkBalancesExit10(0, 0);
@@ -182,6 +178,11 @@ contract FuzzTest is ABaseExit10Test {
     );
     skip(accrualParameter);
     exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
+    uint256 blpBalance = blp.balanceOf(address(this));
+    blp.approve(address(masterchefExit), type(uint).max);
+    masterchefExit.deposit(1, blpBalance);
+    skip(10);
+    masterchefExit.withdraw(1, blpBalance);
     _eth10k();
     exit10.exit10();
 

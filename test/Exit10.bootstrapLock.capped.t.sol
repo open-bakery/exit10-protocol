@@ -37,11 +37,7 @@ contract Exit10_bootstrapLockCappedTest is ABaseExit10Test {
       ? (_tokenAmount(exit10.TOKEN_OUT(), 10_000_000), _tokenAmount(exit10.TOKEN_IN(), 10_000))
       : (_tokenAmount(exit10.TOKEN_IN(), 10_000), _tokenAmount(exit10.TOKEN_OUT(), 10_000_000));
 
-    uint256 balanceBefore0 = _balance(address(token0));
-    uint256 balanceBefore1 = _balance(address(token1));
-    (, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) = exit10.bootstrapLock(
-      _addLiquidityParams(amount0, amount1)
-    );
+    exit10.bootstrapLock(_addLiquidityParams(amount0, amount1));
     _eth10k();
     exit10.exit10();
     uint256 tokenOutBalance = _balance(exit10.TOKEN_OUT(), address(exit10));

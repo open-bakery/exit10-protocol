@@ -28,6 +28,32 @@ contract Exit10_bootstrapLockCappedTest is ABaseExit10Test {
     assertEq(_balance(address(token1)), balanceBefore1 - amountAdded1, 'check balance 1');
   }
 
+  function test_bootstrapLock_capped_tokenOutAmount() public {
+    // Liquidity that would be normally added vs cap:
+    // Liquidity per USDC 12875978289:1000000
+    // Cap 10_000_000 = 128759782890000000 Liquidity @ ETH 10K
+
+    (uint256 amount0, uint256 amount1) = (exit10.TOKEN_OUT() < exit10.TOKEN_IN())
+      ? (_tokenAmount(exit10.TOKEN_OUT(), 10_000_000), _tokenAmount(exit10.TOKEN_IN(), 10_000))
+      : (_tokenAmount(exit10.TOKEN_IN(), 10_000), _tokenAmount(exit10.TOKEN_OUT(), 10_000_000));
+
+    uint256 balanceBefore0 = _balance(address(token0));
+    uint256 balanceBefore1 = _balance(address(token1));
+    (, uint128 liquidityAdded, uint256 amountAdded0, uint256 amountAdded1) = exit10.bootstrapLock(
+      _addLiquidityParams(amount0, amount1)
+    );
+    _eth10k();
+    exit10.exit10();
+    uint256 tokenOutBalance = _balance(exit10.TOKEN_OUT(), address(exit10));
+
+    assertApproxEqRel(
+      tokenOutBalance,
+      _tokenAmount(exit10.TOKEN_OUT(), 10_000_000),
+      0.01 ether,
+      'Check TOKEN_OUT after exit10'
+    );
+  }
+
   function test_bootstrapLock_capped_revertIf_capReached() public {
     (uint256 amount0, uint256 amount1) = (exit10.TOKEN_OUT() < exit10.TOKEN_IN())
       ? (_tokenAmount(exit10.TOKEN_OUT(), 10_000_000), _tokenAmount(exit10.TOKEN_IN(), 10_000))

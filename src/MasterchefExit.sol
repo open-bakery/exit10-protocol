@@ -41,7 +41,7 @@ contract MasterchefExit is AMasterchefBase {
     require(IERC20(REWARD_TOKEN).balanceOf(address(this)) >= amount, 'MasterchefExit: Token balance not sufficient');
     rewardRate = (amount * PRECISION) / REWARDS_DURATION;
     periodFinish = block.timestamp + REWARDS_DURATION;
-    emit UpdateRewards(msg.sender, amount);
+    emit UpdateRewards(msg.sender, amount, rewardRate, periodFinish);
   }
 
   function stopRewards(uint256 allocatedRewards) external onlyOwner returns (uint256 undistributedRewards) {

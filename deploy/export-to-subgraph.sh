@@ -4,7 +4,7 @@ SD="$(dirname "$(readlink -f "$0")")"
 source <(grep "=" "$SD/../.env")
 source <(grep "=" "$SD/../config/$DEPLOYMENT/exit10.ini")
 
-CONTRACTS="Exit10 STOToken AMasterchefBase Masterchef MasterchefExit FeeSplitter"
+CONTRACTS="Exit10 BaseToken STOToken AMasterchefBase Masterchef MasterchefExit FeeSplitter"
 echo "{
   \"startBlock\": $START_BLOCK,
   \"network\": \"$GRAPH_NETWORK\",

@@ -261,6 +261,12 @@ skip_day 1
 skip_day 1
 echo "bootstrap 4"
 bootstrap_lock "$B" "200000" "200"
+
+if [ "$PHASE" = "bootstrap" ]
+then
+  exit 0
+fi
+
 skip_day 1
 echo "bootstrap 5"
 bootstrap_lock "$C" "200000" "200"

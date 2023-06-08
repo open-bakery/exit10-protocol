@@ -58,19 +58,24 @@ contract SystemLogsTest is ABaseExit10Test {
     _claimEthRewards(bob, address(masterchef), 1);
     _claimEthRewards(charlie, address(masterchef), 1);
     _stakeBlpAll(false);
+    _stakeBlpAll(true);
     _lpAndStakeLpAll();
     _toTheMoon();
-    _skip(accrualParameter);
+    _skip(rewardsDurationExit);
     _claimExitRewards(alice);
     _claimExitRewards(bob);
     _claimExitRewards(charlie);
     _exit10();
-    _unstakeLpAndBreakLpAll();
     _stakeBootstrapAll(false);
     _stakeStoAll(false);
     _claimFinalAll();
     _displayTreasury();
     _displaySupplies();
+    _displayRewardBalanceMasterchefs();
+    _skip(rewardsDurationExit);
+    _unstakeLpAndBreakLpAll();
+    _stakeBlpAll(false);
+    _exitClaimAll();
     _displayRewardBalanceMasterchefs();
   }
 
@@ -455,16 +460,18 @@ contract SystemLogsTest is ABaseExit10Test {
   function _exitClaim(address _user) internal {
     uint256 balance = exit.balanceOf(_user);
     vm.startPrank(_user);
-    (uint256 claim, , ) = exit10.exitClaim();
+    (uint256 claimTokenOut, uint256 claimTokenIn, ) = exit10.exitClaim();
     vm.stopPrank();
 
     string memory log0 = string.concat('User: ', userName[_user]);
     string memory log1 = _displayAmount('Burned', address(exit), balance);
-    string memory log2 = _displayAmount('Claimed', usdc, claim);
+    string memory log2 = _displayAmount('Claimed', tokenOut, claimTokenOut);
+    string memory log3 = _displayAmount('Claimed', tokenIn, claimTokenIn);
     _title('CLAIMED EXIT');
     console.log(log0);
     console.log(log1);
     console.log(log2);
+    console.log(log3);
     _spacer();
   }
 

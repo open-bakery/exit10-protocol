@@ -98,7 +98,7 @@ trace:
 	forge test -vv --nmc "SystemLogsTest|FuzzTest|NFT_Test" --fork-url $(RPC_URL)
 
 single:
-	forge test -vv --mt "testScenario_3" --fork-url $(RPC_URL)
+	forge test -vv --mt "testGenerateDecimalString" --fork-url $(RPC_URL)
 
 systemLogs:
 	forge test -vv --mc SystemLogsTest --fork-url $(RPC_URL)

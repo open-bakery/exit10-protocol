@@ -6,6 +6,7 @@ import { Script } from 'forge-std/Script.sol';
 import { Strings } from '@openzeppelin/contracts/utils/Strings.sol';
 import { FeeSplitter, ABaseExit10Test } from './ABaseExit10.t.sol';
 import { AMasterchefBase } from './AMasterchefBase.t.sol';
+import { DecimalStrings } from '../src/libraries/DecimalStrings.sol';
 
 contract SystemLogsTest is ABaseExit10Test {
   mapping(address => string) userName;
@@ -24,7 +25,7 @@ contract SystemLogsTest is ABaseExit10Test {
     (deposit0, deposit1) = (tokenOut < tokenIn)
       ? (_tokenAmount(address(tokenOut), 100000), _tokenAmount(address(tokenIn), 100))
       : (_tokenAmount(address(tokenIn), 100), _tokenAmount(address(tokenOut), 100000));
-    showAsInteger = true;
+    showAsInteger = false;
   }
 
   function testScenario_0() public {
@@ -743,14 +744,7 @@ contract SystemLogsTest is ABaseExit10Test {
       return Strings.toString(_amount);
     }
 
-    uint256 integer;
-    uint256 decimal;
-    uint256 decimals = 3;
-    decimals = 10 ** decimals;
-
-    integer = _amount / 10 ** ERC20(_token).decimals();
-    decimal = ((_amount * decimals) / 10 ** ERC20(_token).decimals()) - (integer * decimals);
-    return string.concat(Strings.toString(integer), '.', Strings.toString(decimal));
+    return DecimalStrings.decimalString(_amount, ERC20(_token).decimals(), false);
   }
 
   function _displayTotal(string memory _titleText, uint256 _amountUSDC, uint256 _amountWETH) internal view {

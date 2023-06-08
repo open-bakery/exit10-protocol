@@ -130,6 +130,7 @@ contract Exit10 is UniswapBase, APermit {
     uint256 stakedEthClaimed
   );
   event ClaimAndDistributeFees(address indexed caller, uint256 amountClaimed0, uint256 amountClaimed1);
+  event StakeEth(address indexed caller, uint256 amountStaked, uint256 sharesReceived);
 
   constructor(BaseDeployParams memory baseParams_, DeployParams memory params_) UniswapBase(baseParams_) {
     STO = STOToken(params_.STO);
@@ -231,8 +232,10 @@ contract Exit10 is UniswapBase, APermit {
   function stakeEth(uint256 amount) external returns (uint256 share) {
     _requireNoExitMode();
     IWETH9(WETH).withdraw(amount);
-    share = ILido(LIDO).submit{ value: address(this).balance }(BENEFICIARY);
+    uint256 amountEth = address(this).balance;
+    share = ILido(LIDO).submit{ value: amountEth }(BENEFICIARY);
     require(share > 0, 'Exit10: Deposited zero amount');
+    emit StakeEth(msg.sender, amountEth, share);
   }
 
   function bootstrapLockWithPermit(

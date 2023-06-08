@@ -406,13 +406,14 @@ contract Exit10 is UniswapBase, APermit {
     _requireExitMode();
     BaseToken exit = EXIT;
     uint256 exitBalance = exit.balanceOf(msg.sender);
+    uint256 exitTotalSupply = exit.totalSupply();
 
     claimedLiquidity = _getClaimableAmount(exitBalance, exitTokenSupplyFinal, exitTokenRewardsFinal);
-    claimedFees = _getClaimableAmount(exitBalance, exit.totalSupply(), IERC20(TOKEN_IN).balanceOf(address(this)));
+    claimedFees = _getClaimableAmount(exitBalance, exitTotalSupply, IERC20(TOKEN_IN).balanceOf(address(this)));
 
     uint256 shares;
     if (LIDO != address(0))
-      shares = _getClaimableAmount(exitBalance, exit.totalSupply(), ILido(LIDO).sharesOf(address(this)));
+      shares = _getClaimableAmount(exitBalance, exitTotalSupply, ILido(LIDO).sharesOf(address(this)));
 
     exit.burn(msg.sender, exitBalance);
 

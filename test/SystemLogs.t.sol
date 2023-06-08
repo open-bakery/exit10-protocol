@@ -12,13 +12,18 @@ contract SystemLogsTest is ABaseExit10Test {
   bool showAsInteger;
   address tokenOut;
   address tokenIn;
+  uint256 deposit0;
+  uint256 deposit1;
 
   function setUp() public override {
     super.setUp();
     _setupNames();
     _distributeSTO();
-    address tokenOut = exit10.TOKEN_OUT();
-    address tokenIn = exit10.TOKEN_IN();
+    tokenOut = exit10.TOKEN_OUT();
+    tokenIn = exit10.TOKEN_IN();
+    (deposit0, deposit1) = (tokenOut < tokenIn)
+      ? (_tokenAmount(address(tokenOut), 100000), _tokenAmount(address(tokenIn), 100))
+      : (_tokenAmount(address(tokenIn), 100), _tokenAmount(address(tokenOut), 100000));
     showAsInteger = true;
   }
 
@@ -29,12 +34,6 @@ contract SystemLogsTest is ABaseExit10Test {
     _displayRewardBalanceMasterchefs();
     _displayBuckets();
     _skip(bootstrapDuration);
-
-    uint256 deposit0 = _tokenAmount(address(token0), 10_000);
-    uint256 deposit1 = _tokenAmount(address(token1), 100);
-    if (tokenIn < tokenOut) {
-      (deposit0, deposit1) = (deposit1, deposit0);
-    }
     uint256 bondIdA = _createBond(alice, deposit0, deposit1);
     uint256 bondIdB = _createBond(bob, deposit0, deposit1);
     uint256 bondIdC = _createBond(charlie, deposit0, deposit1);
@@ -77,11 +76,6 @@ contract SystemLogsTest is ABaseExit10Test {
   function testScenario_1() public {
     _displayPrice();
     _skip(bootstrapDuration);
-    uint256 deposit0 = _tokenAmount(address(token0), 10_000);
-    uint256 deposit1 = _tokenAmount(address(token1), 100);
-    if (tokenIn < tokenOut) {
-      (deposit0, deposit1) = (deposit1, deposit0);
-    }
     uint256 bondIdA = _createBond(alice, deposit0, deposit1);
     uint256 bondIdB = _createBond(bob, deposit0, deposit1);
     uint256 bondIdC = _createBond(charlie, deposit0, deposit1);
@@ -132,11 +126,6 @@ contract SystemLogsTest is ABaseExit10Test {
     _displayRewardBalanceMasterchefs();
     _displayBuckets();
     _skip(bootstrapDuration);
-    uint256 deposit0 = _tokenAmount(address(token0), 10_000);
-    uint256 deposit1 = _tokenAmount(address(token1), 100);
-    if (tokenIn < tokenOut) {
-      (deposit0, deposit1) = (deposit1, deposit0);
-    }
     uint256 bondId = _createBond(alice, deposit0, deposit1);
     _skip(accrualParameter);
     _generateFees();
@@ -220,11 +209,12 @@ contract SystemLogsTest is ABaseExit10Test {
     uint256 db1;
     uint256 dc1;
 
-    (da0, db0, dc0) = (_tokenAmount(token0, 10_000), _tokenAmount(token0, 1_000), _tokenAmount(token0, 100_000));
-    (da1, db1, dc1) = (_tokenAmount(token1, 10), _tokenAmount(token1, 1), _tokenAmount(token1, 100));
+    (da0, db0, dc0) = (_tokenAmount(tokenOut, 10_000), _tokenAmount(tokenOut, 1_000), _tokenAmount(tokenOut, 100_000));
+    (da1, db1, dc1) = (_tokenAmount(tokenIn, 10), _tokenAmount(tokenIn, 1), _tokenAmount(tokenIn, 100));
 
     if (tokenIn < tokenOut) {
-      ((da0, db0, dc0), (da1, db1, dc1)) = ((da1, db1, dc1), (da0, db0, dc0));
+      (da0, db0, dc0) = (da1, db1, dc1);
+      (da1, db1, dc1) = (da0, db0, dc0);
     }
 
     (, , uint256 at0, uint256 at1) = _lockBootstrap(alice, da0, da1);
@@ -530,6 +520,7 @@ contract SystemLogsTest is ABaseExit10Test {
   function _lpExit(address _user) internal returns (uint _amountAddedExit, uint _amountAddedUsdc, uint _liquidity) {
     uint balanceExit = exit.balanceOf(_user);
     uint amountUsdc = _tokenAmount(usdc, balanceExit / 1e6);
+    console.log('balanceExit: ', balanceExit);
     deal(usdc, _user, amountUsdc);
     vm.startPrank(_user);
     (_amountAddedExit, _amountAddedUsdc, _liquidity) = _addLiquidity(address(exit), usdc, balanceExit, amountUsdc);

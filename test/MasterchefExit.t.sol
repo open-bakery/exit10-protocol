@@ -47,20 +47,8 @@ contract MasterchefExitTest is ABaseTest {
     mc.updateRewards(rewardAmount);
   }
 
-  function test_updateRewards_RevertIf_AmountZero() public {
-    _init();
-    vm.expectRevert(bytes('MasterchefExit: Can only deposit rewards once'));
-    mc.updateRewards(rewardAmount);
-  }
-
   function test_updateRewards_RevertIf_PoolNotSetup() public {
-    vm.expectRevert(bytes('MasterchefExit: Must add a pool prior to adding rewards'));
-    mc.updateRewards(rewardAmount);
-  }
-
-  function test_updateRewards_RevertIf_UpdatingMoreThanOnce() public {
-    _init();
-    vm.expectRevert(bytes('MasterchefExit: Can only deposit rewards once'));
+    vm.expectRevert(bytes('Masterchef: Must initiate a pool before updating rewards'));
     mc.updateRewards(rewardAmount);
   }
 
@@ -86,76 +74,12 @@ contract MasterchefExitTest is ABaseTest {
     _assertWithin(_balance(rewardToken), expectedReward, 10);
   }
 
-  function test_deleteRewards_RevertIf_NotOwner() public {
-    _initAndDeposit();
-    vm.expectRevert(bytes('Ownable: caller is not the owner'));
-    vm.prank(alice);
-    mc.stopRewards(rewardAmount);
-  }
-
-  function test_deleteRewards() public {
-    _initAndDeposit();
-    uint256 interval = 1 days;
-    skip(interval);
-    uint256 expectedReward = (mc.rewardRate() * interval) / mc.PRECISION();
-    rewardToken.burn(address(mc), rewardAmount - expectedReward);
-    mc.stopRewards(rewardAmount);
-
-    skip(7 days);
-    mc.withdraw(0, 0);
-    _assertWithin(rewardToken.balanceOf(address(this)), expectedReward, 10);
-    _depositAs(alice, stakeAmount);
-
-    skip(7 days);
-    _withdrawAs(alice, stakeAmount);
-    assertEq(_balance(rewardToken, alice), 0, 'Check alice balance');
-    assertEq(rewardToken.totalSupply(), expectedReward, 'Check total supply');
-  }
-
-  function testDeleteRewardsTwoDepositors() public {
-    _initAndDeposit();
-    uint256 interval = 1 days;
-    skip(interval);
-
-    uint256 intervalReward = (mc.rewardRate() * interval) / mc.PRECISION();
-
-    _depositAs(alice, stakeAmount);
-    skip(interval);
-
-    rewardToken.burn(address(mc), rewardAmount - intervalReward * 2);
-    mc.stopRewards(rewardAmount);
-
-    skip(7 days);
-    mc.withdraw(0, 0);
-    _assertWithin(_balance(rewardToken), intervalReward + intervalReward / 2, 10);
-    _withdrawAs(alice, stakeAmount);
-    _assertWithin(_balance(rewardToken, alice), intervalReward / 2, 10);
-    assertEq(rewardToken.totalSupply(), intervalReward * 2, 'Check total supply');
-  }
-
-  function testFirstDepositCollectAllRewards() public {
+  function testFirstDepositDoesNotCollectAllRewards() public {
     _init();
     uint256 interval = 1 days;
     skip(interval);
-
-    uint256 intervalReward = (mc.rewardRate() * interval) / mc.PRECISION();
     _depositAs(alice, stakeAmount);
-    assertEq(_balance(rewardToken, alice), intervalReward);
-  }
-
-  function testFirstDeposit_RevertIf_CollectAllRewardsZeroStake() public {
-    _init();
-    uint256 interval = 1 days;
-    skip(interval);
-
-    uint256 intervalReward = (mc.rewardRate() * interval) / mc.PRECISION();
-    vm.startPrank(alice);
-    vm.expectRevert(bytes('MasterchefExit: Amount must not be zero'));
-    mc.deposit(0, 0);
-    vm.stopPrank();
-
-    assertEq(_balance(rewardToken, alice), 0, 'Check reward balance 0');
-    assertGt(intervalReward, 0, 'Check accumulated rewards > 0');
+    assertEq(_balance(rewardToken, alice), 0);
   }
 
   function testNoStakeInBetweenDeposits() public {
@@ -166,10 +90,8 @@ contract MasterchefExitTest is ABaseTest {
     _withdrawAs(alice, stakeAmount);
     uint256 prevRewardBalance = _balance(rewardToken, alice);
     skip(interval);
-
-    uint256 intervalReward = (mc.rewardRate() * interval) / mc.PRECISION();
     _depositAs(alice, stakeAmount);
-    assertEq(_balance(rewardToken, alice), prevRewardBalance + intervalReward);
+    assertEq(_balance(rewardToken, alice), prevRewardBalance);
   }
 
   function testClaimingRewardsAfterPeriodFinished() public {
@@ -177,10 +99,12 @@ contract MasterchefExitTest is ABaseTest {
     _depositAs(alice, stakeAmount);
     skip(1 days);
     _withdrawAs(alice, stakeAmount);
+    uint256 rewardRate = mc.rewardRate();
+    uint256 rewardAmountClaimed = (rewardRate * 1 days) / mc.PRECISION();
+
     skip(rewardDuration);
     _depositAs(alice, stakeAmount);
-
-    assertApproxEqAbs(_balance(rewardToken, alice), rewardAmount, 1, 'Check balance == rewardAmount');
+    assertApproxEqAbs(_balance(rewardToken, alice), rewardAmountClaimed, 1, 'Check balance == rewardAmount');
   }
 
   function _init() internal {

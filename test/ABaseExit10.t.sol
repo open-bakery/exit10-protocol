@@ -247,6 +247,12 @@ abstract contract ABaseExit10Test is ABaseTest {
     (, _tick, , , , , ) = _exit10.POOL().slot0();
   }
 
+  function _generateExit() internal {
+    _generateFees(exit10.TOKEN_OUT(), exit10.TOKEN_IN(), _tokenAmount(exit10.TOKEN_OUT(), 1_000_000));
+    exit10.claimAndDistributeFees();
+    FeeSplitter(feeSplitter).updateFees(0);
+  }
+
   function _eth10k() internal {
     // tokenOut == USDC
     // tokenIN == WETH

@@ -73,7 +73,7 @@ contract Exit10 is UniswapBase, APermit {
   mapping(uint256 => BondData) private idToBondData;
 
   uint256 public constant TOKEN_MULTIPLIER = 1e8;
-  uint256 public constant MAX_EXIT_SUPPLY = 10_000_000 ether;
+  uint256 public constant MAX_EXIT_SUPPLY = 100_000_000 ether;
   uint128 private constant MAX_UINT_128 = type(uint128).max;
   uint256 private constant MAX_UINT_256 = type(uint256).max;
   uint256 private constant DEADLINE = 1e10;
@@ -207,12 +207,6 @@ contract Exit10 is UniswapBase, APermit {
     _requireNoExitMode();
     require(!_isBootstrapOngoing(), 'EXIT10: Bootstrap ongoing');
 
-    if (!hasUpdatedRewards) {
-      EXIT.mint(MASTERCHEF, MAX_EXIT_SUPPLY);
-      MasterchefExit(MASTERCHEF).updateRewards(MAX_EXIT_SUPPLY);
-      hasUpdatedRewards = true;
-    }
-
     claimAndDistributeFees();
 
     _depositTokens(params.amount0Desired, params.amount1Desired);
@@ -335,12 +329,6 @@ contract Exit10 is UniswapBase, APermit {
 
     inExitMode = true;
 
-    // Stop and burn Exit rewards.
-    uint256 burnAmount = Math.min(
-      IERC20(EXIT).balanceOf(MASTERCHEF),
-      MasterchefExit(MASTERCHEF).stopRewards(MAX_EXIT_SUPPLY)
-    );
-    EXIT.burn(MASTERCHEF, burnAmount);
     exitTokenSupplyFinal = EXIT.totalSupply();
     exitBucketBootstrapBucketFinal = _liquidityAmount() - (pendingBucket + reserveBucket);
     bootstrapBucketFinal = bootstrapBucket;
@@ -480,6 +468,15 @@ contract Exit10 is UniswapBase, APermit {
     emit ClaimAndDistributeFees(msg.sender, amountCollected0, amountCollected1);
   }
 
+  function updateRewards(uint256 amountTokenIn) external {
+    require(msg.sender == FEE_SPLITTER, 'Exit10: Caller not authorized.');
+    if (inExitMode) return;
+    // For every 1 ETH acquired in fees we mint 1000 EXIT tokens
+    uint256 mintAmount = amountTokenIn * 1000;
+    mintAmount = _mintExitCapped(MASTERCHEF, mintAmount);
+    MasterchefExit(MASTERCHEF).updateRewards(mintAmount);
+  }
+
   function _getClaimableAmount(
     uint256 _shares,
     uint256 _totalSupply,
@@ -503,9 +500,9 @@ contract Exit10 is UniswapBase, APermit {
     if (_amount != 0) IERC20(_token).safeTransfer(_recipient, _amount);
   }
 
-  function _mintExitCapped(address recipient, uint256 amount) internal {
+  function _mintExitCapped(address recipient, uint256 amount) internal returns (uint256 mintAmount) {
     uint256 newSupply = EXIT.totalSupply() + amount;
-    uint256 mintAmount = newSupply > MAX_EXIT_SUPPLY ? MAX_EXIT_SUPPLY - EXIT.totalSupply() : amount;
+    mintAmount = newSupply > MAX_EXIT_SUPPLY ? MAX_EXIT_SUPPLY - EXIT.totalSupply() : amount;
     if (mintAmount != 0) EXIT.mint(recipient, mintAmount);
   }
 

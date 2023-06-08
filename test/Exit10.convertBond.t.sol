@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 import { ABaseExit10Test } from './ABaseExit10.t.sol';
 import { Exit10 } from '../src/Exit10.sol';
+import { FeeSplitter } from '../src/FeeSplitter.sol';
 
 contract Exit10_convertBondTest is ABaseExit10Test {
   function test_ConvertBond() public {
@@ -73,6 +74,30 @@ contract Exit10_convertBondTest is ABaseExit10Test {
     assertGt(_balance(token1, feeSplitter), 0, 'Check balance1 feeSplitter');
   }
 
+  function test_convertBond_mintCorrectExitAmount() public {
+    (uint256 amount0, uint256 amount1) = (exit10.TOKEN_OUT() < exit10.TOKEN_IN())
+      ? (_tokenAmount(exit10.TOKEN_OUT(), 100_000_000), _tokenAmount(exit10.TOKEN_IN(), 1_000_000))
+      : (_tokenAmount(exit10.TOKEN_IN(), 1_000_000), _tokenAmount(exit10.TOKEN_OUT(), 100_000_000));
+
+    (uint256 bondId, uint256 bondAmount) = _skipBootAndCreateBond(amount0, amount1);
+    exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
+
+    assertEq(exit.balanceOf(address(masterchefExit)), 0, 'Check masterchefExit rewards');
+
+    _generateFees(exit10.TOKEN_OUT(), exit10.TOKEN_IN(), _tokenAmount(exit10.TOKEN_OUT(), 1_000_000));
+    skip(ORACLE_SECONDS);
+    exit10.claimAndDistributeFees();
+    FeeSplitter(feeSplitter).updateFees(_balance(exit10.TOKEN_OUT(), feeSplitter));
+    uint256 balanceTokenIn = _balance(exit10.TOKEN_IN(), address(exit10));
+
+    assertGt(balanceTokenIn, 0, 'Check balance tokenIn exit10');
+    assertEq(
+      _balance(address(exit), address(masterchefExit)),
+      balanceTokenIn * 1000,
+      'Check balance Exit in masterchef'
+    );
+  }
+
   function test_convertBond_mintMaxExitCap() public {
     (uint256 amount0, uint256 amount1) = (exit10.TOKEN_OUT() < exit10.TOKEN_IN())
       ? (_tokenAmount(exit10.TOKEN_OUT(), 100_000_000), _tokenAmount(exit10.TOKEN_IN(), 1_000_000))
@@ -80,6 +105,8 @@ contract Exit10_convertBondTest is ABaseExit10Test {
 
     (uint256 bondId, uint256 bondAmount) = _skipBootAndCreateBond(amount0, amount1);
     exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
+    deal(exit10.TOKEN_IN(), feeSplitter, _tokenAmount(exit10.TOKEN_IN(), 200_000_000));
+    FeeSplitter(feeSplitter).updateFees(0);
     assertEq(exit.totalSupply(), exit10.MAX_EXIT_SUPPLY(), 'Check exit token capmint');
   }
 }

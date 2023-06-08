@@ -20,6 +20,7 @@ contract FeeSplitterTest is ABaseTest {
 
   FeeSplitter feeSplitter;
   address masterchef;
+  address masterchefExit;
   address exit10;
 
   uint32 constant ORACLE_SECONDS = 60;
@@ -237,6 +238,8 @@ contract FeeSplitterTest is ABaseTest {
     );
     vm.revertTo(snapshot);
   }
+
+  function updateRewards(uint256 amount) external {}
 
   function _distribute(uint256 _amountTokenOut, uint256 _amountTokenIn) internal {
     _dealTokens(_amountTokenOut, _amountTokenIn);

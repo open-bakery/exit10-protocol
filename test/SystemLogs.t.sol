@@ -93,6 +93,8 @@ contract SystemLogsTest is ABaseExit10Test {
     _skip(accrualParameter * 4);
     _convertBond(bondIdC, charlie);
     _displayBuckets();
+    _generateClaimAndDistributeFees();
+    _distributeRewardsToMasterchefs();
     _stakeBlpAll(true);
     _skip(accrualParameter);
     _stakeBlpAll(false);
@@ -138,6 +140,8 @@ contract SystemLogsTest is ABaseExit10Test {
     uint256 bondId = _createBond(alice, deposit0, deposit1);
     _skip(accrualParameter);
     _generateFees();
+    _generateClaimAndDistributeFees();
+    _distributeRewardsToMasterchefs();
     _convertBond(bondId, alice);
     _displayBuckets();
     _stake(alice, address(masterchefExit), 1, address(blp));
@@ -147,6 +151,7 @@ contract SystemLogsTest is ABaseExit10Test {
     _stake(alice, address(masterchefExit), 0, lp);
     _skip(accrualParameter);
     _claimExitRewards(alice);
+    _generateClaimAndDistributeFees();
     _distributeRewardsToMasterchefs();
     _skip(accrualParameter);
     _claimEthRewards(bob, address(masterchef), 1);

@@ -119,6 +119,7 @@ contract FuzzTest is ABaseExit10Test {
       deposit0,
       deposit1
     );
+    _generateExit();
     skip(accrualParameter);
     exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
     (uint256 pending, uint256 reserve, uint256 exit, uint256 bootstrap) = exit10.getBuckets();
@@ -149,7 +150,7 @@ contract FuzzTest is ABaseExit10Test {
       exit10.exitTokenRewardsFinal(),
       'Check exit liquidity'
     );
-    assertEq(_balance(tokenIn, address(exit10)), 0, 'Check balance TOKEN_IN == 0');
+    assertGt(_balance(tokenIn, address(exit10)), 0, 'Check balance TOKEN_IN > 0');
   }
 
   function testFuzz_claims(
@@ -177,11 +178,12 @@ contract FuzzTest is ABaseExit10Test {
       deposit1
     );
     skip(accrualParameter);
+    _generateExit();
     exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
     uint256 blpBalance = blp.balanceOf(address(this));
     blp.approve(address(masterchefExit), type(uint).max);
     masterchefExit.deposit(1, blpBalance);
-    skip(10);
+    skip(1 days);
     masterchefExit.withdraw(1, blpBalance);
     _eth10k();
     exit10.exit10();

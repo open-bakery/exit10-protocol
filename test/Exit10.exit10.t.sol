@@ -64,8 +64,8 @@ contract Exit10_exit10Test is ABaseExit10Test {
     skip(accrualParameter);
     exit10.convertBond(bondId, _removeLiquidityParams(bondAmount));
     (uint256 pending, uint256 reserve, uint256 exit, uint256 bootstrap) = exit10.getBuckets();
-
     _checkBalancesExit10(0, 0);
+    _generateExit();
 
     _eth10k();
     uint128 liquidityBeforeExit = _getLiquidity();
@@ -93,7 +93,7 @@ contract Exit10_exit10Test is ABaseExit10Test {
       exit10.exitTokenRewardsFinal(),
       'Check exit liquidity'
     );
-    assertEq(_balance(tokenIn, address(exit10)), 0, 'Check balance TOKEN_IN == 0');
+    assertGt(_balance(tokenIn, address(exit10)), 0, 'Check balance TOKEN_IN > 0');
   }
 
   function test_exit10_backInRange_claimAndDistributeFees() public {

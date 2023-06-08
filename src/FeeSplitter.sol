@@ -74,6 +74,7 @@ contract FeeSplitter is Ownable {
       // Invest tokenIn and send it to Exit10
       // For now just send it to Exit10 as tokenIn
       IERC20(Exit10(exit10).TOKEN_IN()).safeTransfer(exit10, exit10TokenIn);
+      Exit10(exit10).updateRewards(exit10TokenIn);
     }
 
     emit UpdateFees(msg.sender, totalExchangedIn, mcTokenIn, exit10TokenIn);

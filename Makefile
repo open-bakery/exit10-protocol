@@ -8,9 +8,6 @@ ANVIL_PORT = 8545
 ANVIL_PORT_FLIP = 8546
 CHAIN_ID = 31337
 CHAIN_ID_FLIP = 31338
-RPC_URL = "http://localhost:$(ANVIL_PORT)"
-RPC_URL_FLIP = "http://localhost:$(ANVIL_PORT_FLIP)"
-
 
 reinit:
 	git submodule deinit --force .
@@ -38,7 +35,7 @@ start-anvil-local:
 start-anvil-mainnet-fork:
 	@echo "Starting anvil mainnet fork...";
 	$(MAKE) kill-anvil
-	@anvil --fork-url $(RPC_URL)
+	@anvil --fork-url $(FORK_URL)
 	$(MAKE) wait-for-anvil
 
 merge-config:
@@ -69,8 +66,8 @@ dev-mainnet-fork:
 dev-ui:
 	@echo "RUN dev-ui $(DEPLOYMENT)"
 	$(MAKE) dev
-	@ETH_RPC_URL=$(RPC_URL) DEPLOYMENT=$(DEPLOYMENT) ./deploy/deploy-exit10.sh
-	@ETH_RPC_URL=$(RPC_URL) DEPLOYMENT=$(DEPLOYMENT) ./deploy/deploy-dev-data.sh
+	@ETH_RPC_URL=$(ETH_RPC_URL) DEPLOYMENT=$(DEPLOYMENT) ./deploy/deploy-exit10.sh
+	@ETH_RPC_URL=$(ETH_RPC_URL) DEPLOYMENT=$(DEPLOYMENT) ./deploy/deploy-dev-data.sh
 	DEPLOYMENT=$(DEPLOYMENT) ./deploy/export-to-ui.sh
 	DEPLOYMENT=$(DEPLOYMENT) ./deploy/export-to-subgraph.sh
 
@@ -81,30 +78,33 @@ dev-ui-twochain:
 	$(MAKE) dev-ui
 	$(MAKE) dev-ui-flip
 
+deploy-test:
+	@DEPLOYMENT=$(DEPLOYMENT) ./deploy/deploy-test.sh
+
+deploy-it:
+	@echo "Deploying on '$(DEPLOYMENT)'"
+	@DEPLOYMENT=$(DEPLOYMENT) ./deploy/deploy-exit10.sh
 
 gas-report:
-	forge test -vv --nmc "SystemLogsTest|FuzzTest" --gas-report --fork-url $(RPC_URL)
+	forge test -vv --nmc "SystemLogsTest|FuzzTest" --gas-report --fork-url $(ETH_RPC_URL)
 
 testAll:
-	forge test -vv --fork-url $(RPC_URL)
-
-testAllFlip:
-	forge test -vv --fork-url $(RPC_URL_FLIP)
+	forge test -vv --fork-url $(ETH_RPC_URL)
 
 tests:
-	forge test -vv  --nmc "SystemLogsTest|FuzzTest|NFT_Test" --fork-url $(RPC_URL)
+	forge test -vv  --nmc "SystemLogsTest|FuzzTest|NFT_Test" --fork-url $(ETH_RPC_URL)
 
 trace:
-	forge test -vv --nmc "SystemLogsTest|FuzzTest|NFT_Test" --fork-url $(RPC_URL)
+	forge test -vv --nmc "SystemLogsTest|FuzzTest|NFT_Test" --fork-url $(ETH_RPC_URL)
 
 single:
 	forge test -vv --mt "testGenerateDecimalString" --fork-url $(RPC_URL)
 
 systemLogs:
-	forge test -vv --mc SystemLogsTest --fork-url $(RPC_URL)
+	forge test -vv --mc SystemLogsTest --fork-url $(ETH_RPC_URL)
 
 fuzz:
-	forge test -vv --mc FuzzTest --fork-url $(RPC_URL)
+	forge test -vv --mc FuzzTest --fork-url $(ETH_RPC_URL)
 
 param:
 	@echo $$param

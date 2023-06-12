@@ -204,6 +204,9 @@ function generate_volume() {
   swap_usdc_weth_back_and_forth $C
 }
 
+if [ "$PHASE" = "prelaunch" ]; then exit 0; fi
+skip_day 2
+
 # provide exit liquidity too
 
 # distribute usdc
@@ -246,7 +249,6 @@ echo "approve v2 router"
 approve_all "$UNISWAP_V2_ROUTER" "$USDC"
 approve_all "$UNISWAP_V2_ROUTER" "$EXIT"
 
-
 # first phase -> bootstrap ongoing
 
 echo "bootstrap 1"
@@ -262,10 +264,7 @@ skip_day 1
 echo "bootstrap 4"
 bootstrap_lock "$B" "200000" "200"
 
-if [ "$PHASE" = "bootstrap" ]
-then
-  exit 0
-fi
+if [ "$PHASE" = "bootstrap" ]; then exit 0; fi
 
 skip_day 1
 echo "bootstrap 5"

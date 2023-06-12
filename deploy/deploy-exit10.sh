@@ -8,6 +8,11 @@ SD="$(dirname "$(readlink -f "$0")")"
 source "$SD/../.env"
 SRC="$SD/../src"
 
+if [ $BOOTSTRAP_START = "0" ]
+then
+  BOOTSTRAP_START=$(date -d "$(date +%Y-%m-%d) +2 days" +%s)
+fi
+
 function extract_addr() {
   cat < /dev/stdin | grep "Deployed to" | awk -F ": " '{ print $2 }'
 }
@@ -31,7 +36,7 @@ MASTERCHEF_EXIT=$(forge create "$SRC/MasterchefExit.sol:MasterchefExit" --unlock
 # Exit10 Core (FeeSplitter, Exit10)
 FEE_SPLITTER=$(forge create "$SRC/FeeSplitter.sol:FeeSplitter" --unlocked --constructor-args "$MASTERCHEF" "$SWAPPER" | extract_addr)
 EXIT10_BASE_PARAMS="($WETH,$UNISWAP_V3_FACTORY,$UNISWAP_V3_NPM,$WETH,$USDC,$FEE,$LOWER_TICK,$UPPER_TICK)"
-EXIT10_DEPLOY_PARAMS="($NFT,$STO,$BOOT,$BLP,$EXIT,$MASTERCHEF_EXIT,$FEE_SPLITTER,$BENEFICIARY,$LIDO,$BOOTSTRAP_DURATION,$BOOTSTRAP_LIQUIDITY_CAP,$LIQUIDITY_PER_USDC,$ACCRUAL_PARAMETER)"
+EXIT10_DEPLOY_PARAMS="($NFT,$STO,$BOOT,$BLP,$EXIT,$MASTERCHEF_EXIT,$FEE_SPLITTER,$BENEFICIARY,$LIDO,$BOOTSTRAP_START,$BOOTSTRAP_DURATION,$BOOTSTRAP_LIQUIDITY_CAP,$ACCRUAL_PARAMETER)"
 EXIT10=$(forge create "$SRC/Exit10.sol:Exit10" --unlocked --constructor-args "$EXIT10_BASE_PARAMS" "$EXIT10_DEPLOY_PARAMS" | extract_addr)
 echo "EXIT10: $EXIT10"
 

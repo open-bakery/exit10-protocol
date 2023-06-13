@@ -85,6 +85,9 @@ deploy-it:
 	@echo "Deploying on '$(DEPLOYMENT)'"
 	@DEPLOYMENT=$(DEPLOYMENT) ./deploy/deploy-exit10.sh
 
+set-it-up:
+	@DEPLOYMENT=$(DEPLOYMENT) ./deploy/deploy-setup.sh
+
 gas-report:
 	forge test -vv --nmc "SystemLogsTest|FuzzTest" --gas-report --fork-url $(ETH_RPC_URL)
 

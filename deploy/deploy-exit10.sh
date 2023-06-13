@@ -50,13 +50,14 @@ function extract_addr_cast() {
 # Our Tokens
 NFT=$(forge create "$SRC/NFT.sol:NFT" $DEPLOY_PARAMS --constructor-args "Bond Data" "BND" 0 | extract_addr)
 echo "NFT: $NFT"
-STO=$(forge create "$SRC/STOToken.sol:STOToken" $DEPLOY_PARAMS --constructor-args $ZERO32 | extract_addr)
+STO=$(forge create "$SRC/STOToken.sol:STOToken" $DEPLOY_PARAMS --constructor-args $STO_MERKLE_ROOT | extract_addr)
 echo "STO: $STO"
 BOOT=$(forge create "$SRC/BaseToken.sol:BaseToken" $DEPLOY_PARAMS --constructor-args "Exit10 Bootstrap" "BOOT" | extract_addr)
 echo "BOOT: $BOOT"
-BLP=$(forge create "$SRC/BaseToken.sol:BaseToken" $DEPLOY_PARAMS --constructor-args "Boost Liquidity" "BLP" | extract_addr)
+BLP=$(forge create "$SRC/BaseToken.sol:BaseToken" $DEPLOY_PARAMS --constructor-args "Base Liquidity Position" "BLP" | extract_addr)
 echo "BLP: $BLP"
 EXIT=$(forge create "$SRC/BaseToken.sol:BaseToken" $DEPLOY_PARAMS --constructor-args "Exit Liquidity" "EXIT" | extract_addr)
+echo "EXIT: $EXIT"
 
 # Masterchefs
 MASTERCHEF=$(forge create "$SRC/Masterchef.sol:Masterchef" $DEPLOY_PARAMS --constructor-args "$WETH" "$REWARDS_DURATION" | extract_addr)
@@ -80,34 +81,8 @@ echo "EXIT10: $EXIT10"
 DEPOSIT_HELPER=$(forge create "$SRC/DepositHelper.sol:DepositHelper" $DEPLOY_PARAMS --constructor-args "$UNISWAP_V3_ROUTER" "$EXIT10" "$WETH" | extract_addr)
 echo "DEPOSIT_HELPER: $DEPOSIT_HELPER"
 
-# Uniswap V2 Pool for EXIT/USDC
-cast send "$UNISWAP_V2_FACTORY" "createPair(address,address)" "$EXIT" "$USDC" > /dev/null
-
-EXIT_LP="0x$(cast call "$UNISWAP_V2_FACTORY" "getPair(address,address)" "$EXIT" "$USDC" | cut -c 27-66)"
-echo "EXIT_LP: $EXIT_LP"
-
-# Post-deploy setup
-echo "nft.setExit10"
-cast send "$NFT" "setExit10(address)" "$EXIT10" > /dev/null
-echo "feeSplitter.setExit10"
-cast send "$FEE_SPLITTER" "setExit10(address)" "$EXIT10" > /dev/null
-
-echo "SETUP MASTERCHEF"
-cast send "$MASTERCHEF" "add(uint32,address)" 50 "$STO" > /dev/null
-cast send "$MASTERCHEF" "add(uint32,address)" 50 "$BOOT" > /dev/null
-cast send "$MASTERCHEF" "transferOwnership(address)" "$FEE_SPLITTER" > /dev/null
-
-echo "SETUP MASTERCHEF_EXIT"
-cast send "$MASTERCHEF_EXIT" "add(uint32,address)" 20 "$EXIT_LP" > /dev/null
-cast send "$MASTERCHEF_EXIT" "add(uint32,address)" 80 "$BLP" > /dev/null
-cast send "$MASTERCHEF_EXIT" "transferOwnership(address)" "$EXIT10" > /dev/null
-
-echo "TRANSFER OWNERSHIPS"
-cast send "$BOOT" "transferOwnership(address)" "$EXIT10" > /dev/null
-cast send "$STO" "transferOwnership(address)" "$EXIT10" > /dev/null
-cast send "$BLP" "transferOwnership(address)" "$EXIT10" > /dev/null
-cast send "$EXIT" "transferOwnership(address)" "$EXIT10" > /dev/null
-echo "All done"
+NFT_ARTWORK=$(forge create "$SRC/artwork/Artwork.sol:Artwork" $DEPLOY_PARAMS --constructor-args "$EXIT10" | extract_addr)
+echo "NFT_ARTWORK: $NFT_ARTWORK"
 
 echo "NFT=$NFT
 STO=$STO
@@ -119,4 +94,5 @@ MASTERCHEF_EXIT=$MASTERCHEF_EXIT
 FEE_SPLITTER=$FEE_SPLITTER
 EXIT10=$EXIT10
 DEPOSIT_HELPER=$DEPOSIT_HELPER
-EXIT_LP=$EXIT_LP" > "$SD/../config/${DEPLOYMENT}/exit10.ini"
+NFT_ARTWORK=$NFT_ARTWORK
+" > "$SD/../config/${DEPLOYMENT}/exit10.ini"

@@ -67,6 +67,7 @@ dev-ui:
 	@echo "RUN dev-ui $(DEPLOYMENT)"
 	$(MAKE) dev
 	@ETH_RPC_URL=$(ETH_RPC_URL) DEPLOYMENT=$(DEPLOYMENT) ./deploy/deploy-exit10.sh
+	@ETH_RPC_URL=$(ETH_RPC_URL) DEPLOYMENT=$(DEPLOYMENT) ./deploy/deploy-setup.sh
 	@ETH_RPC_URL=$(ETH_RPC_URL) DEPLOYMENT=$(DEPLOYMENT) ./deploy/deploy-dev-data.sh
 	DEPLOYMENT=$(DEPLOYMENT) ./deploy/export-to-ui.sh
 	DEPLOYMENT=$(DEPLOYMENT) ./deploy/export-to-subgraph.sh

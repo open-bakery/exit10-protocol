@@ -8,10 +8,8 @@ source "$SD/../.env.secret"
 SRC="$SD/../src"
 
 DEPLOY_PARAMS=""
-if [ $LOCAL_DEPLOYMENT -eq 1 ]
+if [ $LOCAL_DEPLOYMENT -ne 1 ]
 then
-  DEPLOY_PARAMS="$DEPLOY_PARAMS --unlocked"
-else
   if [ -z "$PRIVATE_KEY" ]; then
     echo "Error: PRIVATE_KEY variable required"
     exit 1
@@ -20,7 +18,7 @@ else
     echo "Error: ETH_RPC_URL variable required"
     exit 1
   fi
-  DEPLOY_PARAMS="$DEPLOY_PARAMS --private-key $PRIVATE_KEY --rpc-url $ETH_RPC_URL"
+  DEPLOY_PARAMS="--private-key $PRIVATE_KEY --rpc-url $ETH_RPC_URL"
 fi
 
 # Uniswap V2 Pool for EXIT/USDC
